@@ -3,7 +3,7 @@ program example
   use globals
   implicit none
 
-  real(sp), dimension(:,:), allocatable :: im, im2
+  real(sp), allocatable :: im(:,:), im2(:,:)
   integer :: bsize, ndim, errno = 0
   logical :: anyf
   integer :: sz(2)
@@ -26,7 +26,7 @@ program example
   main: block
 
     im2 = im - sum(im) / product(sz)
-    
+
   end block main
 
   !----------------------------------------------------------------------------!
@@ -37,9 +37,8 @@ program example
     error stop
   end if
 
-  call ftphpr(66, .true., -32, 2, [size(im2,1), size(im2,2)], &
-        & 0, 1, .true., errno)
-  call ftppre(66, 1, 1, size(im2,1) * size(im2,2), im2, errno)
+  call ftphpr(66, .true., -32, 3, shape(im2), 0, 1, .true., errno)
+  call ftppre(66, 1, 1, size(im2), im2, errno)
   call ftclos(66, errno)
 
 end program

@@ -1,9 +1,11 @@
 module findstar
 
   use globals
-
-
   implicit none
+
+  type starstruct
+    real(sp) :: x,y,v
+  end type
 
 contains
 
@@ -36,7 +38,6 @@ contains
     deallocate(mask0)
 
   end subroutine
-
 
   !--------------------------------------------------------------------!
 
@@ -157,6 +158,5 @@ contains
     end do
 
   end subroutine
-
 
 end module findstar

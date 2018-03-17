@@ -1,13 +1,13 @@
 prefix = /usr/local
 FC = gfortran
-FFLAGS ?= -g -O2
-FFLAGS += -Wall -Warray-temporaries -Wrealloc-lhs
-LDLIBS = -lcfitsio
-VPATH = ../src:../test
+FFLAGS := -O3 -march=native
+FFLAGS += -g -Wall -Wno-unused -Warray-temporaries -Wrealloc-lhs
+LDLIBS += -lcfitsio
+VPATH = ../src/modules:../src/programs:../src/test
 
-OBJECTS = align.o filters.o findstar.o globals.o transforms.o
-PROGRAMS = aqfindstar aqalign2 background
+PROGRAMS = example background test
 TESTS = test_transforms
+OBJECTS = kernels.o statistics.o convolution.o globals.o transforms.o findstar.o
 
 all: $(PROGRAMS)
 
@@ -20,18 +20,12 @@ install: all
 install-user: prefix = $(HOME)/.local
 install-user: install
 
-align.o         : globals.o transforms.o
-aqalign2.o      : align.o filters.o
-background.o aqalign2.o: globals.o findstar.o
-aqfindstar.o    : findstar.o filters.o
-test_transforms.o: transforms.o
-example.o transforms.o filters.o findstar.o: globals.o
-
+include deps.inc
 
 %.o: %.f90
 	$(FC) $(FFLAGS) -c $< -o $@
 
-$(PROGRAMS) $(TESTS): %: $(OBJECTS) %.f90
+$(PROGRAMS) $(TESTS): %: $(OBJECTS) %.o
 	$(FC) $(FFLAGS) $^ $(LDLIBS) -o $@
 
 clean:

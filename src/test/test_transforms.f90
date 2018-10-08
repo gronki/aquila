@@ -7,7 +7,7 @@ program test_transforms
   type(point), dimension(24) :: p1, p2, p3
   type(affine_transform), target :: t
   class(transform), pointer :: tp
-  real(dp) :: a
+  real(fp) :: a
 
   t % x = -1
   t % y = -1

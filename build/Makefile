@@ -1,29 +1,31 @@
 prefix = /usr/local
+
 FC = gfortran
-FFLAGS := -O3 -march=native
-FFLAGS += -g -Wall -Wno-unused -Warray-temporaries -Wrealloc-lhs
-LDLIBS += -lcfitsio
+FFLAGS = -g -O3 -funsafe-math-optimizations -march=native
+FFLAGS += -fno-backtrace -fimplicit-none -ffree-line-length-none		\
+				  -pedantic -Wall -Wno-unused-dummy-argument -Warray-temporaries
+
+LDLIBS += -lcfitsio # -lfftw3
+INCLUDE += -I/usr/include
+
 VPATH = ../src/modules:../src/programs:../src/test
 
-PROGRAMS = example background test
-TESTS = test_transforms
-OBJECTS = kernels.o statistics.o convolution.o globals.o transforms.o findstar.o
+PROGRAMS = aquila
+TESTS = test_transforms test_background test_kernels test_findstar test_legacy_align \
+			test_framehandling test_addsuffix
+OBJECTS = kernels.o statistics.o convolution.o globals.o transforms.o \
+				  findstar.o fftw.o legacy_align.o framehandling.o
 
-all: $(PROGRAMS)
-
-tests: $(TESTS)
+all: $(PROGRAMS) $(TESTS)
 
 install: all
 	install -d $(prefix)/bin
 	install $(PROGRAMS) $(prefix)/bin
 
-install-user: prefix = $(HOME)/.local
-install-user: install
-
 include deps.inc
 
 %.o: %.f90
-	$(FC) $(FFLAGS) -c $< -o $@
+	$(FC) $(INCLUDE) $(FFLAGS) -c $< -o $@
 
 $(PROGRAMS) $(TESTS): %: $(OBJECTS) %.o
 	$(FC) $(FFLAGS) $^ $(LDLIBS) -o $@

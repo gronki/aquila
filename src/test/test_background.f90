@@ -3,8 +3,8 @@ program background
   use globals
   implicit none
 
-  real(sp), dimension(:,:), allocatable :: im
-  real(sp), dimension(:,:,:), allocatable :: imout
+  real(fp), dimension(:,:), allocatable :: im
+  real(fp), dimension(:,:,:), allocatable :: imout
   integer :: bsize, ndim, errno = 0
   logical :: anyf
   integer :: sz(2)
@@ -30,9 +30,9 @@ program background
     use statistics, only: outliers, quickselect
 
     integer, parameter :: mrad = 15
-    real(sp), dimension(4 * mrad**2 + 4 * mrad + 1) :: k
+    real(fp), dimension(4 * mrad**2 + 4 * mrad + 1) :: k
     logical :: mskt(2 * mrad + 1, 2 * mrad + 1)
-    real(sp) :: blur(2 * mrad + 1, 2 * mrad + 1)
+    real(fp) :: blur(2 * mrad + 1, 2 * mrad + 1)
     integer i, j, ni, nj
     logical, allocatable :: msk(:,:)
 
@@ -45,8 +45,8 @@ program background
 
     prepare: block
       integer, parameter :: nb = 96
-      real(sp), dimension(nb**2) :: k
-      real(sp) :: mean, median, stdev
+      real(fp), dimension(nb**2) :: k
+      real(fp) :: mean, median, stdev
       integer :: ioff, joff
 
       ioff = mod(ni,nb) / 2
@@ -62,14 +62,14 @@ program background
                   imo => imout(max(i, 1) : min(i + nb - 1, ni),     &
                                max(j, 1) : min(j + nb - 1, nj), :))
             associate (n => size(imc))
-              call outliers(imc, 5.0, 16, mskc, mean, stdev)
+              call outliers(imc, 5.0_fp, 16, mskc, mean, stdev)
               imo(:,:,2) = imc(:,:) - mean
               ! imo(:,:,3) = imc(:,:) - (mean + stdev)
               k(1:n) = reshape(imc, [n])
               median = quickselect(k(1:n), (n + 1) / 2)
               imo(:,:,3) = imc(:,:) - median
               imo(:,:,4) = imc(:,:) - (3 * mean - 2 * median)
-              imo(:,:,5) = merge(imc(:,:), 0.0_sp, imc >= mean + 5 * stdev)
+              imo(:,:,5) = merge(imc(:,:), 0.0_fp, imc >= mean + 5 * stdev)
             end associate
           end associate
         end do
@@ -79,22 +79,22 @@ program background
 
     wave: block
       use kernels, only: gausskrn, mexhakrn
-      use convolution, only: convol
+      use convolution, only: convol, convol_fix
       ! fwhm = 2.355 * sigma
       ! kernel size for gaussian: 2.5 * fwhm
-      real(sp) :: krn(7,7), krn2(3,3), krn3(15,15), stdev, mean
-      real(sp), allocatable :: tmp(:,:)
-      real(sp) :: fwhm = 3
+      real(fp) :: krn(7,7), krn2(3,3), krn3(15,15), stdev, mean
+      real(fp), allocatable :: tmp(:,:)
+      real(fp) :: fwhm = 3.0
       krn2 = reshape([0,-1,0,-1,4,-1,0,-1,0], shape(krn2))
       call gausskrn(fwhm / 2.355, krn)
       allocate(tmp, source = im)
-      call convol(im, krn2, tmp)
-      call convol(tmp, krn, imout(:,:,6))
+      call convol_fix(im, krn2, tmp, 'R')
+      call convol_fix(tmp, krn, imout(:,:,6), 'R')
       print '(7F10.5)', krn
       ! call outliers(im, 3.0, 16, msk, mean, stdev)
       ! where(msk .or. imout(:,:,6) < 0) imout(:,:,6) = 0
       call mexhakrn(fwhm / 2.355, krn3)
-      call convol(im, krn3, imout(:,:,7))
+      call convol_fix(im, krn3, imout(:,:,7), 'R')
 
     end block wave
     !

@@ -8,21 +8,21 @@ contains
   !----------------------------------------------------------------------------!
 
   subroutine mexha(sg, k)
-    real, intent(in) :: sg
-    real, intent(out) :: k(:,:)
+    real(fp), intent(in) :: sg
+    real(fp), intent(out) :: k(:,:)
     integer :: i,j
 
     do concurrent (i = 1:size(k,1), j = 1:size(k,2))
-      k(i,j) = mexha0(i - real(size(k,1) + 1) / 2,   &
-                      j - real(size(k,2) + 1) / 2, sg)
+      k(i,j) = mexha0(i - real(size(k,1) + 1, fp) / 2,   &
+                      j - real(size(k,2) + 1, fp) / 2, sg)
     end do
 
   contains
 
     elemental function mexha0(x,y,sg) result(yf)
-      real, intent(in) :: x,y,sg
-      real :: yf,k
-      real(dp), parameter :: pi = 4 * atan(1d0)
+      real(fp), intent(in) :: x,y,sg
+      real(fp) :: yf,k
+      real(fp), parameter :: pi = 4 * atan(1d0)
       k = (x**2 + y**2) / (2 * sg**2)
       yf =  (1 - k)  / (pi * sg**4) * exp(-k)
     end function
@@ -35,8 +35,8 @@ contains
   ! translated from: Numerical recipes in C
 
   function quickselect(arr, k) result(median)
-    real, intent(inout) :: arr(:)
-    real :: a, median
+    real(fp), intent(inout) :: arr(:)
+    real(fp) :: a, median
     integer, intent(in) :: k
     integer :: i, j, lo, hi, mid
 
@@ -86,8 +86,8 @@ contains
   contains
 
     elemental subroutine swap(a,b)
-      real, intent(inout) :: a, b
-      real :: c
+      real(fp), intent(inout) :: a, b
+      real(fp) :: c
       c = a
       a = b
       b = c
@@ -99,10 +99,10 @@ contains
   subroutine outliers(im, sigma, niter, msk, mean, stdev)
     use ieee_arithmetic, only: ieee_is_normal
 
-    real(sp), intent(in) :: im(:,:), sigma
+    real(fp), intent(in) :: im(:,:), sigma
     integer, intent(in) :: niter
     logical, intent(out) :: msk(:,:)
-    real(sp), intent(out) :: mean, stdev
+    real(fp), intent(out) :: mean, stdev
     integer :: i,nn
 
     msk(:,:) = ieee_is_normal(im)
@@ -114,9 +114,6 @@ contains
 
       msk = msk .and. (im >= mean - sigma * stdev) &
                 .and. (im <= mean + sigma * stdev)
-
-      ! if (cfg_verbose) write (0, '(I2, " / ", I2, 3X, I10, 2F10.1)') &
-        ! i, niter, nn, mean, stdev
 
       if ( count(msk) == nn ) exit
     end do

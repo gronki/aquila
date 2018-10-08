@@ -8,12 +8,12 @@ contains
   !----------------------------------------------------------------------------!
 
   subroutine mexhakrn(sg,k)
-    real(sp), intent(out) :: k(:,:)
-    real(sp), intent(in) :: sg
+    real(fp), intent(out) :: k(:,:)
+    real(fp), intent(in) :: sg
     integer :: i, j, i1, j1
-    real(sp) :: ci, cj
-    real(sp) :: s(30)
-    real(dp) :: tot
+    real(fp) :: ci, cj
+    real(fp) :: s(30)
+    real(fp) :: tot
 
     do i = 1, size(s)
       s(i) = (i - 0.5) / size(s) - 0.5
@@ -27,7 +27,7 @@ contains
         tot = 0
         do j1 = 1, size(s)
           do i1 = 1, size(s)
-            tot = tot + f(real(i) - ci + s(i1), real(j) - cj + s(j1))
+            tot = tot + f(real(i,fp) - ci + s(i1), real(j,fp) - cj + s(j1))
           end do
         end do
         k(i,j) = tot / size(s)**2
@@ -35,10 +35,11 @@ contains
     end do
 
   contains
-    elemental real function f(x,y) result(z)
-      real, intent(in) :: x, y
-      real(dp), parameter :: pi = 4 * atan(1d0)
-      real :: k
+    elemental function f(x,y) result(z)
+      real(fp), intent(in) :: x, y
+      real(fp) :: z
+      real(fp), parameter :: pi = 4 * atan(1d0)
+      real(fp) :: k
       k = (x**2 + y**2) / (2 * sg**2)
       z =  (1 - k)  / (pi * sg**4) * exp(-k)
     end function
@@ -48,8 +49,8 @@ contains
 
   function mexhakrn_alloc(fwhm) result(k)
 
-    real(sp), intent(in) :: fwhm
-    real(sp), allocatable :: k(:,:)
+    real(fp), intent(in) :: fwhm
+    real(fp), allocatable :: k(:,:)
     integer :: n
 
     n = nint(7 * fwhm / 2.35)
@@ -63,12 +64,12 @@ contains
   !----------------------------------------------------------------------------!
 
   subroutine gausskrn(sg,k)
-    real(sp), intent(out) :: k(:,:)
-    real(sp), intent(in) :: sg
+    real(fp), intent(out) :: k(:,:)
+    real(fp), intent(in) :: sg
     integer :: i, j, i1, j1
-    real(sp) :: ci, cj
-    real(sp) :: s(20)
-    real(dp) :: tot
+    real(fp) :: ci, cj
+    real(fp) :: s(20)
+    real(fp) :: tot
 
     do i = 1, size(s)
       s(i) = (i - 0.5) / size(s) - 0.5
@@ -82,7 +83,7 @@ contains
         tot = 0
         do j1 = 1, size(s)
           do i1 = 1, size(s)
-            tot = tot + f(real(i) - ci + s(i1), real(j) - cj + s(j1))
+            tot = tot + f(real(i,fp) - ci + s(i1), real(j,fp) - cj + s(j1))
           end do
         end do
         k(i,j) = tot / size(s)**2
@@ -92,8 +93,9 @@ contains
     k = k / sum(k)
 
   contains
-    elemental real function f(x,y) result(z)
-      real, intent(in) :: x, y
+    elemental function f(x,y) result(z)
+      real(fp), intent(in) :: x, y
+      real(fp) :: z
       z = exp(-(x**2 + y**2) / (2 * sg**2))
     end function
   end subroutine
@@ -102,8 +104,8 @@ contains
 
   function gausskrn_alloc(fwhm) result(k)
 
-    real(sp), intent(in) :: fwhm
-    real(sp), allocatable :: k(:,:)
+    real(fp), intent(in) :: fwhm
+    real(fp), allocatable :: k(:,:)
     integer :: n
 
     n = nint(6 * fwhm / 2.35)

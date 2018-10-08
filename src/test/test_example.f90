@@ -3,7 +3,7 @@ program example
   use globals
   implicit none
 
-  real(sp), allocatable :: im(:,:), im2(:,:)
+  real(fp), allocatable :: im(:,:), im2(:,:)
   integer :: bsize, ndim, errno = 0
   logical :: anyf
   integer :: sz(2)
@@ -37,7 +37,7 @@ program example
     error stop
   end if
 
-  call ftphpr(66, .true., -32, 3, shape(im2), 0, 1, .true., errno)
+  call ftphpr(66, .true., -storage_size(im2), rank(im2), shape(im2), 0, 1, .true., errno)
   call ftppre(66, 1, 1, size(im2), im2, errno)
   call ftclos(66, errno)
 

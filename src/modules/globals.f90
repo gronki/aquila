@@ -1,10 +1,15 @@
 module globals
 
-    implicit none
+  use iso_fortran_env, only: stderr => error_unit, stdout => output_unit
 
-    integer, parameter :: sp = selected_real_kind(6)
-    integer, parameter :: dp = selected_real_kind(15)
+  implicit none
 
-    logical :: cfg_verbose = .true.
+  integer, parameter :: fp = selected_real_kind(12)
+
+  logical :: cfg_verbose = .true.
+  character(len = *), parameter :: ccdtemp_key = 'CCD-TEMP'
+  character(len = *), parameter :: frametype_key = 'FRAME'
+  character(len = *), parameter :: exptime_key = 'EXPTIME'
+
 
 end module

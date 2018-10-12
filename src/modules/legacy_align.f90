@@ -7,23 +7,12 @@ module legacy_align
 
 contains
 
-  subroutine apply_transform(xy,mx,xyout)
-    class(source), intent(in) :: xy(:)
-    real(fp), intent(in) :: mx(6,2)
-    ! (n+1)(n+2)/2
-    class(source), intent(out) :: xyout(:)
-    xyout % x = mx(1,1) + mx(2,1) * (xy%x) + mx(3,1) * (xy%y)   &
-    + mx(4,1) * (xy%x)**2 + mx(5,1) * (xy%x)*(xy%y) + mx(6,1) * (xy%y)**2
-    xyout % y = mx(1,2) + mx(2,2) * (xy%x) + mx(3,2) * (xy%y)   &
-    + mx(4,2) * (xy%x)**2 + mx(5,2) * (xy%x)*(xy%y) + mx(6,2) * (xy%y)**2
-  end subroutine
-
-  subroutine align_xyr(xy,xy0,mx)
+  subroutine align_xyr(xy, xy0, mx)
     class(source), intent(in) :: xy(:)
     class(source), intent(in) :: xy0(:)
     type(source) :: xy1(size(xy))
     real(fp), intent(inout) :: mx(2,3)
-    integer :: ii,i,nmax
+    integer :: ii, i, nmax
     integer, parameter :: i_x = 1, i_y = 2, i_r = 3
     real(fp) :: k0, y0, y0_dv(3), y0n_dv(3), v0(3)
     real(fp) :: lam, y_dlam, len0, r0

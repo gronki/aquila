@@ -57,6 +57,7 @@ program aqstack
       case ("bias")
         if (i == 1) then
           strategy = "bias"
+          cfg_estimate_noise = .true.
           command_argument_mask(i) = .false.
         end if
 
@@ -120,7 +121,7 @@ program aqstack
           command_argument_mask(i : i + 1) = .false.
         end if
 
-      case ("-addsuffix", "-suffix", "-suff")
+      case ("-addsuffix", "-suffix", "-suff", "-S")
         if (output_suff /= "") &
           error stop "suffix has been defined twice"
         if (.not. command_argument_mask(i + 1)) then
@@ -323,13 +324,24 @@ program aqstack
         real(fp), dimension(:,:), allocatable :: buf_copy
         type(extended_source), dimension(:), allocatable :: lst0, lst
         real(fp) :: mx(2,3)
-        integer :: i
+        integer :: i, istart
 
         allocate(buf_copy(nx, ny))
 
-        call findstar_local(buffer(:,:,1), lst0)
+        if (ref_fn /= "") then
+          read_ref_frame: block
+            type(image_frame) ::imref
+            call imref % read_fits(ref_fn)
+            call findstar_local(imref % data(:,:), lst0)
+            deallocate(imref % data)
+          end block read_ref_frame
+          istart = 1
+        else
+          call findstar_local(buffer(:,:,1), lst0)
+          istart = 2
+        end if
 
-        do i = 2, n
+        do i = istart, n
           call findstar_local(buffer(:,:,i), lst)
           call align_xyr(lst0, lst, mx)
 
@@ -393,12 +405,21 @@ program aqstack
 contains
 
   subroutine print_help
-    character(len = *), parameter :: fmt = '(a28, 2x, a)'
-    write (stdout, '(a)') 'usage: aquila [STRATEGY] [OPTIONS] FILE1 [FILE2 ...] -o OUTPUT'
-    write (stdout, '(a)') ' STRATEGY can be: bias, dark, flat, process, stack'
-    write (stdout, fmt) '-o/-output FILENAME', 'specifies the output filename'
-    write (stdout, fmt) '-avg/-average', 'compute bias by average value'
-    ! write (stdout, fmt) '-mdn/-median', 'compute bias by median value (not supported)'
+    character(len = *), parameter :: fmt = '(a28, 2x, a)', &
+                                 fmt_ctd = '(30x, a)'
+    write (stdout, '(10x,a)') '*** AQUILA v.' // version // ' ***'
+    write (stdout, '(a)') 'usage: aqstack [STRATEGY] [OPTIONS] FILE1 [FILE2 ...] -o OUTPUT'
+    write (stdout, '(a)') 'STRATEGY can be: bias, dark, flat, process, stack'
+    write (stdout, fmt) '-o/-O/-output FILENAME', 'specifies the output filename'
+    write (stdout, fmt) '-avg/-average', 'compute by average value'
+    write (stdout, fmt) '[-estimate]-noise', 'estimate noise while computing bias'
+    write (stdout, fmt) '-al[ign]', 'align frames'
+    write (stdout, fmt) '-align-reference/-ref FILENAME', 'align to this frame rather than first frame'
+    write (stdout, fmt) '-process[-only]/-nostack', 'do not stack images'
+    write (stdout, fmt) '-suff[ix]/-S FILENAME', 'suffix that will be added to file names'
+    write (stdout, fmt_ctd) 'with -nostack'
+    write (stdout, fmt) '-bias FILENAME', 'subtract this master bias'
+    write (stdout, fmt) '-flat FILENAME', 'remove this master flat'
   end subroutine print_help
 
   subroutine findstar_local(im, lst)

@@ -151,15 +151,12 @@ contains
     ! get image dimensions
     call ftgisz(un, 2, sz, ftiostat)
 
-    ! if ( .not. allocated(imfr % data) ) then
-    !   allocate(imfr % data(sz(1), sz(2)))
-    ! else
-    !   if (any(shape(imfr % data) /= sz)) then
-    !     deallocate(imfr % data); allocate(imfr % data(sz(1), sz(2)))
-    !   end if
-    ! end if
-    if (any(shape(imfr % data) /= sz)) then
-      error stop "image size does not match the buffer!"
+    if ( .not. associated(imfr % data) ) then
+      allocate(imfr % data(sz(1), sz(2)))
+    else
+      if (any(shape(imfr % data) /= sz)) then
+        error stop "image size does not match the buffer!"
+      end if
     end if
 
     ! read image data
@@ -278,15 +275,12 @@ contains
     ! get image dimensions
     call ftgisz(un, 2, sz, ftiostat)
 
-    ! if ( .not. allocated(imfr % data) ) then
-    !   allocate(imfr % data(sz(1), sz(2)))
-    ! else
-    !   if (any(shape(imfr % data) /= sz)) then
-    !     deallocate(imfr % data); allocate(imfr % data(sz(1), sz(2)))
-    !   end if
-    ! end if
-    if (any(shape(imfr % data) /= sz)) then
-      error stop "image size does not match the buffer!"
+    if ( .not. associated(imfr % data) ) then
+      allocate(imfr % data(sz(1), sz(2)))
+    else
+      if (any(shape(imfr % data) /= sz)) then
+        error stop "image size does not match the buffer!"
+      end if
     end if
 
     ! read image data

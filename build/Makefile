@@ -16,7 +16,7 @@ PROGRAMS = aqstack
 TESTS = test_transforms test_background test_kernels test_findstar test_legacy_align \
 			test_framehandling test_addsuffix
 OBJECTS = kernels.o statistics.o convolution.o globals.o transforms.o \
-				  findstar.o fftw.o legacy_align.o framehandling.o
+				  findstar.o legacy_align.o framehandling.o
 
 all: $(PROGRAMS) $(TESTS)
 

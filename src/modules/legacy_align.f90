@@ -89,7 +89,7 @@ contains
           x = x + dx
 
           v = v0 + y0n_dv * x
-          call comp_ydv(v,y,y_dv)
+          call comp_ydv(v, y, y_dv)
           y_dx = sum(y_dv * y0n_dv)
 
           ! write (0, '(2I3,F20.8,2Es14.6)') ii, i, x, y, y_dx
@@ -153,21 +153,32 @@ contains
 
   end subroutine
 
-  subroutine improject(im0, mx, im)
+  subroutine improject(im0, mx, im, resample)
     real(fp), dimension(:,:), intent(in) :: im0
     real(fp), dimension(:,:), intent(out) :: im
+    real(fp), intent(in), optional :: resample
+
     real(fp) :: mx(2,3)
     integer   ::  i,  j
     integer   :: ki, kj
-    real(fp)  :: xi, xj, ri, rj
+    real(fp)  :: xi, xj, ri, rj, i1, j1
 
-    do j = 1, size(im,2)
-      do i = 1, size(im,1)
-        xi = mx(1,1) + mx(1,2) * i + mx(1,3) * j
-        xj = mx(2,1) + mx(2,2) * i + mx(2,3) * j
+    !$omp parallel do private(i, j, i1, j1, xi, xj, ki, kj, ri, rj)
+    do j = 1, size(im, 2)
+      do i = 1, size(im, 1)
 
-        ki = max(1, min(floor(xi), size(im0,1) - 1))
-        kj = max(1, min(floor(xj), size(im0,2) - 1))
+        if ( present(resample) ) then
+          i1 = (i - 0.5_fp) / resample + 0.5_fp
+          j1 = (j - 0.5_fp) / resample + 0.5_fp
+        else
+          i1 = i; j1 = j
+        end if
+
+        xi = mx(1,1) + mx(1,2) * i1 + mx(1,3) * j1
+        xj = mx(2,1) + mx(2,2) * i1 + mx(2,3) * j1
+
+        ki = max(1, min(floor(xi), size(im0, 1) - 1))
+        kj = max(1, min(floor(xj), size(im0, 2) - 1))
 
         ri = xi - ki
         rj = xj - kj
@@ -180,6 +191,7 @@ contains
         end if
       end do
     end do
+    !$omp end parallel do
 
   end subroutine
 

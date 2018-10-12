@@ -1,4 +1,4 @@
-program aquila
+program aqstack
 
   !----------------------------------------------------------------------------!
 
@@ -12,7 +12,8 @@ program aquila
 
   ! allowed values: average, median, sigclip
   character(len = 32) :: method = "average", strategy = ""
-  character(len = 256) :: output_fn = "", bias_fn = "", dark_fn = "", flat_fn = ""
+  character(len = 256) :: output_fn = "", ref_fn = "", &
+        bias_fn = "", dark_fn = "", flat_fn = ""
   character(len = 64) :: output_suff = ""
   character(len = 256), allocatable :: input_fn(:)
   logical :: cfg_align_frames = .false.
@@ -37,12 +38,14 @@ program aquila
   !----------------------------------------------------------------------------!
 
   parse_cli: block
-    integer :: i
+    integer :: i, nargs
     character(len = 256) :: arg
     logical, allocatable :: command_argument_mask(:)
 
-    allocate(command_argument_mask(command_argument_count()))
-    command_argument_mask(:) = .true.
+    nargs = command_argument_count()
+    allocate(command_argument_mask(nargs + 1))
+    command_argument_mask(:nargs) = .true.
+    command_argument_mask(nargs+1:) = .false.
 
     scan_cli: do i = 1, command_argument_count()
 
@@ -99,6 +102,10 @@ program aquila
         cfg_estimate_noise = .true.
         command_argument_mask(i) = .false.
 
+      case ("-process", "-process-only", "-nostack")
+        cfg_process_only = .true.
+        command_argument_mask(i) = .false.
+
       case ("-al", "-align")
         cfg_align_frames = .true.
         command_argument_mask(i) = .false.
@@ -106,52 +113,50 @@ program aquila
       case ("-o", "-O", "-output")
         if (output_fn /= "") &
           error stop "output filename has been defined twice"
-        if (i == command_argument_count()) then
+        if (.not. command_argument_mask(i + 1)) then
           error stop "output file name expected"
         else
           call get_command_argument(i + 1, output_fn)
-          if (.not. command_argument_mask(i + 1)) then
-            error stop "output file name expected"
-          end if
+          command_argument_mask(i : i + 1) = .false.
+        end if
+
+      case ("-addsuffix", "-suffix", "-suff")
+        if (output_suff /= "") &
+          error stop "suffix has been defined twice"
+        if (.not. command_argument_mask(i + 1)) then
+          error stop "suffix expected"
+        else
+          call get_command_argument(i + 1, output_suff)
           command_argument_mask(i : i + 1) = .false.
         end if
 
       case ("-bias")
         if (bias_fn /= "") &
           error stop "bias filename has been defined twice"
-        if (i == command_argument_count()) then
+        if (.not. command_argument_mask(i + 1)) then
           error stop "bias file name expected"
         else
           call get_command_argument(i + 1, bias_fn)
-          if (.not. command_argument_mask(i + 1)) then
-            error stop "bias file name expected"
-          end if
-          command_argument_mask(i : i + 1) = .false.
-        end if
-
-      case ("-addsuffix", "-suff")
-        if (output_suff /= "") &
-          error stop "suffix has been defined twice"
-        if (i == command_argument_count()) then
-          error stop "suffix expected"
-        else
-          call get_command_argument(i + 1, output_suff)
-          if (.not. command_argument_mask(i + 1)) then
-            error stop "suffix expected"
-          end if
           command_argument_mask(i : i + 1) = .false.
         end if
 
       case ("-flat")
         if (flat_fn /= "") &
           error stop "flat filename has been defined twice"
-        if (i == command_argument_count()) then
+        if (.not. command_argument_mask(i + 1)) then
           error stop "flat file name expected"
         else
           call get_command_argument(i + 1, flat_fn)
-          if (.not. command_argument_mask(i + 1)) then
-            error stop "flat file name expected"
-          end if
+          command_argument_mask(i : i + 1) = .false.
+        end if
+
+      case ("-ref", "-align-reference")
+        if (ref_fn /= "") &
+          error stop "reference frame filename has been defined twice"
+        if (.not. command_argument_mask(i + 1)) then
+          error stop "reference frame file name expected"
+        else
+          call get_command_argument(i + 1, ref_fn)
           command_argument_mask(i : i + 1) = .false.
         end if
 

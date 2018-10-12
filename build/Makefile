@@ -1,16 +1,18 @@
 prefix = /usr/local
 
 FC = gfortran
-FFLAGS = -g -O3 -funsafe-math-optimizations -march=native
+ARCH_FLAGS ?= -march=native
+FFLAGS = -O3 -funsafe-math-optimizations $(ARCH_FLAGS)
 FFLAGS += -fno-backtrace -fimplicit-none -ffree-line-length-none		\
 				  -pedantic -Wall -Wno-unused-dummy-argument -Warray-temporaries
+FFLAGS += -fopenmp
 
 LDLIBS += -lcfitsio # -lfftw3
 INCLUDE += -I/usr/include
 
 VPATH = ../src/modules:../src/programs:../src/test
 
-PROGRAMS = aquila
+PROGRAMS = aqstack
 TESTS = test_transforms test_background test_kernels test_findstar test_legacy_align \
 			test_framehandling test_addsuffix
 OBJECTS = kernels.o statistics.o convolution.o globals.o transforms.o \

@@ -21,6 +21,8 @@ program aqstack
   logical :: cfg_process_only = .false.
   logical :: cfg_auto_invert = .false.
   logical :: cfg_estimate_noise = .false.
+  logical :: cfg_resampling = .false.
+  real(fp) :: resample_factor = 1.5
 
   integer :: nframes
 
@@ -39,7 +41,7 @@ program aqstack
 
   parse_cli: block
     integer :: i, nargs
-    character(len = 256) :: arg
+    character(len = 256) :: arg, buf
     logical, allocatable :: command_argument_mask(:)
 
     nargs = command_argument_count()
@@ -110,6 +112,19 @@ program aqstack
       case ("-al", "-align")
         cfg_align_frames = .true.
         command_argument_mask(i) = .false.
+
+      case ("-resample")
+        cfg_resampling = .true.
+        command_argument_mask(i) = .false.
+
+      case ("-factor")
+        if (.not. command_argument_mask(i + 1)) then
+          error stop "resampling factor (float) expected"
+        else
+          call get_command_argument(i + 1, buf)
+          read (buf, *) resample_factor
+          command_argument_mask(i : i + 1) = .false.
+        end if
 
       case ("-o", "-O", "-output")
         if (output_fn /= "") &
@@ -321,16 +336,22 @@ program aqstack
     if (cfg_align_frames .and. n > 1) then
       align_frames: block
         use legacy_align, only: align_xyr, improject
-        real(fp), dimension(:,:), allocatable :: buf_copy
+        real(fp), allocatable :: buf_copy(:,:), buffer_resample(:,:,:)
         type(extended_source), dimension(:), allocatable :: lst0, lst
         real(fp) :: mx(2,3)
         integer :: i, istart
 
-        allocate(buf_copy(nx, ny))
+        if (cfg_resampling) then
+          write (0, '("WARNING ", a)') 'resampling may require a lot of memory'
+          allocate(buffer_resample(nint(resample_factor * nx), nint(resample_factor * ny), n))
+          buffer_resample(:,:,:) = 0
+        else
+          allocate(buf_copy(nx, ny))
+        end if
 
         if (ref_fn /= "") then
           read_ref_frame: block
-            type(image_frame) ::imref
+            type(image_frame) :: imref
             call imref % read_fits(ref_fn)
             call findstar_local(imref % data(:,:), lst0)
             deallocate(imref % data)
@@ -339,16 +360,40 @@ program aqstack
         else
           call findstar_local(buffer(:,:,1), lst0)
           istart = 2
+          if (cfg_resampling) then
+            ! neutral transform (identity)
+            mx(:,1) = [0, 0]
+            mx(:,2) = [1, 0]
+            mx(:,3) = [0, 1]
+            ! scale the first frame
+            call improject(buffer(:,:,1), mx, buffer_resample(:,:,1), resample_factor)
+          end if
         end if
 
         do i = istart, n
+          ! find the transform between frames
           call findstar_local(buffer(:,:,i), lst)
           call align_xyr(lst0, lst, mx)
 
-          buf_copy(:,:) = buffer(:,:,i)
-          buffer(:,:,i) = 0
-          call improject(buf_copy, mx, buffer(:,:,i))
+          ! when not resampling, we have only one copy of data, so we copy
+          ! each frame to a temporary buffer before projection
+          if (.not. cfg_resampling) then
+            buf_copy(:,:) = buffer(:,:,i)
+            buffer(:,:,i) = 0
+            call improject(buf_copy, mx, buffer(:,:,i))
+          else
+            call improject(buffer(:,:,i), mx, buffer_resample(:,:,i), resample_factor)
+          end if
         end do
+
+        ! if resampling was performed, replace the normal buffer with resampled
+        if (cfg_resampling) then
+          deallocate(buffer)
+          call move_alloc(buffer_resample, buffer)
+          do i = 1, n
+            frames(i) % data => buffer(:,:,i)
+          end do
+        end if
       end block align_frames
     end if
 
@@ -415,15 +460,16 @@ contains
     write (stdout, fmt) '[-estimate]-noise', 'estimate noise while computing bias'
     write (stdout, fmt) '-al[ign]', 'align frames'
     write (stdout, fmt) '-align-reference/-ref FILENAME', 'align to this frame rather than first frame'
+    write (stdout, fmt) '-resample', 'resample before stacking (only with -align)'
+    write (stdout, fmt) '-factor FACTOR', 'resampling factor (default: 1.5)'
     write (stdout, fmt) '-process[-only]/-nostack', 'do not stack images'
     write (stdout, fmt) '-suff[ix]/-S FILENAME', 'suffix that will be added to file names'
-    write (stdout, fmt_ctd) 'with -nostack'
+    write (stdout, fmt_ctd) '(to be used with with -nostack)'
     write (stdout, fmt) '-bias FILENAME', 'subtract this master bias'
     write (stdout, fmt) '-flat FILENAME', 'remove this master flat'
   end subroutine print_help
 
   subroutine findstar_local(im, lst)
-
     use convolution, only: convol_fix
     use kernels, only: mexhakrn_alloc
     use findstar, only: aqfindstar
@@ -437,8 +483,7 @@ contains
 
     allocate(im2(size(im,1), size(im,2)))
     call convol_fix(im, krn, im2, 'r')
-    call aqfindstar(im2, lst, limit = 150)
-
+    call aqfindstar(im2, lst, limit = 128)
   end subroutine
 
   pure function average_safe_1d(x) result(m)

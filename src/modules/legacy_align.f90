@@ -17,7 +17,7 @@ contains
     real(fp) :: k0, y0, y0_dv(3), y0n_dv(3), v0(3)
     real(fp) :: lam, y_dlam, len0, r0
     real(fp) :: x0m, y0m
-    real(fp), parameter :: k0min = 0.7, k0decr = 0.933
+    real(fp), parameter :: k0min = 0.8, k0decr = 1 / 2**(1.0_fp / 12)
 
     x0m = sum(xy0 % x) / size(xy0)
     y0m = sum(xy0 % y) / size(xy0)

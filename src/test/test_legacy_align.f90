@@ -89,7 +89,7 @@ contains
 
   subroutine findstar_local(im, lst)
 
-    use convolution, only: convol_fix
+    use convolutions, only: convol_fix
     use kernels, only: mexhakrn_alloc
     use findstar, only: aqfindstar
 
@@ -98,11 +98,11 @@ contains
     real(fp), allocatable :: im2(:,:), krn(:,:)
     integer :: nstars
 
-    krn = mexhakrn_alloc(2.2_fp)
+    krn = mexhakrn_alloc(2.3_fp)
 
     allocate(im2(size(im,1), size(im,2)))
     call convol_fix(im, krn, im2, 'r')
-    call aqfindstar(im2, lst, limit = 150)
+    call aqfindstar(im2, lst, limit = 256)
 
   end subroutine
 

@@ -7,8 +7,8 @@ program test_framehandling
   integer :: i
 
   boo: block
-    type(image_frame), target :: fr
-    class(basic_frame), pointer :: bf
+    type(image_frame_t), target :: fr
+    class(frame_t), pointer :: bf
     integer :: nx, ny
     character(len = *), parameter :: fn = 'veil-1.fits'
     bf => fr

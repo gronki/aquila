@@ -32,6 +32,8 @@ program aqstack
 
   !----------------------------------------------------------------------------!
 
+  write (*, '(10x,a)') '*** AQUILA v.' // version // ' ***'
+
   if (command_argument_count() == 0) then
     call print_help()
     stop
@@ -227,7 +229,7 @@ program aqstack
 
   actual_job: block
 
-    type(image_frame), dimension(:), allocatable :: frames
+    type(image_frame_t), dimension(:), allocatable :: frames
     real(fp), allocatable, target :: buffer(:,:,:)
     integer :: i, n, errno
     integer :: nx, ny
@@ -290,7 +292,7 @@ program aqstack
       if (strategy == "bias") error stop "why subtract bias from bias?"
       subtract_bias: block
         integer :: i
-        type(image_frame) :: frame_calib
+        type(image_frame_t) :: frame_calib
 
         allocate(frame_calib % data(nx, ny))
         call frame_calib % read_fits(bias_fn)
@@ -308,7 +310,7 @@ program aqstack
       if (strategy == "flat") error stop "why subtract flat from flat?"
       subtract_flat: block
         integer :: i
-        type(image_frame) :: frame_calib
+        type(image_frame_t) :: frame_calib
 
         allocate(frame_calib % data(nx, ny))
         call frame_calib % read_fits(bias_fn)
@@ -351,7 +353,7 @@ program aqstack
 
         if (ref_fn /= "") then
           read_ref_frame: block
-            type(image_frame) :: imref
+            type(image_frame_t) :: imref
             call imref % read_fits(ref_fn)
             call findstar_local(imref % data(:,:), lst0)
             deallocate(imref % data)
@@ -412,7 +414,7 @@ program aqstack
       end block save_processed
     else
       actual_stack: block
-        type(image_frame) :: frame_out
+        type(image_frame_t) :: frame_out
         allocate(frame_out % data(size(buffer, 1), size(buffer, 2)))
         select case (method)
         case ('average')
@@ -452,25 +454,24 @@ contains
   subroutine print_help
     character(len = *), parameter :: fmt = '(a28, 2x, a)', &
                                  fmt_ctd = '(30x, a)'
-    write (stdout, '(10x,a)') '*** AQUILA v.' // version // ' ***'
-    write (stdout, '(a)') 'usage: aqstack [STRATEGY] [OPTIONS] FILE1 [FILE2 ...] -o OUTPUT'
-    write (stdout, '(a)') 'STRATEGY can be: bias, dark, flat, process, stack'
-    write (stdout, fmt) '-o/-O/-output FILENAME', 'specifies the output filename'
-    write (stdout, fmt) '-avg/-average', 'compute by average value'
-    write (stdout, fmt) '[-estimate]-noise', 'estimate noise while computing bias'
-    write (stdout, fmt) '-al[ign]', 'align frames'
-    write (stdout, fmt) '-align-reference/-ref FILENAME', 'align to this frame rather than first frame'
-    write (stdout, fmt) '-resample', 'resample before stacking (only with -align)'
-    write (stdout, fmt) '-factor FACTOR', 'resampling factor (default: 1.5)'
-    write (stdout, fmt) '-process[-only]/-nostack', 'do not stack images'
-    write (stdout, fmt) '-suff[ix]/-S FILENAME', 'suffix that will be added to file names'
-    write (stdout, fmt_ctd) '(to be used with with -nostack)'
-    write (stdout, fmt) '-bias FILENAME', 'subtract this master bias'
-    write (stdout, fmt) '-flat FILENAME', 'remove this master flat'
+    write (*, '(a)') 'usage: aqstack [STRATEGY] [OPTIONS] FILE1 [FILE2 ...] -o OUTPUT'
+    write (*, '(a)') 'STRATEGY can be: bias, dark, flat, process, stack'
+    write (*, fmt) '-o/-O/-output FILENAME', 'specifies the output filename'
+    write (*, fmt) '-avg/-average', 'compute by average value'
+    write (*, fmt) '[-estimate]-noise', 'estimate noise while computing bias'
+    write (*, fmt) '-al[ign]', 'align frames'
+    write (*, fmt) '-align-reference/-ref FILENAME', 'align to this frame rather than first frame'
+    write (*, fmt) '-resample', 'resample before stacking (only with -align)'
+    write (*, fmt) '-factor FACTOR', 'resampling factor (default: 1.5)'
+    write (*, fmt) '-process[-only]/-nostack', 'do not stack images'
+    write (*, fmt) '-suff[ix]/-S FILENAME', 'suffix that will be added to file names'
+    write (*, fmt_ctd) '(to be used with with -nostack)'
+    write (*, fmt) '-bias FILENAME', 'subtract this master bias'
+    write (*, fmt) '-flat FILENAME', 'remove this master flat'
   end subroutine print_help
 
   subroutine findstar_local(im, lst)
-    use convolution, only: convol_fix
+    use convolutions, only: convol_fix
     use kernels, only: mexhakrn_alloc
     use findstar, only: aqfindstar
 
@@ -479,11 +480,11 @@ contains
     real(fp), allocatable :: im2(:,:), krn(:,:)
     integer :: nstars
 
-    krn = mexhakrn_alloc(2.2_fp)
+    krn = mexhakrn_alloc(2.3_fp)
 
     allocate(im2(size(im,1), size(im,2)))
     call convol_fix(im, krn, im2, 'r')
-    call aqfindstar(im2, lst, limit = 128)
+    call aqfindstar(im2, lst, limit = 256)
   end subroutine
 
   pure function average_safe_1d(x) result(m)

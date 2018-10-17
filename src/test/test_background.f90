@@ -79,7 +79,7 @@ program background
 
     wave: block
       use kernels, only: gausskrn, mexhakrn
-      use convolution, only: convol, convol_fix
+      use convolutions, only: convol, convol_fix
       ! fwhm = 2.355 * sigma
       ! kernel size for gaussian: 2.5 * fwhm
       real(fp) :: krn(7,7), krn2(3,3), krn3(15,15), stdev, mean

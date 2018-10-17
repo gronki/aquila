@@ -3,6 +3,13 @@ module kernels
   use globals
   implicit none
 
+  real(fp), dimension(3,3), parameter :: krn_bl3_1 &
+  & = reshape([0, 1, 0, 1, 4, 1, 0, 1, 0], [3, 3]) / 8.0_fp
+  real(fp), dimension(3,3), parameter :: krn_bl3_2 &
+  & = reshape([1, 1, 1, 1, 8, 1, 1, 1, 1], [3, 3]) / 16.0_fp
+  real(fp), dimension(3,3), parameter :: krn_bl3_3 &
+  & = reshape([1, 4, 1, 4, 8, 4, 1, 4, 1], [3, 3]) / 28.0_fp
+
 contains
 
   !----------------------------------------------------------------------------!
@@ -53,7 +60,7 @@ contains
     real(fp), allocatable :: k(:,:)
     integer :: n
 
-    n = nint(7 * fwhm / 2.35)
+    n = nint(7.5 * fwhm / 2.35)
     if (mod(n,2) == 0) n = n + 1
     allocate(k(n,n))
 
@@ -108,7 +115,7 @@ contains
     real(fp), allocatable :: k(:,:)
     integer :: n
 
-    n = nint(6 * fwhm / 2.35)
+    n = nint(7 * fwhm / 2.35)
     if (mod(n,2) == 0) n = n + 1
     allocate(k(n,n))
 

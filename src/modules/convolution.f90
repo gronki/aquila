@@ -1,4 +1,4 @@
-module convolution
+module convolutions
 
   use globals
   implicit none
@@ -27,10 +27,9 @@ contains
             total = total + k(i1, j1) * x(i - ri + i1 - 1, j - rj + j1 - 1)
           end do
         end do
-        y(i - ri, j - rj) = total
+        y(i, j) = total
       end do
     end do
-
   end subroutine
 
   !----------------------------------------------------------------------------!
@@ -40,9 +39,11 @@ contains
     real(fp), dimension(:,:), intent(out) :: y
     real(fp), dimension(:,:), allocatable :: tmpx
     character(*), intent(in) :: method
-    integer :: ri, rj, i, j
+    integer :: ri, rj, i, j, i1, j1
+    real(fp) :: total
 
-    call convol(x,k,y)
+    if (mod(size(k,1), 2) == 0 .or. mod(size(k,2), 2) == 0)     &
+        error stop "kernel must have uneven dimensions"
 
     ri = (size(k,1) - 1) / 2
     rj = (size(k,2) - 1) / 2
@@ -66,10 +67,22 @@ contains
       error stop "method must be: clone or reflect"
     end select
 
-    call convol(tmpx, k, y)
+    do j = 1, size(x,2)
+      do i = 1, size(x,1)
+        total = 0
+        do j1 = 1, size(k,2)
+          do i1 = 1, size(k,1)
+            total = total + k(i1, j1) * tmpx(i - ri + i1 - 1, j - rj + j1 - 1)
+          end do
+        end do
+        y(i, j) = total
+      end do
+    end do
+
     deallocate(tmpx)
 
   contains
+    
     elemental integer function ixrefl(i,n) result(j)
       integer, intent(in) :: i,n
       if (i < 1) then
@@ -89,4 +102,54 @@ contains
 
   !----------------------------------------------------------------------------!
 
-end module convolution
+end module convolutions
+
+!------------------------------------------------------------------------------!
+
+module deconvolutions
+
+  use globals, only: fp
+  implicit none
+
+contains
+
+  subroutine deconvol_lr(im1, psf, maxiter, im2)
+    use convolutions, only: convol, convol_fix
+    use ieee_arithmetic, only: ieee_is_normal
+
+    real(fp), dimension(:,:), intent(in) :: im1, psf
+    real(fp), dimension(:,:), intent(out) :: im2
+    integer, intent(in) :: maxiter
+    real(fp), dimension(:,:), allocatable :: buf1, buf2, psf_inv
+    real(fp) :: err0, err1
+    real(fp), parameter :: soften = 0.05
+    integer :: i
+
+    if (size(im1,1) /= size(im2,1) .or. size(im1,2) /= size(im2,2)) &
+      error stop "shape(im1) /= shape(im2)"
+
+    psf_inv = psf(size(psf,1):1:-1, size(psf,2):1:-1)
+    allocate(buf1(size(im1,1), size(im1,2)), buf2(size(im1,1), size(im1,2)))
+
+    im2(:,:) = im1
+
+    deconv_loop: do i = 1, maxiter
+      im2(:,:) = (1 - soften) * im2 + soften * im1
+
+      call convol_fix(im2, psf, buf1, 'e')
+      where (buf1 /= 0) buf1 = im1 / buf1
+
+      err1 = sqrt(sum((buf1 - 1)**2) / size(im1))
+      write (0, '(i5, 2f12.5)') i, err1, merge(err1 / err0 - 1, 0.0_fp, i > 1)
+
+      call convol_fix(buf1, psf_inv, buf2, 'e')
+      im2(:,:) = im2 * buf2
+
+      if (i > 1 .and. abs(err1 / err0 - 1) < 3e-4) exit deconv_loop
+      err0 = err1
+    end do deconv_loop
+
+    deallocate(buf1, buf2, psf_inv)
+  end subroutine
+
+end module deconvolutions

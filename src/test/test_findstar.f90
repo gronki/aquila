@@ -27,7 +27,7 @@ program test_findstar
 
     use findstar
     use kernels, only: mexhakrn_alloc
-    use convolution, only: convol_fix
+    use convolutions, only: convol_fix
 
     type(extended_source), allocatable :: list(:)
     real(fp), allocatable :: imcv(:,:)

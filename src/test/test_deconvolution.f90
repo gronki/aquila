@@ -8,31 +8,44 @@ program test_deconvolution
 
   implicit none
 
-  type(frame_t) :: img1, img2, imkr
+  type(frame_t) :: img1, img2
   real(fp), dimension(:,:), allocatable :: k
-  real(fp), parameter :: ff0 = 1.7, ffz = 0.3
+  real(fp), parameter :: ffz = 0.5
 
-  call img1 % read_fits('deconv1.fits')
+  cfg_verbose_deconvolution = .true.
+
+  call img1 % read_fits('deconv.fits')
   call img2 % alloc_zeros(img1)
 
-  k = gausskrn_alloc(ff0)
-  call deconvol_lr(img1 % data, k, 1024, img2 % data)
-  img2 % data(:,:) = img1 % data * (1 - ffz) + img2 % data * ffz
-  call img2 % write_fits('deconvz.fits')
+  deconvol_test: block
+    character(len = 256) :: fn
+    integer :: i, niter
+    real(fp) :: w
+    k = gausskrn_alloc(1.5_fp)
+    do i = 1, 19
+      niter = nint(3 * 1.4**(i - 1))
+      print *, i, niter
+      call deconvol_lr(img1 % data, k, niter, img2 % data)
+      w = ffz * (1 + log(24.0)) / (1 + log(real(niter)))
+      img2 % data(:,:) = img1 % data * (1 - w) + img2 % data * w
+      write (fn, '("deconvz", i0.2, ".fits")') i
+      call img2 % write_fits(trim(fn))
+    end do
+  end block deconvol_test
 
-  k = mexhakrn_alloc(ff0)
-  ! k = reshape([0, -1, 0, -1, 4, -1, 0, -1, 0], [3,3]) / 4.0_fp
-  call convol_fix(img1 % data, k, img2 % data, 'e')
-  img2 % data(:,:) = img1 % data * (1 - ffz) + img2 % data * ffz
-  call img2 % write_fits('deconvu.fits')
-
-  call imkr % read_fits('deconvk.fits')
-  imkr % data = imkr % data / sum(imkr % data)
-
-  call convol_fix(img1 % data, imkr % data, img2 % data, 'r')
-  call img2 % write_fits('deconv2.fits')
-
-  call deconvol_lr(img2 % data, imkr % data, 1024, img1 % data)
-  call img1 % write_fits('deconv3.fits')
+  deconvol_test_2: block
+    character(len = 256) :: fn
+    real(fp) :: ksize
+    integer :: i
+    do i = 1, 15
+      ksize = 1.15_fp**(i - 1)
+      print *, i, ksize
+      k = gausskrn_alloc(ksize)
+      call deconvol_lr(img1 % data, k, 64, img2 % data)
+      img2 % data(:,:) = img1 % data * (1 - ffz) + img2 % data * ffz
+      write (fn, '("deconvq", i0.2, ".fits")') i
+      call img2 % write_fits(trim(fn))
+    end do
+  end block deconvol_test_2
 
 end program test_deconvolution

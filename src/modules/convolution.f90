@@ -82,7 +82,7 @@ contains
     deallocate(tmpx)
 
   contains
-    
+
     elemental integer function ixrefl(i,n) result(j)
       integer, intent(in) :: i,n
       if (i < 1) then
@@ -111,6 +111,8 @@ module deconvolutions
   use globals, only: fp
   implicit none
 
+  logical :: cfg_verbose_deconvolution = .false.
+
 contains
 
   subroutine deconvol_lr(im1, psf, maxiter, im2)
@@ -121,9 +123,8 @@ contains
     real(fp), dimension(:,:), intent(out) :: im2
     integer, intent(in) :: maxiter
     real(fp), dimension(:,:), allocatable :: buf1, buf2, psf_inv
-    real(fp) :: err0, err1
-    real(fp), parameter :: soften = 0.05
-    integer :: i
+    real(fp) :: err1, err01, err2, err02
+    integer :: i, imax
 
     if (size(im1,1) /= size(im2,1) .or. size(im1,2) /= size(im2,2)) &
       error stop "shape(im1) /= shape(im2)"
@@ -133,21 +134,35 @@ contains
 
     im2(:,:) = im1
 
-    deconv_loop: do i = 1, maxiter
-      im2(:,:) = (1 - soften) * im2 + soften * im1
+    if (cfg_verbose_deconvolution) then
+      write (0, '("+", 78("-"), "+")')
+      write (0, '(a)') 'error 1: measures difference between original and deconvolved'
+      write (0, '(a)') 'error 2: measures how much the image is altered in the iteration'
+      write (0, '(a5, 4a12)') 'i', 'err1', 'd_err1', 'err2', 'd_err2'
+    end if
 
+    deconv_loop: do i = 1, maxiter
+      ! actual deconvolution
       call convol_fix(im2, psf, buf1, 'e')
       where (buf1 /= 0) buf1 = im1 / buf1
-
-      err1 = sqrt(sum((buf1 - 1)**2) / size(im1))
-      write (0, '(i5, 2f12.5)') i, err1, merge(err1 / err0 - 1, 0.0_fp, i > 1)
-
       call convol_fix(buf1, psf_inv, buf2, 'e')
       im2(:,:) = im2 * buf2
 
-      if (i > 1 .and. abs(err1 / err0 - 1) < 3e-4) exit deconv_loop
-      err0 = err1
+      if (cfg_verbose_deconvolution) then
+        ! the rest is just error estimation
+        err1 = sqrt(sum((buf1 - 1)**2) / size(im1))
+        err2 = sqrt(sum((buf2 - 1)**2) / size(im1))
+
+        write (0, '(i5, 4f12.5)') i, &
+        err1, merge(err1 / err01 - 1, 0.0_fp, i > 1), &
+        err2, merge(err2 / err02 - 1, 0.0_fp, i > 1)
+
+        err01 = err1
+        err02 = err2
+      end if
     end do deconv_loop
+
+    if (cfg_verbose_deconvolution) write (0, '("+", 78("-"), "+")')
 
     deallocate(buf1, buf2, psf_inv)
   end subroutine

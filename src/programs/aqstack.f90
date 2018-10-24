@@ -35,8 +35,7 @@ program aqstack
   write (*, '(10x,a)') '*** AQUILA v.' // version // ' ***'
 
   if (command_argument_count() == 0) then
-    call print_help()
-    stop
+    call print_help(); stop
   end if
 
   !----------------------------------------------------------------------------!
@@ -129,8 +128,6 @@ program aqstack
         end if
 
       case ("-o", "-O", "-output")
-        if (output_fn /= "") &
-          error stop "output filename has been defined twice"
         if (.not. command_argument_mask(i + 1)) then
           error stop "output file name expected"
         else
@@ -139,8 +136,6 @@ program aqstack
         end if
 
       case ("-addsuffix", "-suffix", "-suff", "-S")
-        if (output_suff /= "") &
-          error stop "suffix has been defined twice"
         if (.not. command_argument_mask(i + 1)) then
           error stop "suffix expected"
         else
@@ -149,8 +144,6 @@ program aqstack
         end if
 
       case ("-bias")
-        if (bias_fn /= "") &
-          error stop "bias filename has been defined twice"
         if (.not. command_argument_mask(i + 1)) then
           error stop "bias file name expected"
         else
@@ -159,8 +152,6 @@ program aqstack
         end if
 
       case ("-flat")
-        if (flat_fn /= "") &
-          error stop "flat filename has been defined twice"
         if (.not. command_argument_mask(i + 1)) then
           error stop "flat file name expected"
         else
@@ -169,8 +160,6 @@ program aqstack
         end if
 
       case ("-ref", "-align-reference")
-        if (ref_fn /= "") &
-          error stop "reference frame filename has been defined twice"
         if (.not. command_argument_mask(i + 1)) then
           error stop "reference frame file name expected"
         else
@@ -179,8 +168,7 @@ program aqstack
         end if
 
       case ("-h", "-help")
-        call print_help()
-        stop
+        call print_help(); stop
 
       case default
         if (arg(1:1) == '-') error stop "unknown option: " // trim(arg)
@@ -294,15 +282,14 @@ program aqstack
         integer :: i
         type(image_frame_t) :: frame_calib
 
-        allocate(frame_calib % data(nx, ny))
         call frame_calib % read_fits(bias_fn)
 
         write (0, *) "subtracting bias..."
+        !$omp parallel do
         do i = 1, n
           buffer(:,:,i) = buffer(:,:,i) - frame_calib % data(:,:)
         end do
-
-        deallocate(frame_calib % data)
+        !$omp end parallel do
       end block subtract_bias
     end if
 
@@ -312,18 +299,17 @@ program aqstack
         integer :: i
         type(image_frame_t) :: frame_calib
 
-        allocate(frame_calib % data(nx, ny))
         call frame_calib % read_fits(bias_fn)
 
         frame_calib % data(:,:) = frame_calib % data &
           / (sum(frame_calib % data) / (nx * ny))
 
         write (0, *) "removing flat..."
+        !$omp parallel do
         do i = 1, n
           buffer(:,:,i) = buffer(:,:,i) / frame_calib % data(:,:)
         end do
-
-        deallocate(frame_calib % data)
+        !$omp end parallel do
       end block subtract_flat
     end if
 
@@ -372,6 +358,7 @@ program aqstack
           end if
         end if
 
+        !$omp parallel do private(i, lst, buf_copy, mx)
         do i = istart, n
           ! find the transform between frames
           call findstar_local(buffer(:,:,i), lst)
@@ -387,6 +374,7 @@ program aqstack
             call improject(buffer(:,:,i), mx, buffer_resample(:,:,i), resample_factor)
           end if
         end do
+        !$omp end parallel do
 
         ! if resampling was performed, replace the normal buffer with resampled
         if (cfg_resampling) then

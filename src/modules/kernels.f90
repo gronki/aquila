@@ -8,10 +8,25 @@ module kernels
   real(fp), dimension(3,3), parameter :: krn_bl3_2 &
   & = reshape([1, 1, 1, 1, 8, 1, 1, 1, 1], [3, 3]) / 16.0_fp
   real(fp), dimension(3,3), parameter :: krn_bl3_3 &
-  & = reshape([1, 4, 1, 4, 8, 4, 1, 4, 1], [3, 3]) / 28.0_fp
+  & = reshape([1, 3, 1, 3, 8, 3, 1, 3, 1], [3, 3]) / 24.0_fp
 
 contains
 
+  !----------------------------------------------------------------------------!
+
+  subroutine print_kernel(kernel)
+    real(fp), intent(in) :: kernel(:,:)
+    integer :: i, sz(2)
+    sz = shape(kernel)
+    associate (kc => kernel((sz(1) + 1) / 2, (sz(2) + 1) / 2))
+      print '(a,a)', ' +', repeat('--------+', sz(2))
+      print_kernel_rows: do i = 1, sz(1)
+        write (*, '(" |", *(f7.4," |"))') kernel(i,:) / kc
+        print '(a,a)', ' +', repeat('--------+', sz(2))
+      end do print_kernel_rows
+    end associate
+  end subroutine
+  
   !----------------------------------------------------------------------------!
 
   subroutine mexhakrn(sg,k)
@@ -62,6 +77,7 @@ contains
 
     n = nint(7.5 * fwhm / 2.35)
     if (mod(n,2) == 0) n = n + 1
+    if (n < 3) n = 3
     allocate(k(n,n))
 
     call mexhakrn(fwhm / 2.35, k)
@@ -117,6 +133,7 @@ contains
 
     n = nint(7 * fwhm / 2.35)
     if (mod(n,2) == 0) n = n + 1
+    if (n < 3) n = 3
     allocate(k(n,n))
 
     call gausskrn(fwhm / 2.35, k)

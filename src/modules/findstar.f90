@@ -19,80 +19,28 @@ module findstar
 
 contains
 
-  !--------------------------------------------------------------------!
+  !----------------------------------------------------------------------------!
 
-  subroutine grow_mask(mask,r)
-
+  pure subroutine fill_mask(mask, master_mask)
     logical, intent(inout) :: mask(:,:)
-    logical, dimension(:,:), allocatable :: mask0
-    integer, intent(in) :: r
-    integer :: x, y, x0, x1, y0, y1, nx, ny
-
-    nx = size(mask,1)
-    ny = size(mask,2)
-
-    mask0 = mask
-
-    do y = 1,ny
-      do x = 1,nx
-        if ( mask0(x,y) ) then
-          x0 = max(x - r, 1)
-          x1 = min(x + r, nx)
-          y0 = max(y - r, 1)
-          y1 = min(y + r, ny)
-          mask(x0:x1,y0:y1) = .true.
-        end if
-      end do
-    end do
-
-    deallocate(mask0)
-
-  end subroutine
-
-  !--------------------------------------------------------------------!
-
-  subroutine shrink_mask(mask,r)
-
-    logical, intent(inout) :: mask(:,:)
-    logical, dimension(:,:), allocatable :: mask0
-    integer, intent(in) :: r
-    integer :: x, y, x0, x1, y0, y1, nx, ny
-
-    nx = size(mask,1)
-    ny = size(mask,2)
-
-    mask0 = mask
-
-    do y = 1,ny
-      do x = 1,nx
-        if ( .not. mask0(x,y) ) then
-          x0 = max(x - r, 1)
-          x1 = min(x + r, nx)
-          y0 = max(y - r, 1)
-          y1 = min(y + r, ny)
-          mask(x0:x1,y0:y1) = .false.
-        end if
-      end do
-    end do
-
-    deallocate(mask0)
-
-  end subroutine
-
-  !--------------------------------------------------------------------!
-
-  subroutine fill_mask(mask,master_mask)
     logical, intent(in) :: master_mask(:,:)
-    logical, intent(inout) :: mask(size(master_mask,1),size(master_mask,2))
-    logical :: mask0(size(master_mask,1),size(master_mask,2))
+    logical, allocatable :: mask0(:,:)
+    integer :: i, j
 
-    do
+    growmask: do
       mask0 = mask
-      call grow_mask(mask,1)
+      do concurrent (i = 2:size(mask, 1) - 1, j = 2:size(mask, 2) - 1, mask0(i,j))
+        mask(i,j-1) = .true.
+        mask(i-1,j) = .true.
+        mask(i+1,j) = .true.
+        mask(i,j+1) = .true.
+      end do
       mask = mask .and. master_mask
-      if ( all(mask0.eqv.mask) ) exit
-    end do
+      if (all(mask0 .eqv. mask)) exit growmask
+    end do growmask
   end subroutine
+
+  !----------------------------------------------------------------------------!
 
   subroutine aqfindstar(im, list, limit, threshold)
     real(fp), dimension(:,:), intent(in) :: im
@@ -100,6 +48,7 @@ contains
     type(extended_source) :: star
     integer, intent(in), optional :: limit
     real(fp), intent(in), optional :: threshold
+    integer, parameter :: rslice = 16, margin = 5
 
     logical, dimension(size(im,1), size(im,2)) :: mask, master_mask
     integer, dimension(size(im,1), size(im,2)) :: xx, yy
@@ -107,19 +56,21 @@ contains
     integer :: i, ix,iy,nx,ny, xymax(2)
     real(fp) :: sthr
 
-    nx = size(im,1)
-    ny = size(im,2)
+    nx = size(im, 1)
+    ny = size(im, 2)
 
-    forall (ix = 1:nx, iy = 1:ny)
+    do concurrent (ix = 1:nx, iy = 1:ny)
       xx(ix,iy) = ix
       yy(ix,iy) = iy
-    end forall
+    end do
 
     ! calculate the threshold
     sthr = 0
     if (present(threshold)) sthr = threshold
-    ! we consider only pixels brighter than the threshold
-    master_mask = (im > sthr)
+    ! we consider only pixels brighter than the threshold and far away from the edge
+    master_mask = (im > sthr) &
+      .and. (xx >= 1 + margin) .and. (xx <= nx - margin) &
+      .and. (yy >= 1 + margin) .and. (yy <= ny - margin)
 
     if (allocated(list)) deallocate(list)
     allocate(list(0))
@@ -131,35 +82,45 @@ contains
       end if
 
       ! if none left, exit
-      if ( .not. any(master_mask) ) exit extract_stars
+      if (.not. any(master_mask)) exit extract_stars
 
       ! localize maximum pixel within good pixels
       xymax = maxloc(im, master_mask)
+
       ! set this pixel to true in child mask
-      mask = .false.
-      mask(xymax(1),xymax(2)) = .true.
-      ! make the child mask fill the entire blob
-      call fill_mask(mask,master_mask)
-      ! subtract the child mask from the major one
-      master_mask = master_mask .and. (.not. mask)
-      ! extend the child mask by one
-      ! call grow_mask(mask,1)
+      mask(:,:) = .false.
+      mask(xymax(1), xymax(2)) = .true.
 
-      if (count(mask) < 8) cycle
+      ! crop the image to save processing power
+      associate (ilo => max(xymax(1) - rslice, 1), &
+                 ihi => min(xymax(1) + rslice, nx), &
+                 jlo => max(xymax(2) - rslice, 1), &
+                 jhi => min(xymax(2) + rslice, ny))
+        associate (c_mask => mask(ilo:ihi, jlo:jhi), &
+              c_master_mask => master_mask(ilo:ihi, jlo:jhi), &
+              c_im => im(ilo:ihi, jlo:jhi), &
+              c_xx => xx(ilo:ihi, jlo:jhi), &
+              c_yy => yy(ilo:ihi, jlo:jhi))
+          ! make the child mask fill the entire blob
+          call fill_mask(c_mask, c_master_mask)
+          ! subtract the child mask from the major one
+          c_master_mask = c_master_mask .and. (.not. c_mask)
+          ! skip anything which is less than 3x3
+          if (count(c_mask) < 8) cycle
 
-      associate (flx => star % flux, cx => star % x, cy => star % y, rms => star % rms)
+          associate (flx => star % flux, cx => star % x, cy => star % y, rms => star % rms)
+            flx = sum(c_im, c_mask)
+            cx = sum(c_im * c_xx, c_mask) / flx
+            cy = sum(c_im * c_yy, c_mask) / flx
 
-        flx = sum(im, mask)
-        cx = sum(im * xx, mask) / flx
-        cy = sum(im * yy, mask) / flx
+            rms = sqrt(sum(c_im * ((c_xx - cx)**2 + (c_yy - cy)**2), c_mask) / flx)
 
-        rms = sqrt(sum(im * ((xx - cx)**2 + (yy - cy)**2), mask) / flx)
+            if (rms > 10) cycle extract_stars
 
-        if (rms > 10) cycle extract_stars
-
-        star % deviation_xy = sum(im * (xx - cx) * (yy - cy), mask) / (flx * rms**2)
-        star % deviation_uv = sum(im * ((xx - cx)**2 - (yy - cy)**2) / 2, mask) / (flx * rms**2)
-
+            star % deviation_xy = sum(c_im * (c_xx - cx) * (c_yy - cy), c_mask) / (flx * rms**2)
+            star % deviation_uv = sum(c_im * ((c_xx - cx)**2 - (c_yy - cy)**2) / 2, c_mask) / (flx * rms**2)
+          end associate
+        end associate
       end associate
 
       list = [list, star]

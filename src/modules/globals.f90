@@ -6,7 +6,7 @@ module globals
 
   integer, parameter :: fp = selected_real_kind(12)
 
-  logical :: cfg_verbose = .true.
+  logical :: cfg_verbose = .false.
   character(len = *), parameter :: ccdtemp_key = 'CCD-TEMP'
   character(len = *), parameter :: frametype_key = 'FRAME'
   character(len = *), parameter :: exptime_key = 'EXPTIME'

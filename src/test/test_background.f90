@@ -26,7 +26,6 @@ program background
 
   main: block
 
-    use findstar, only: shrink_mask
     use statistics, only: outliers, quickselect
 
     integer, parameter :: mrad = 15
@@ -143,5 +142,34 @@ program background
   call ftppre(66, 1, 1, size(imout), imout, errno)
   call ftclos(66, errno)
 
+contains
+
+  subroutine shrink_mask(mask,r)
+
+    logical, intent(inout) :: mask(:,:)
+    logical, dimension(:,:), allocatable :: mask0
+    integer, intent(in) :: r
+    integer :: x, y, x0, x1, y0, y1, nx, ny
+
+    nx = size(mask,1)
+    ny = size(mask,2)
+
+    mask0 = mask
+
+    do y = 1,ny
+      do x = 1,nx
+        if ( .not. mask0(x,y) ) then
+          x0 = max(x - r, 1)
+          x1 = min(x + r, nx)
+          y0 = max(y - r, 1)
+          y1 = min(y + r, ny)
+          mask(x0:x1,y0:y1) = .false.
+        end if
+      end do
+    end do
+
+    deallocate(mask0)
+
+  end subroutine
 
 end program

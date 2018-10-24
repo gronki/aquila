@@ -101,7 +101,7 @@ contains
       if (present(errno)) then
         errno = ftiostat; return
       else
-        error stop "error opening FITS file" // trim(fn)
+        error stop "error opening FITS file: " // trim(fn)
       end if
     end if
 
@@ -123,7 +123,7 @@ contains
       if (present(errno)) then
         errno = ftiostat; return
       else
-        error stop "error reading FITS file" // trim(fn)
+        error stop "error reading FITS file: " // trim(fn)
       end if
     end if
   end subroutine
@@ -147,7 +147,7 @@ contains
       if (present(errno)) then
         errno = ftiostat; return
       else
-        error stop "error opening FITS file" // trim(fn)
+        error stop "error opening FITS file: " // trim(fn)
       end if
     end if
 
@@ -201,7 +201,7 @@ contains
       if (present(errno)) then
         errno = ftiostat; return
       else
-        error stop "error reading file" // trim(fn)
+        error stop "error reading file: " // trim(fn)
       end if
     end if
   end subroutine
@@ -224,7 +224,7 @@ contains
       if (present(errno)) then
         errno = ftiostat; return
       else
-        error stop "could not create output file" // trim(fn)
+        error stop "could not create output file: " // trim(fn)
       end if
     end if
 
@@ -248,7 +248,7 @@ contains
       if (present(errno)) then
         errno = ftiostat; return
       else
-        error stop "error writing FITS file" // trim(fn)
+        error stop "error writing FITS file: " // trim(fn)
       end if
     end if
   end subroutine
@@ -272,7 +272,7 @@ contains
       if (present(errno)) then
         errno = ftiostat; return
       else
-        error stop "error opening FITS file" // trim(fn)
+        error stop "error opening FITS file: " // trim(fn)
       end if
     end if
 
@@ -313,7 +313,7 @@ contains
       if (present(errno)) then
         errno = ftiostat; return
       else
-        error stop "error reading file" ! // trim(fn)
+        error stop "error reading file: " // trim(fn)
       end if
     end if
   end subroutine
@@ -336,7 +336,7 @@ contains
       if (present(errno)) then
         errno = ftiostat; return
       else
-        error stop "could not create output file" // trim(fn)
+        error stop "could not create output file: " // trim(fn)
       end if
     end if
 
@@ -351,7 +351,7 @@ contains
       if (present(errno)) then
         errno = ftiostat; return
       else
-        error stop "error writing FITS file" // trim(fn)
+        error stop "error writing FITS file: " // trim(fn)
       end if
     end if
   end subroutine
@@ -390,7 +390,7 @@ contains
     else
       if (associated(self % data)) error stop
     end if
-    
+
     allocate(self % data(size(ref % data, 1), size(ref % data, 2)))
     self % auto_allocated = .true.
   end subroutine

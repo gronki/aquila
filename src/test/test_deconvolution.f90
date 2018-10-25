@@ -10,7 +10,7 @@ program test_deconvolution
 
   type(frame_t) :: img1, img2
   real(fp), dimension(:,:), allocatable :: k
-  real(fp), parameter :: ffz = 0.5
+  real(fp), parameter :: ffz = 0.33
 
   cfg_verbose_deconvolution = .true.
 
@@ -22,8 +22,8 @@ program test_deconvolution
     integer :: i, niter
     real(fp) :: w
     k = gausskrn_alloc(1.5_fp)
-    do i = 1, 19
-      niter = nint(3 * 1.4**(i - 1))
+    do i = 1, 11
+      niter = nint(1 * (128 / 1.0)**((i - 1) / 10.0))
       print *, i, niter
       call deconvol_lr(img1 % data, k, niter, img2 % data)
       w = ffz * (1 + log(24.0)) / (1 + log(real(niter)))
@@ -37,11 +37,11 @@ program test_deconvolution
     character(len = 256) :: fn
     real(fp) :: ksize
     integer :: i
-    do i = 1, 15
-      ksize = 1.15_fp**(i - 1)
+    do i = 1, 11
+      ksize = 0.6 * (2.5 / 0.6)**((i - 1) / 10.0)
       print *, i, ksize
       k = gausskrn_alloc(ksize)
-      call deconvol_lr(img1 % data, k, 64, img2 % data)
+      call deconvol_lr(img1 % data, k, 32, img2 % data)
       img2 % data(:,:) = img1 % data * (1 - ffz) + img2 % data * ffz
       write (fn, '("deconvq", i0.2, ".fits")') i
       call img2 % write_fits(trim(fn))

@@ -17,22 +17,23 @@ contains
     real(fp) :: k0, y0, y0_dv(3), y0n_dv(3), v0(3)
     real(fp) :: lam, y_dlam, len0, r0
     real(fp) :: x0m, y0m
-    real(fp), parameter :: k0min = 0.8, k0decr = 1 / 2**(1.0_fp / 12)
+    real(fp), parameter :: k0min = 0.8, k0decr = 1 / 2**(1.0_fp / 8)
 
     x0m = sum(xy0 % x) / size(xy0)
     y0m = sum(xy0 % y) / size(xy0)
 
-    r0 = 0.9 * maxval(sqrt((xy0 % x - x0m)**2 + (xy0 % y - y0m)**2))
+    r0 = 0.6 * maxval(sqrt((xy0 % x - x0m)**2 + (xy0 % y - y0m)**2))
     k0 = 0.25 * r0 / sqrt(real(size(xy0)))
     nmax = ceiling(log(k0min / k0) / log(k0decr))
 
-    write (0, '("k0 =", g10.4)') k0
-    write (0, '("r0 =", g10.4)') r0
-    write (0, '("nmax =", g10.4)') nmax
+    if (cfg_verbose) write (0, '("k0 =", g10.4)') k0
+    if (cfg_verbose) write (0, '("r0 =", g10.4)') r0
+    if (cfg_verbose) write (0, '("nmax =", g10.4)') nmax
 
     v0 = 0
 
-    write (0, '(a4, a7  , a9  , 3a9  )') 'ii', 'k0', 'lam', 'dx', 'dy', 'rot'
+    if (cfg_verbose) write (0, '(a4, a7  , a9  , 3a9  )') &
+    &     'ii', 'k0', 'lam', 'dx', 'dy', 'rot'
 
     loop_star_sharpness: do ii = 1, nmax
 
@@ -46,7 +47,7 @@ contains
       call minimize_along_vec(lam, 1.0_fp)
       v0 = v0 + y0n_dv * lam
 
-      write (0, '(i4, f7.2, f9.4, 3f9.4)') ii, k0, lam, v0
+      if (cfg_verbose) write (0, '(i4, f7.2, f9.4, 3f9.4)') ii, k0, lam, v0
 
       if ( lam .lt. 1e-5 ) then
         write (0,*) ' ---- precision reached'
@@ -103,10 +104,10 @@ contains
       y = 0
       y_dv = 0
 
-      xy1 % x = v(i_x) + cos(v(i_r) / r0) * (xy % x) &
-      &                - sin(v(i_r) / r0) * (xy % y)
-      xy1 % y = v(i_y) + sin(v(i_r) / r0) * (xy % x) &
-      &                + cos(v(i_r) / r0) * (xy % y)
+      xy1 % x = v(i_x) + cos(v(i_r) / r0) * (xy % x - x0m) &
+      &                - sin(v(i_r) / r0) * (xy % y - y0m) + x0m
+      xy1 % y = v(i_y) + sin(v(i_r) / r0) * (xy % x - x0m) &
+      &                + cos(v(i_r) / r0) * (xy % y - y0m) + y0m
       xy1 % flux = xy % flux
 
       do i0 = 1, size(xy0)
@@ -117,10 +118,10 @@ contains
           y = y + bb / aa
           y_dx1 = - (xy1(i) % x - xy0(i0) % x) * bb / aa**3
           y_dy1 = - (xy1(i) % y - xy0(i0) % y) * bb / aa**3
-          x1_dr = - (sin(v(i_r) / r0) * (xy(i) % x) &
-          &       +  cos(v(i_r) / r0) * (xy(i) % y)) / r0
-          y1_dr =   (cos(v(i_r) / r0) * (xy(i) % x) &
-          &       -  sin(v(i_r) / r0) * (xy(i) % y)) / r0
+          x1_dr = - (sin(v(i_r) / r0) * (xy(i) % x - x0m) &
+          &       +  cos(v(i_r) / r0) * (xy(i) % y - y0m)) / r0
+          y1_dr =   (cos(v(i_r) / r0) * (xy(i) % x - x0m) &
+          &       -  sin(v(i_r) / r0) * (xy(i) % y - y0m)) / r0
           y_dv(i_x) = y_dv(i_x) + y_dx1
           y_dv(i_y) = y_dv(i_y) + y_dy1
           y_dv(i_r) = y_dv(i_r) + y_dx1 * x1_dr + y_dy1 * y1_dr
@@ -132,10 +133,10 @@ contains
       real(fp), intent(in) :: v(3)
       real(fp), intent(out) :: mx(2,3)
       mx = 0
-      mx(1,1) =   v(i_x)
+      mx(1,1) =   v(i_x) + x0m * (1 - cos(v(i_r) / r0)) + y0m * sin(v(i_r) / r0)
       mx(1,2) =   cos(v(i_r) / r0)
       mx(1,3) = - sin(v(i_r) / r0)
-      mx(2,1) =   v(i_y)
+      mx(2,1) =   v(i_y) + y0m * (1 - cos(v(i_r) / r0)) - x0m * sin(v(i_r) / r0)
       mx(2,2) =   sin(v(i_r) / r0)
       mx(2,3) =   cos(v(i_r) / r0)
     end subroutine
@@ -152,7 +153,6 @@ contains
     integer   :: ki, kj
     real(fp)  :: xi, xj, ri, rj, i1, j1
 
-    !$omp parallel do private(i, j, i1, j1, xi, xj, ki, kj, ri, rj)
     do j = 1, size(im, 2)
       do i = 1, size(im, 1)
 
@@ -180,7 +180,6 @@ contains
         end if
       end do
     end do
-    !$omp end parallel do
 
   end subroutine
 

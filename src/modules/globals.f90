@@ -11,6 +11,6 @@ module globals
   character(len = *), parameter :: frametype_key = 'FRAME'
   character(len = *), parameter :: exptime_key = 'EXPTIME'
 
-  character(len = *), parameter :: version = '181014'
+  character(len = *), parameter :: version = '181106'
 
 end module

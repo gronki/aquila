@@ -2,7 +2,7 @@ prefix = /usr/local
 
 FC = gfortran
 ARCH_FLAGS ?= -march=native
-FFLAGS = -O3 -funsafe-math-optimizations $(ARCH_FLAGS) -fopenmp
+FFLAGS = -g -O3 -funsafe-math-optimizations $(ARCH_FLAGS) -fopenmp
 override FFLAGS += -fno-backtrace -fimplicit-none -ffree-line-length-none \
 				  -pedantic -Wall -Wno-unused-dummy-argument -Warray-temporaries
 
@@ -10,7 +10,7 @@ LDLIBS += -lcfitsio
 INCLUDE += -I/usr/include
 
 VPATH = ../src/modules:../src/programs:../src/test
-PROGRAMS = aqstack
+PROGRAMS = aqstack aqlrgb
 TESTS = test_transforms test_background test_kernels test_findstar test_legacy_align \
 			test_framehandling test_addsuffix test_deconvolution
 OBJECTS = kernels.o statistics.o convolution.o globals.o transforms.o \

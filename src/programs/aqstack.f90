@@ -32,7 +32,7 @@ program aqstack
 
   !----------------------------------------------------------------------------!
 
-  write (*, '(10x,a)') '*** AQUILA v.' // version // ' ***'
+  call greeting('aqstack')
 
   if (command_argument_count() == 0) then
     call print_help(); stop

@@ -17,7 +17,9 @@ module framehandling
     procedure :: read_fits => frame_read
     procedure :: write_fits => frame_write
     procedure :: alloc_zeros => frame_alloc_zeros
-    procedure :: frame_repr
+    procedure, private :: frame_assign
+    generic :: assignment(=) => frame_assign
+    procedure, private :: frame_repr
     generic :: write(formatted) => frame_repr
     final :: frame_finalize
   end type
@@ -45,6 +47,30 @@ module framehandling
   !----------------------------------------------------------------------------!
 
 contains
+
+  subroutine frame_assign(fr, im)
+    class(frame_t), intent(inout) :: fr
+    real(fp), dimension(:,:), intent(in) :: im
+    ! if the buffer is there, try to use it
+    if (associated(fr % data)) then
+      ! if sizes don't match, we need to reasllocate it
+      if (any(shape(fr % data) /= shape(im))) then
+        ! for manual buffers we don't touch them
+        if (.not. fr % auto_allocated) then
+          error stop "this frame buffer was manually assigned"
+        end if
+        ! auto buffers can be resized
+        deallocate(fr % data)
+        allocate(fr % data(size(im, 1), size(im, 2)))
+      end if
+    else
+      ! buffer was not allocated
+      allocate(fr % data(size(im, 1), size(im, 2)))
+      fr % auto_allocated = .true.
+    end if
+    ! at this point we have the matching buffer so we can do the copy
+    fr % data(:,:) = im(:,:)
+  end subroutine
 
   ! !----------------------------------------------------------------------------!
   !
@@ -400,7 +426,7 @@ contains
   subroutine frame_finalize(self)
     type(frame_t) :: self
     if (self % auto_allocated .and. associated(self % data)) then
-      print '("finalizing ", dt)', self
+      print '("'// achar(27) //'[91mfinalizing'// achar(27) //'[0m ", dt)', self
       deallocate(self % data)
     end if
   end subroutine
@@ -410,7 +436,6 @@ contains
   subroutine add_suffix(fn, suff, fn_out)
     character(len = *), intent(in) :: fn, suff
     character(len = *), intent(out) :: fn_out
-    character(len = *), parameter :: ext = "fits"
     integer :: idot
 
     idot = index(fn, '.', back = .True.)

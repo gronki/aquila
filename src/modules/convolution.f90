@@ -96,7 +96,13 @@ contains
 
     elemental integer function ixlim(i,n) result(j)
       integer, intent(in) :: i,n
-      j = merge(1, merge(n, i, i > n), i < 1)
+      if (i < 1) then
+        j = 1
+      else if (i > n) then
+        j = n
+      else
+        j = i
+      end if
     end function
   end subroutine
 

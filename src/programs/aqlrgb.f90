@@ -10,6 +10,7 @@ program aqlrgb
   character(len = 256), allocatable :: fnames(:)
   logical :: cfg_equalize = .false.
   logical :: cfg_color_smooth = .false.
+  logical :: cfg_save_cube = .false.
   real(fp) :: smooth_fwhm = 1.5
 
   call greeting('aqlrgb')
@@ -45,6 +46,8 @@ program aqlrgb
         end if
       case ('-wb', '-autowb', '-equalize')
         cfg_equalize = .true.
+      case ('-cube', '-3')
+        cfg_save_cube = .true.
       case ("-h", "-help")
         call print_help(); stop
       case default
@@ -60,7 +63,6 @@ program aqlrgb
 
   do_rgb: block
     type(image_frame_t) :: frame_r, frame_g, frame_b, frame_l
-    character(len = 256) :: outfn_suff
 
     if (size(fnames) == 4) call frame_l % read_fits(fnames(1))
     call frame_r % read_fits(fnames(merge(1, 2, size(fnames) == 3)))
@@ -95,7 +97,7 @@ program aqlrgb
         real(fp), dimension(:,:), allocatable :: combined
         logical, dimension(:,:), allocatable :: mask
         integer :: i, j, sz(2)
-        integer, parameter :: margin = 32
+        integer, parameter :: margin = 64
         real(fp) :: coeff
 
         combined = (frame_r % data + frame_g % data + frame_b % data) / 3
@@ -121,26 +123,32 @@ program aqlrgb
     end if
 
     if (associated(frame_l % data)) then
-      do_lrgb: block
-        real(fp), allocatable :: corr(:,:)
-        corr = (frame_l % data) / (frame_r % data + frame_g % data + frame_b % data)
+      do_lrgb: associate (corr => (frame_l % data) / (frame_r % data + frame_g % data + frame_b % data))
         frame_r % data(:,:) = corr * frame_r % data(:,:)
         frame_g % data(:,:) = corr * frame_g % data(:,:)
         frame_b % data(:,:) = corr * frame_b % data(:,:)
-      end block do_lrgb
+      end associate do_lrgb
     end if
 
-    call add_suffix(outfn, '.r', outfn_suff)
-    call frame_r % write_fits(outfn_suff)
-    call add_suffix(outfn, '.g', outfn_suff)
-    call frame_g % write_fits(outfn_suff)
-    call add_suffix(outfn, '.b', outfn_suff)
-    call frame_b % write_fits(outfn_suff)
+    if (cfg_save_cube) then
+      stop "not implemented"
+    else
+      save_3files: block
+        character(len = 256) :: outfn_suff
+        call add_suffix(outfn, '.r', outfn_suff)
+        call frame_r % write_fits(outfn_suff)
+        call add_suffix(outfn, '.g', outfn_suff)
+        call frame_g % write_fits(outfn_suff)
+        call add_suffix(outfn, '.b', outfn_suff)
+        call frame_b % write_fits(outfn_suff)
+      end block save_3files
+    end if
+
   end block do_rgb
 
 contains
 
-  subroutine print_help()
+  subroutine print_help
     character(len = *), parameter :: fmt = '(a28, 2x, a)', fmt_ctd = '(30x, a)'
     write (*, '(a)') 'prepares the aligned images for RGB processing'
     write (*, '(a)') 'usage: aqlrgb [L] R G B [-o FILE] [options]'

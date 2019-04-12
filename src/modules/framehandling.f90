@@ -11,7 +11,7 @@ module framehandling
   !----------------------------------------------------------------------------!
 
   type :: frame_t
-    real(fp), pointer :: data(:,:) => null()
+    real(fp), pointer, contiguous :: data(:,:) => null()
     logical, private :: auto_allocated = .false.
   contains
     procedure :: read_fits => frame_read

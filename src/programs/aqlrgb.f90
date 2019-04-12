@@ -63,11 +63,25 @@ program aqlrgb
 
   do_rgb: block
     type(image_frame_t) :: frame_r, frame_g, frame_b, frame_l
+    logical :: with_luminance
 
-    if (size(fnames) == 4) call frame_l % read_fits(fnames(1))
-    call frame_r % read_fits(fnames(merge(1, 2, size(fnames) == 3)))
-    call frame_g % read_fits(fnames(merge(2, 3, size(fnames) == 3)))
-    call frame_b % read_fits(fnames(merge(3, 4, size(fnames) == 3)))
+    with_luminance = (size(fnames) == 4)
+
+    if (with_luminance) call frame_l % read_fits(fnames(1))
+    call frame_r % read_fits(fnames(merge(2, 1, with_luminance)))
+    call frame_g % read_fits(fnames(merge(3, 2, with_luminance)))
+    call frame_b % read_fits(fnames(merge(4, 3, with_luminance)))
+
+    if (any(shape(frame_g % data) /= shape(frame_r % data)) &
+    & .or. any(shape(frame_g % data) /= shape(frame_b % data))) then
+      error stop "color image frame size mismatch"
+    end if
+
+    if (with_luminance) then
+      if (any(shape(frame_g % data) /= shape(frame_l % data))) then
+        error stop "color frame size must match luminance"
+      end if
+    end if
 
     if (cfg_color_smooth) then
       perform_color_smooth: block
@@ -94,15 +108,15 @@ program aqlrgb
 
     if (cfg_equalize) then
       perform_equalize: block
-        real(fp), dimension(:,:), allocatable :: combined
         logical, dimension(:,:), allocatable :: mask
         integer :: i, j, sz(2)
         integer, parameter :: margin = 64
         real(fp) :: coeff
 
-        combined = (frame_r % data + frame_g % data + frame_b % data) / 3
+        associate (combined => (frame_r % data + 2 * frame_g % data + frame_b % data) / 4)
+          mask = combined > (sum(combined) / size(combined))
+        end associate
 
-        mask = (combined > (sum(combined) / size(combined)))
         sz = shape(mask)
         mask(1:margin, :) = .false.
         mask(sz(1) - margin + 1:, :) = .false.
@@ -114,6 +128,7 @@ program aqlrgb
           print '("R:G = ", f8.3)', coeff
           y = y / coeff
         end associate
+
         associate (x => frame_g % data, y => frame_b % data)
           coeff = sum(x * y, mask) / sum(x**2, mask)
           print '("B:G = ", f8.3)', coeff
@@ -160,8 +175,9 @@ contains
     write (*, fmt_ctd) 'if FWHM not given, default value (1.5) will be used'
     write (*, fmt) '-[auto]wb/-equalize', 'attempt to make stars white'
     write (*, fmt_ctd) '(only works if background is small)'
+    write (*, fmt) '-cube/-3', 'save as cube fits rather than 3 files'
+    write (*, fmt_ctd) '(good if you use GIMP for processing)'
     write (*, fmt) '-h[elp]', 'prints help'
   end subroutine
-
-
+  
 end program aqlrgb

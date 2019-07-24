@@ -46,7 +46,7 @@ program aqlrgb
         end if
       case ('-wb', '-autowb', '-equalize')
         cfg_equalize = .true.
-      case ('-cube', '-3')
+      case ('-cube', '-3d')
         cfg_save_cube = .true.
       case ("-h", "-help")
         call print_help(); stop
@@ -146,7 +146,7 @@ program aqlrgb
     end if
 
     if (cfg_save_cube) then
-      stop "not implemented"
+      call write_fits_3d(outfn, frame_r, frame_g, frame_b)
     else
       save_3files: block
         character(len = 256) :: outfn_suff
@@ -175,9 +175,53 @@ contains
     write (*, fmt_ctd) 'if FWHM not given, default value (1.5) will be used'
     write (*, fmt) '-[auto]wb/-equalize', 'attempt to make stars white'
     write (*, fmt_ctd) '(only works if background is small)'
-    write (*, fmt) '-cube/-3', 'save as cube fits rather than 3 files'
+    write (*, fmt) '-cube/-3d', 'save as cube fits rather than 3 files'
     write (*, fmt_ctd) '(good if you use GIMP for processing)'
     write (*, fmt) '-h[elp]', 'prints help'
   end subroutine
-  
+
+  subroutine write_fits_3d(fn, frame_r, frame_g, frame_b, errno)
+    use framehandling, only: frame_t
+    use iso_fortran_env, only: real32
+    class(frame_t), intent(in) :: frame_r, frame_g, frame_b
+    character(len = *), intent(in) :: fn
+    integer, intent(inout), optional :: errno
+    integer :: ftiostat, un
+    real(real32), allocatable :: cube(:,:,:)
+
+    ftiostat = 0
+
+    call ftgiou(un, ftiostat)
+    call ftdkinit(un, fn, 1, ftiostat)
+
+    if (ftiostat /= 0) then
+      call ftrprt("stderr", ftiostat)
+      if (present(errno)) then
+        errno = ftiostat; return
+      else
+        error stop "could not create output file: " // trim(fn)
+      end if
+    end if
+
+    allocate(cube(size(frame_g % data, 1), size(frame_g % data, 2), 3))
+    cube(:,:,1) = frame_r % data(:,:)
+    cube(:,:,2) = frame_g % data(:,:)
+    cube(:,:,3) = frame_b % data(:,:)
+    call ftphps(un, -32, 3, shape(cube), ftiostat)
+    call ftppre(un, 1, 1, size(cube), cube, ftiostat)
+    deallocate(cube)
+
+    call ftclos(un, ftiostat)
+    call ftfiou(un, ftiostat)
+
+    if (ftiostat /= 0) then
+      call ftrprt("stderr", ftiostat)
+      if (present(errno)) then
+        errno = ftiostat; return
+      else
+        error stop "error writing FITS file: " // trim(fn)
+      end if
+    end if
+  end subroutine
+
 end program aqlrgb

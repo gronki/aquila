@@ -7,10 +7,11 @@ program aqlrgb
 
   implicit none
   character(len = 256) :: outfn = "lrgb.fits"
+  character(len = 16) :: transform = ""
   character(len = 256), allocatable :: fnames(:)
   logical :: cfg_equalize = .false.
   logical :: cfg_color_smooth = .false.
-  logical :: cfg_save_cube = .false.
+  logical :: cfg_save_cube = .true.
   real(fp) :: smooth_fwhm = 1.5
 
   call greeting('aqlrgb')
@@ -32,7 +33,7 @@ program aqlrgb
       end if
       call get_command_argument(i, arg)
       select case (arg)
-      case ('-o', '-O', '-output')
+      case ('-o', '-output')
         call get_command_argument(i + 1, buf)
         if (buf == "" .or. buf(1:1) == '-') error stop "file name expected"
         outfn = buf
@@ -44,10 +45,16 @@ program aqlrgb
           read (buf, *) smooth_fwhm
           skip = .true.
         end if
-      case ('-wb', '-autowb', '-equalize')
+      case ('-wb', '-equalize')
         cfg_equalize = .true.
-      case ('-cube', '-3d')
-        cfg_save_cube = .true.
+      case ('-asinh')
+        transform = 'asinh'
+      case ('-sqrt')
+        transform = 'sqrt'
+      case ('-log','-ln')
+        transform = 'log'
+      case ('-split')
+        cfg_save_cube = .false.
       case ("-h", "-help")
         call print_help(); stop
       case default
@@ -106,7 +113,7 @@ program aqlrgb
       end block perform_color_smooth
     end if
 
-    if (cfg_equalize) then
+    if (cfg_equalize .or. transform /= '') then
       perform_equalize: block
         logical, dimension(:,:), allocatable :: mask
         integer :: i, j, sz(2)
@@ -124,13 +131,13 @@ program aqlrgb
         mask(:, sz(2) - margin + 1:) = .false.
 
         associate (x => frame_g % data, y => frame_r % data)
-          coeff = sum(x * y, mask) / sum(x**2, mask)
+          coeff = sum(sqrt(x) * y, mask) / sum(sqrt(x) * x, mask)
           print '("R:G = ", f8.3)', coeff
           y = y / coeff
         end associate
 
         associate (x => frame_g % data, y => frame_b % data)
-          coeff = sum(x * y, mask) / sum(x**2, mask)
+          coeff = sum(sqrt(x) * y, mask) / sum(sqrt(x) * x, mask)
           print '("B:G = ", f8.3)', coeff
           y = y / coeff
         end associate
@@ -143,6 +150,26 @@ program aqlrgb
         frame_g % data(:,:) = corr * frame_g % data(:,:)
         frame_b % data(:,:) = corr * frame_b % data(:,:)
       end associate do_lrgb
+    end if
+
+    if (transform /= '') then
+      write (0, '("preforming transform on the image: ", a)') transform
+      select case (transform)
+      case ('sqrt')
+        frame_r % data(:,:) = sqrt(frame_r % data(:,:))
+        frame_g % data(:,:) = sqrt(frame_g % data(:,:))
+        frame_b % data(:,:) = sqrt(frame_b % data(:,:))
+      case ('asinh')
+        frame_r % data(:,:) = asinh(frame_r % data(:,:))
+        frame_g % data(:,:) = asinh(frame_g % data(:,:))
+        frame_b % data(:,:) = asinh(frame_b % data(:,:))
+      case ('log')
+        frame_r % data(:,:) = log(frame_r % data(:,:))
+        frame_g % data(:,:) = log(frame_g % data(:,:))
+        frame_b % data(:,:) = log(frame_b % data(:,:))
+      case default
+        error stop 'transform?'
+      end select
     end if
 
     if (cfg_save_cube) then
@@ -168,15 +195,15 @@ contains
     write (*, '(a)') 'prepares the aligned images for RGB processing'
     write (*, '(a)') 'usage: aqlrgb [L] R G B [-o FILE] [options]'
     write (*, '(a)') 'R, G, B are color frames and L is optional luminance'
-    write (*, fmt) '-o/-O/-output', 'specifies the output file name prefix'
-    write (*, fmt_ctd) 'for example, if image.fits is give, three files'
+    write (*, fmt) '-o/-output', 'specifies the output file name'
+    write (*, fmt) '-split', 'save as 3 files fits rather than one cube'
+    write (*, fmt_ctd) 'for example, if image.fits is given to -o, three files'
     write (*, fmt_ctd) 'image.r.fits, image.g.fits, image.b.fits will be written'
     write (*, fmt) '-blur/-smooth [FWHM]', 'smoothes color while preserving luminance'
     write (*, fmt_ctd) 'if FWHM not given, default value (1.5) will be used'
-    write (*, fmt) '-[auto]wb/-equalize', 'attempt to make stars white'
+    write (*, fmt) '-wb/-equalize', 'attempt to make stars white'
     write (*, fmt_ctd) '(only works if background is small)'
-    write (*, fmt) '-cube/-3d', 'save as cube fits rather than 3 files'
-    write (*, fmt_ctd) '(good if you use GIMP for processing)'
+    write (*, fmt) '-sqrt/-asinh/-log', 'compress the image levels before saving'
     write (*, fmt) '-h[elp]', 'prints help'
   end subroutine
 

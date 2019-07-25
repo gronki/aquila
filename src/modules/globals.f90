@@ -7,7 +7,7 @@ module globals
   integer, parameter :: fp = selected_real_kind(12)
 
   logical :: cfg_verbose = .false.
-  character(len = *), parameter :: version = '181106'
+  character(len = *), parameter :: version = '190725'
 
 contains
 

@@ -1,13 +1,21 @@
-prefix = /usr/local
+# Makefile for aquila
+# (c) 2019 Dominik Gronkiewicz <gronki@gmail.com>
+# on MIT license
 
-FC = gfortran
-ARCH_FLAGS ?= -march=native
-FFLAGS = -g -O3 -funsafe-math-optimizations $(ARCH_FLAGS) -fopenmp
-FFLAGS_EXTRA = -fno-backtrace -fimplicit-none -ffree-line-length-none \
+FC := gfortran
+ARCHFLAGS ?= -march=native
+FFLAGS = -O3 -funsafe-math-optimizations $(ARCHFLAGS) -fopenmp
+FFLAGS_EXTRA := -fno-backtrace -fimplicit-none -ffree-line-length-none \
 				  -pedantic -Wall -Wno-unused-dummy-argument -Warray-temporaries
 
 LDLIBS += -lcfitsio
 INCLUDE += -I/usr/include
+
+ifeq ($(USER),root)
+prefix = /usr/local
+else
+prefix = $(HOME)/.local
+endif
 
 VPATH = ../src/modules:../src/programs:../src/test
 PROGRAMS = aqstack aqlrgb
@@ -31,12 +39,12 @@ install-home: install
 include deps.inc
 
 %.o: %.f90
-	$(FC) $(INCLUDE) $(FFLAGS_EXTRA) $(FFLAGS) -c $< -o $@
+	$(FC) $(INCLUDE) $(FFLAGS) $(FFLAGS_EXTRA) -c $< -o $@
 
 $(PROGRAMS): %: $(OBJECTS) %.f90
-	$(FC) $(FFLAGS_EXTRA) -fwhole-program $(FFLAGS) $(LDFLAGS) $^ $(LDLIBS) -o $@
+	$(FC) $(FFLAGS) $(FFLAGS_EXTRA) $(LDFLAGS) $^ $(LDLIBS) -o $@
 $(TESTS): %: $(OBJECTS) %.f90
-	$(FC) $(FFLAGS_EXTRA) $(FFLAGS) $(LDFLAGS) $^ $(LDLIBS) -o $@
+	$(FC) $(FFLAGS) $(FFLAGS_EXTRA) $(LDFLAGS) $^ $(LDLIBS) -o $@
 
 clean:
 	$(RM) *.o *.mod $(PROGRAMS) $(TESTS)

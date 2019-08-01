@@ -135,7 +135,7 @@ program aqstack
           command_argument_mask(i : i + 1) = .false.
         end if
 
-      case ("-addsuffix", "-suffix", "-suff", "-S")
+      case ("-suffix", "-S")
         if (.not. command_argument_mask(i + 1)) then
           error stop "suffix expected"
         else
@@ -197,7 +197,7 @@ program aqstack
       output_fn = "out.fits"
     end if
   end if
-  if (output_suff == "") output_suff = "-red"
+  if (output_suff == "") output_suff = "R"
 
   verify_cli_arguments: block
     character(len = *), parameter :: fmt = '(a12, ": ", g0)'
@@ -446,14 +446,14 @@ contains
     write (*, '(a)') 'STRATEGY can be: bias, dark, flat, process, stack'
     write (*, fmt) '-o/-O/-output FILENAME', 'specifies the output filename'
     write (*, fmt) '-avg/-average', 'compute by average value'
-    write (*, fmt) '[-estimate]-noise', 'estimate noise while computing bias'
-    write (*, fmt) '-al[ign]', 'align frames'
-    write (*, fmt) '-align-reference/-ref FILENAME', 'align to this frame rather than first frame'
+    write (*, fmt) '-estimate-noise', 'estimate noise while computing bias'
+    write (*, fmt) '-align', 'align frames'
+    write (*, fmt) '-ref FILENAME', 'align to this frame rather than first frame'
     write (*, fmt) '-resample', 'resample before stacking (only with -align)'
     write (*, fmt) '-factor FACTOR', 'resampling factor (default: 1.5)'
-    write (*, fmt) '-process[-only]/-nostack', 'do not stack images'
-    write (*, fmt) '-suff[ix]/-S FILENAME', 'suffix that will be added to file names'
-    write (*, fmt_ctd) '(to be used with with -nostack)'
+    write (*, fmt) '-nostack', 'do not stack images'
+    write (*, fmt) '-suffix/-S FILENAME', 'suffix that will be added to file names'
+    write (*, fmt_ctd) 'when using -nostack (default: R)'
     write (*, fmt) '-bias FILENAME', 'subtract this master bias'
     write (*, fmt) '-flat FILENAME', 'remove this master flat'
   end subroutine print_help

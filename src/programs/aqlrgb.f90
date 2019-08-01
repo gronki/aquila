@@ -12,7 +12,7 @@ program aqlrgb
   logical :: cfg_equalize = .false.
   logical :: cfg_color_smooth = .false.
   logical :: cfg_save_cube = .true.
-  real(fp) :: smooth_fwhm = 1.5
+  real(fp) :: smooth_fwhm = 2.5
 
   call greeting('aqlrgb')
 
@@ -21,7 +21,7 @@ program aqlrgb
   end if
 
   parse_cli: block
-    integer :: i
+    integer :: i, errno
     character(len = 256) :: arg, buf
     logical :: skip = .false.
 
@@ -38,12 +38,12 @@ program aqlrgb
         if (buf == "" .or. buf(1:1) == '-') error stop "file name expected"
         outfn = buf
         skip = .true.
-      case ('-blur', '-smooth')
+      case ('-smooth')
         cfg_color_smooth = .true.
         call get_command_argument(i + 1, buf)
         if (buf /= "" .and. buf(1:1) /= '-') then
-          read (buf, *) smooth_fwhm
-          skip = .true.
+          read (buf, *, iostat = errno) smooth_fwhm
+          if (errno == 0) skip = .true.
         end if
       case ('-wb', '-equalize')
         cfg_equalize = .true.
@@ -199,8 +199,8 @@ contains
     write (*, fmt) '-split', 'save as 3 files fits rather than one cube'
     write (*, fmt_ctd) 'for example, if image.fits is given to -o, three files'
     write (*, fmt_ctd) 'image.r.fits, image.g.fits, image.b.fits will be written'
-    write (*, fmt) '-blur/-smooth [FWHM]', 'smoothes color while preserving luminance'
-    write (*, fmt_ctd) 'if FWHM not given, default value (1.5) will be used'
+    write (*, fmt) '-smooth [FWHM]', 'smoothes color while preserving luminance'
+    write (*, fmt_ctd) 'if FWHM not given, default value (2.5) will be used'
     write (*, fmt) '-wb/-equalize', 'attempt to make stars white'
     write (*, fmt_ctd) '(only works if background is small)'
     write (*, fmt) '-sqrt/-asinh/-log', 'compress the image levels before saving'

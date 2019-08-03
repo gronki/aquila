@@ -226,7 +226,7 @@ contains
   subroutine finalize(self)
     type(frame_t) :: self
     if (self % auto_allocated .and. associated(self % data)) then
-      print '("'// achar(27) //'[91mfinalizing'// achar(27) //'[0m ", dt)', self
+      print '("' // cf('finalizing','91') // '", 1x, dt)', self
       deallocate(self % data)
     end if
   end subroutine

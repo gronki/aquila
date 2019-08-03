@@ -12,15 +12,21 @@ module globals
 contains
 
   subroutine greeting(progname)
+    use iso_fortran_env, only: compiler_options, compiler_version
     character(len = *), intent(in) :: progname
-    write (*, '(6x,a)') '*** '// achar(27) //'[1m'// trim(progname) &
-    & // achar(27) //'[0m v.' // version // ' ***'
+    write (*, '(a," v.",a)') trim(progname), version
+    write (*, '("built with ",a)') compiler_version()
+    write (*,*)
   end subroutine
 
   pure function cf(s, f)
     character(len = *), intent(in) :: s, f
     character(len = :), allocatable :: cf
+#   ifdef _WIN32
+    cf = trim(s)
+#   else
     cf = achar(27) // '[' // trim(f) // 'm' // trim(s) // achar(27) // '[0m'
+#   endif
   end function
 
 end module

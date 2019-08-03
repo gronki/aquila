@@ -32,7 +32,7 @@ program aqstack
 
   !----------------------------------------------------------------------------!
 
-  call greeting('aqstack')
+  call greeting('aq' // cf('stack','1'))
 
   if (command_argument_count() == 0) then
     call print_help(); stop

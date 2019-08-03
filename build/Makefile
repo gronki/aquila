@@ -40,6 +40,8 @@ include deps.inc
 
 %.o: %.f90
 	$(FC) $(INCLUDE) $(FFLAGS) $(FFLAGS_EXTRA) -c $< -o $@
+%.o: %.F90
+	$(FC) $(INCLUDE) $(CPPFLAGS) $(FFLAGS) $(FFLAGS_EXTRA) -c $< -o $@
 
 $(PROGRAMS): %: $(OBJECTS) %.f90
 	$(FC) $(FFLAGS) $(FFLAGS_EXTRA) $(LDFLAGS) $^ $(LDLIBS) -o $@

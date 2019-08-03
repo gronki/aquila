@@ -16,7 +16,7 @@ program aqlrgb
   logical :: cfg_transf_lum = .false.
   real(fp) :: smooth_fwhm = 2.5
 
-  call greeting('aqlrgb')
+  call greeting('aq' // cf('l','1') // cf('r','1;91') // cf('g','1;92') // cf('b','1;94'))
 
   if (command_argument_count() == 0) then
     call print_help(); stop

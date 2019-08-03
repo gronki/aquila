@@ -96,22 +96,39 @@ contains
 
   !----------------------------------------------------------------------------!
 
-  subroutine outliers(im, sigma, niter, msk, mean, stdev)
+  pure subroutine sigstd(im, mean, stdev, mask)
+    real(fp), intent(in) :: im(:,:)
+    real(fp), intent(out) :: mean, stdev
+    logical, intent(in), optional :: mask(:,:)
+    integer :: nn
+
+    if ( present(mask) ) then
+      nn    = count(mask)
+      mean  = sum(im, mask) / nn
+      stdev = sqrt(sum((im - mean)**2, mask) / (nn - 1))
+    else
+      nn    = size(im)
+      mean  = sum(im) / nn
+      stdev = sqrt(sum((im - mean)**2) / (nn - 1))
+    end if
+  end subroutine
+
+  !----------------------------------------------------------------------------!
+
+  subroutine outliers(im, sigma, niter, msk)
     use ieee_arithmetic, only: ieee_is_normal
 
     real(fp), intent(in) :: im(:,:), sigma
     integer, intent(in) :: niter
     logical, intent(out) :: msk(:,:)
-    real(fp), intent(out) :: mean, stdev
+    real(fp) :: mean, stdev
     integer :: i,nn
 
     msk(:,:) = ieee_is_normal(im)
 
     do i = 1, niter
-      nn    = count(msk)
-      mean  = sum(im, msk) / nn
-      stdev = sqrt(sum((im - mean)**2, msk) / (nn - 1))
-
+      call sigstd(im, mean, stdev, msk)
+      nn = count(msk)
       msk = msk .and. (im >= mean - sigma * stdev) &
                 .and. (im <= mean + sigma * stdev)
 

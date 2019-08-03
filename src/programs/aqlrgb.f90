@@ -12,6 +12,8 @@ program aqlrgb
   logical :: cfg_equalize = .false.
   logical :: cfg_color_smooth = .false.
   logical :: cfg_save_cube = .true.
+  logical :: cfg_background = .false.
+  logical :: cfg_transf_lum = .false.
   real(fp) :: smooth_fwhm = 2.5
 
   call greeting('aqlrgb')
@@ -49,12 +51,29 @@ program aqlrgb
         cfg_equalize = .true.
       case ('-asinh')
         transform = 'asinh'
+      case ('-asinh2')
+        transform = 'asinh'
+        cfg_transf_lum = .true.
       case ('-sqrt')
         transform = 'sqrt'
-      case ('-log','-ln')
+      case ('-sqrt2')
+        transform = 'sqrt'
+        cfg_transf_lum = .true.
+      case ('-log')
         transform = 'log'
+      case ('-log2')
+        transform = 'log'
+        cfg_transf_lum = .true.
       case ('-split')
         cfg_save_cube = .false.
+      case ('-bg', '-background')
+        cfg_background = .true.
+      case ('-best')
+        transform = 'asinh'
+        cfg_background = .true.
+        cfg_equalize = .true.
+        cfg_color_smooth = .true.
+        smooth_fwhm = 3
       case ("-h", "-help")
         call print_help(); stop
       case default
@@ -90,12 +109,77 @@ program aqlrgb
       end if
     end if
 
+    if (cfg_equalize .or. cfg_background) then
+      perform_equalize: block
+        use statistics, only: outliers, sigstd
+        use ieee_arithmetic, only: ieee_is_normal
+        logical, dimension(:,:), allocatable :: mask, maskbg
+        real(fp), dimension(:,:), allocatable :: L
+        integer :: i, j, sz(2)
+        integer, parameter :: margin = 64
+        real(fp) :: coeff, mean, stdev, bg(3)
+
+        mask = ieee_is_normal(frame_g % data)
+        allocate(maskbg, mold = mask)
+        sz = shape(mask)
+        mask(1:margin, :) = .false.
+        mask(sz(1) - margin + 1:, :) = .false.
+        mask(:, 1:margin) = .false.
+        mask(:, sz(2) - margin + 1:) = .false.
+
+        L = Lum(frame_r % data, frame_g % data, frame_b % data)
+
+        call outliers(L, 3.0_fp, 24, maskbg)
+        call sigstd(L, mean, stdev, maskbg)
+        maskbg = maskbg .and. mask
+        mask = mask .and. (L > mean + 5 * stdev)
+
+        associate (nbg => count(maskbg))
+          bg(1) = sum(frame_r % data, maskbg) / nbg
+          bg(2) = sum(frame_g % data, maskbg) / nbg
+          bg(3) = sum(frame_b % data, maskbg) / nbg
+        end associate
+
+        write (0, '("stars ", f4.1, "% surface, background ", f4.1, "%")') &
+        &     100 * real(count(mask)) / size(mask),     &
+        &     100 * real(count(maskbg)) / size(maskbg)
+
+        write (0, '("' // cf('background', '93') // ' R,G,B = ", 3f6.1)') bg
+
+        if ( cfg_background ) then
+          write (0, '("bkg R-G = ", f8.1)') bg(1) - bg(2)
+          frame_r % data = frame_r % data - (bg(1) - bg(2))
+          write (0, '("bkg B-G = ", f8.1)') bg(3) - bg(2)
+          frame_b % data = frame_b % data - (bg(3) - bg(2))
+          associate (nbg => count(maskbg))
+            bg(1) = sum(frame_r % data, maskbg) / nbg
+            bg(2) = sum(frame_g % data, maskbg) / nbg
+            bg(3) = sum(frame_b % data, maskbg) / nbg
+          end associate
+        end if
+
+        if (cfg_equalize) then
+          associate (x => frame_g % data - bg(2), y => frame_r % data - bg(1))
+            coeff = sum(x * y, mask) / sum(x**2, mask)
+            print '("R:G = ", f8.3)', coeff
+            frame_r % data = bg(1) + (frame_r % data - bg(1)) / coeff
+          end associate
+
+          associate (x => frame_g % data - bg(2), y => frame_b % data - bg(3))
+            coeff = sum(x * y, mask) / sum(x**2, mask)
+            print '("B:G = ", f8.3)', coeff
+            frame_b % data = bg(3) + (frame_b % data - bg(3)) / coeff
+          end associate
+        end if
+      end block perform_equalize
+    end if
+
     if (cfg_color_smooth) then
       perform_color_smooth: block
         real(fp), dimension(:,:), allocatable :: krn, buf
 
         if (.not. associated(frame_l % data)) then
-          frame_l = frame_r % data + frame_g % data + frame_b % data
+          frame_l = Lum(frame_r % data, frame_g % data, frame_b % data)
         end if
 
         krn = gausskrn_alloc(smooth_fwhm)
@@ -113,39 +197,8 @@ program aqlrgb
       end block perform_color_smooth
     end if
 
-    if (cfg_equalize .or. transform /= '') then
-      perform_equalize: block
-        logical, dimension(:,:), allocatable :: mask
-        integer :: i, j, sz(2)
-        integer, parameter :: margin = 64
-        real(fp) :: coeff
-
-        associate (combined => (frame_r % data + 2 * frame_g % data + frame_b % data) / 4)
-          mask = combined > (sum(combined) / size(combined))
-        end associate
-
-        sz = shape(mask)
-        mask(1:margin, :) = .false.
-        mask(sz(1) - margin + 1:, :) = .false.
-        mask(:, 1:margin) = .false.
-        mask(:, sz(2) - margin + 1:) = .false.
-
-        associate (x => frame_g % data, y => frame_r % data)
-          coeff = sum(sqrt(x) * y, mask) / sum(sqrt(x) * x, mask)
-          print '("R:G = ", f8.3)', coeff
-          y = y / coeff
-        end associate
-
-        associate (x => frame_g % data, y => frame_b % data)
-          coeff = sum(sqrt(x) * y, mask) / sum(sqrt(x) * x, mask)
-          print '("B:G = ", f8.3)', coeff
-          y = y / coeff
-        end associate
-      end block perform_equalize
-    end if
-
     if (associated(frame_l % data)) then
-      do_lrgb: associate (corr => (frame_l % data) / (frame_r % data + frame_g % data + frame_b % data))
+      do_lrgb: associate (corr => (frame_l % data) / Lum(frame_r % data, frame_g % data, frame_b % data))
         frame_r % data(:,:) = corr * frame_r % data(:,:)
         frame_g % data(:,:) = corr * frame_g % data(:,:)
         frame_b % data(:,:) = corr * frame_b % data(:,:)
@@ -154,22 +207,24 @@ program aqlrgb
 
     if (transform /= '') then
       write (0, '("preforming transform on the image: ", a)') transform
-      select case (transform)
-      case ('sqrt')
-        frame_r % data(:,:) = sqrt(frame_r % data(:,:))
-        frame_g % data(:,:) = sqrt(frame_g % data(:,:))
-        frame_b % data(:,:) = sqrt(frame_b % data(:,:))
-      case ('asinh')
-        frame_r % data(:,:) = asinh(frame_r % data(:,:))
-        frame_g % data(:,:) = asinh(frame_g % data(:,:))
-        frame_b % data(:,:) = asinh(frame_b % data(:,:))
-      case ('log')
-        frame_r % data(:,:) = log(frame_r % data(:,:))
-        frame_g % data(:,:) = log(frame_g % data(:,:))
-        frame_b % data(:,:) = log(frame_b % data(:,:))
-      case default
-        error stop 'transform?'
-      end select
+      if ( cfg_transf_lum ) then
+        write (0, *) 'transform of luminance'
+        transform_lum: block
+          real(fp), allocatable :: x(:,:), y(:,:)
+          x = Lum(frame_r % data, frame_g % data, frame_b % data)
+          allocate(y, mold = x)
+          call apply_transform(transform, x, y)
+          x = y / x
+          frame_r % data(:,:) = frame_r % data(:,:) * x
+          frame_g % data(:,:) = frame_g % data(:,:) * x
+          frame_b % data(:,:) = frame_b % data(:,:) * x
+        end block transform_lum
+      else
+        write (0, *) 'transform of colors'
+        call apply_transform(transform, frame_r % data, frame_r % data)
+        call apply_transform(transform, frame_g % data, frame_g % data)
+        call apply_transform(transform, frame_b % data, frame_b % data)
+      end if
     end if
 
     if (cfg_save_cube) then
@@ -190,6 +245,29 @@ program aqlrgb
 
 contains
 
+  elemental real(fp) function Lum(R,G,B) result(L)
+    real(fp), intent(in) :: R, G, B
+    L = R + 1.5 * G + 0.7 * B
+    L = L / 3
+  end function
+
+  subroutine apply_transform(transf, x, y)
+    character(len = 16) :: transf
+    real(fp), intent(in) :: x(:,:)
+    real(fp), intent(inout) :: y(:,:)
+    real(fp), parameter :: a = 300
+    select case (transf)
+    case ('sqrt')
+      y = sqrt(1 + 2 * x / a) - 1
+    case ('asinh')
+      y = asinh(x / a)
+    case ('log')
+      y = log(1 + x / a) - 1
+    case default
+        error stop 'transform?'
+    end select
+  end subroutine
+
   subroutine print_help
     character(len = *), parameter :: fmt = '(a28, 2x, a)', fmt_ctd = '(30x, a)'
     write (*, '(a)') 'prepares the aligned images for RGB processing'
@@ -204,6 +282,7 @@ contains
     write (*, fmt) '-wb/-equalize', 'attempt to make stars white'
     write (*, fmt_ctd) '(only works if background is small)'
     write (*, fmt) '-sqrt/-asinh/-log', 'compress the image levels before saving'
+    write (*, fmt) '-sqrt2/-asinh2/-log2', 'same but using luminosity'
     write (*, fmt) '-h[elp]', 'prints help'
   end subroutine
 

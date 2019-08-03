@@ -492,7 +492,7 @@ contains
 
     if (status == 0) then
       self % fn = fn
-      
+
       call ftgiou(un, status)
       call ftdkopn(un, fn, 0, bsize, status)
 

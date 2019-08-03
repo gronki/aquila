@@ -8,7 +8,7 @@ FFLAGS = -O3 -funsafe-math-optimizations $(ARCHFLAGS) -fopenmp
 FFLAGS_EXTRA := -fno-backtrace -fimplicit-none -ffree-line-length-none \
 				  -pedantic -Wall -Wno-unused-dummy-argument -Warray-temporaries
 
-LDLIBS += -lcfitsio
+LDLIBS += -lcfitsio -lpng
 INCLUDE += -I/usr/include
 
 ifeq ($(USER),root)
@@ -20,9 +20,9 @@ endif
 VPATH = ../src/modules:../src/programs:../src/test
 PROGRAMS = aqstack aqlrgb
 TESTS = test_transforms test_background test_kernels test_findstar test_legacy_align \
-			test_framehandling test_addsuffix test_deconvolution
+			test_framehandling test_addsuffix test_deconvolution test_png
 OBJECTS = kernels.o statistics.o convolution.o globals.o transforms.o \
-				  findstar.o legacy_align.o framehandling.o
+				  findstar.o legacy_align.o framehandling.o png.o
 
 all: $(PROGRAMS)
 

@@ -60,6 +60,7 @@ program aqstack
       case ("bias")
         if (i == 1) then
           strategy = "bias"
+          method = 'median'
           cfg_estimate_noise = .true.
           command_argument_mask(i) = .false.
         end if
@@ -67,6 +68,7 @@ program aqstack
       case ("dark")
         if (i == 1) then
           strategy = "dark"
+          method = 'median'
           cfg_clean_cosmics = .true.
           command_argument_mask(i) = .false.
         end if
@@ -94,23 +96,23 @@ program aqstack
           command_argument_mask(i) = .false.
         end if
 
-      case ("-mdn", "-median")
+      case ("-median")
         method = "median"
         command_argument_mask(i) = .false.
 
-      case ("-avg", "-average")
+      case ("-average")
         method = "average"
         command_argument_mask(i) = .false.
 
-      case ("-noise", "-estimate-noise")
+      case ("-estimate-noise")
         cfg_estimate_noise = .true.
         command_argument_mask(i) = .false.
 
-      case ("-process", "-process-only", "-nostack")
+      case ("-nostack")
         cfg_process_only = .true.
         command_argument_mask(i) = .false.
 
-      case ("-al", "-align")
+      case ("-align")
         cfg_align_frames = .true.
         command_argument_mask(i) = .false.
 
@@ -127,7 +129,7 @@ program aqstack
           command_argument_mask(i : i + 1) = .false.
         end if
 
-      case ("-o", "-O", "-output")
+      case ("-o","-output")
         if (.not. command_argument_mask(i + 1)) then
           error stop "output file name expected"
         else
@@ -159,7 +161,7 @@ program aqstack
           command_argument_mask(i : i + 1) = .false.
         end if
 
-      case ("-ref", "-align-reference")
+      case ("-ref", "-reference")
         if (.not. command_argument_mask(i + 1)) then
           error stop "reference frame file name expected"
         else
@@ -207,11 +209,6 @@ program aqstack
     write (stderr, fmt) 'method', trim(method)
     write (stderr, fmt) 'output', trim(output_fn)
   end block verify_cli_arguments
-
-  !----------------------------------------------------------------------------!
-
-  if (method /= "average") error stop "methods other than average&
-      & are not yet implemented"
 
   !----------------------------------------------------------------------------!
 
@@ -401,11 +398,23 @@ program aqstack
       end block save_processed
     else
       actual_stack: block
+        use statistics, only: quickselect
         type(image_frame_t) :: frame_out
+        real(fp) :: a(n)
+        integer :: i,j
         allocate(frame_out % data(size(buffer, 1), size(buffer, 2)))
         select case (method)
         case ('average')
           frame_out % data(:,:) = sum(buffer(:,:,1:n), 3) / n
+        case ('median')
+          !$omp parallel do private(i, j, a)
+          do j = 1, size(buffer,2)
+            do i = 1, size(buffer,1)
+              a(:) = buffer(i,j,:)
+              frame_out % data(i,j) = quickselect(a, (n + 1) / 2)
+            end do
+          end do
+          !$omp end parallel do
         case default
           error stop "this averaging method is not supported"
         end select
@@ -444,7 +453,8 @@ contains
     write (*, '(a)') 'usage: aqstack [STRATEGY] [OPTIONS] FILE1 [FILE2 ...] -o OUTPUT'
     write (*, '(a)') 'STRATEGY can be: bias, dark, flat, process, stack'
     write (*, fmt) '-o/-O/-output FILENAME', 'specifies the output filename'
-    write (*, fmt) '-avg/-average', 'compute by average value'
+    write (*, fmt) '-average', 'stack by average value'
+    write (*, fmt) '-median', 'stack by median'
     write (*, fmt) '-estimate-noise', 'estimate noise while computing bias'
     write (*, fmt) '-align', 'align frames'
     write (*, fmt) '-ref FILENAME', 'align to this frame rather than first frame'

@@ -68,7 +68,6 @@ program aqstack
       case ("dark")
         if (i == 1) then
           strategy = "dark"
-          method = 'median'
           cfg_clean_cosmics = .true.
           command_argument_mask(i) = .false.
         end if
@@ -216,8 +215,32 @@ program aqstack
 
     type(image_frame_t), dimension(:), allocatable :: frames
     real(fp), allocatable, target :: buffer(:,:,:)
+    type(image_frame_t) :: frame_bias, frame_dark, frame_flat
     integer :: i, n, errno
     integer :: nx, ny
+
+
+    read_calibration_frames: block
+      if (bias_fn /= "") then
+        if (strategy == "bias") error stop "why subtract bias from bias?"
+        call frame_bias % read_fits(bias_fn)
+        write (0, '(a12,": ",a)') 'bias', trim(bias_fn)
+      end if
+
+      if (dark_fn /= "") then
+        if (strategy == "dark") error stop "why subtract dark from dark?"
+        call frame_dark % read_fits(dark_fn)
+        write (0, '(a12,": ",a)') 'dark', trim(dark_fn)
+      end if
+
+      if (flat_fn /= "") then
+        if (strategy == "flat") error stop "why subtract flat from flat?"
+        call frame_flat % read_fits(flat_fn)
+        frame_flat % data(:,:) = frame_flat % data &
+          / (sum(frame_flat % data) / (nx * ny))
+        write (0, '(a12,": ",a)') 'flat', trim(flat_fn)
+      end if
+    end block read_calibration_frames
 
     n = 0
     allocate(frames(nframes))
@@ -247,6 +270,14 @@ program aqstack
           cycle read_frames_loop
         end if
 
+        if (associated(frame_bias % data)) then
+          cur_buffer(:,:) = cur_buffer(:,:) - frame_bias % data(:,:)
+        end if
+
+        if (associated(frame_flat % data)) then
+          cur_buffer(:,:) = cur_buffer(:,:) / frame_flat % data(:,:)
+        end if
+
         ! print some frame statistics for quick check
         frame_stats: block
           real(fp) :: avg, std
@@ -264,6 +295,7 @@ program aqstack
             print '(a24, f10.1, f9.1, f10.2, a9)', trim(input_fn(i)), avg, std, cur_frame % exptime, '--'
           end if
         end block frame_stats
+
       end associate
 
       n = n + 1
@@ -271,43 +303,6 @@ program aqstack
 
     if (n == 0) then
       error stop "no frames to stack"
-    end if
-
-    if (bias_fn /= "") then
-      if (strategy == "bias") error stop "why subtract bias from bias?"
-      subtract_bias: block
-        integer :: i
-        type(image_frame_t) :: frame_calib
-
-        call frame_calib % read_fits(bias_fn)
-
-        write (0, *) "subtracting bias..."
-        !$omp parallel do
-        do i = 1, n
-          buffer(:,:,i) = buffer(:,:,i) - frame_calib % data(:,:)
-        end do
-        !$omp end parallel do
-      end block subtract_bias
-    end if
-
-    if (flat_fn /= "") then
-      if (strategy == "flat") error stop "why subtract flat from flat?"
-      subtract_flat: block
-        integer :: i
-        type(image_frame_t) :: frame_calib
-
-        call frame_calib % read_fits(bias_fn)
-
-        frame_calib % data(:,:) = frame_calib % data &
-          / (sum(frame_calib % data) / (nx * ny))
-
-        write (0, *) "removing flat..."
-        !$omp parallel do
-        do i = 1, n
-          buffer(:,:,i) = buffer(:,:,i) / frame_calib % data(:,:)
-        end do
-        !$omp end parallel do
-      end block subtract_flat
     end if
 
     if (cfg_clean_cosmics) then
@@ -410,7 +405,7 @@ program aqstack
           !$omp parallel do private(i, j, a)
           do j = 1, size(buffer,2)
             do i = 1, size(buffer,1)
-              a(:) = buffer(i,j,:)
+              a(:) = buffer(i,j,1:n)
               frame_out % data(i,j) = quickselect(a, (n + 1) / 2)
             end do
           end do

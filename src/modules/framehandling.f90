@@ -497,7 +497,11 @@ contains
       call ftdkopn(un, fn, 0, bsize, status)
 
       call self % loadkw(un, 'EXPTIME')
+      if ('EXPTIME' .in. self % hdr) &
+        self % exptime = self % hdr % get_float('EXPTIME')
       call self % loadkw(un, 'CCD-TEMP')
+      if ('CCD-TEMP' .in. self % hdr) &
+        self % ccdtemp = self % hdr % get_float('CCD-TEMP')
       call self % loadkw(un, 'FRAME')
       call self % loadkw(un, 'DATE-OBS')
 

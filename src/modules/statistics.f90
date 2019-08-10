@@ -1,7 +1,18 @@
 module statistics
 
   use globals
+  use ieee_arithmetic, only: ieee_is_normal
   implicit none
+  private :: average_safe_1d, average_safe_2d, average_safe_3d
+  private :: average_fast_1d, average_fast_2d, average_fast_3d
+
+  interface average_safe
+    module procedure :: average_safe_1d, average_safe_2d, average_safe_3d
+  end interface
+
+  interface average
+    module procedure :: average_fast_1d, average_fast_2d, average_fast_3d
+  end interface
 
 contains
 
@@ -138,5 +149,82 @@ contains
   end subroutine
 
   !----------------------------------------------------------------------------!
+
+  pure function average_fast_1d(x) result(m)
+    real(fp), intent(in) :: x(:)
+    real(fp) :: m
+    m = sum(x) / size(x)
+  end function
+
+  pure function average_fast_2d(x) result(m)
+    real(fp), intent(in) :: x(:,:)
+    real(fp) :: m
+    m = sum(x) / size(x)
+  end function
+
+  pure function average_fast_3d(x) result(m)
+    real(fp), intent(in) :: x(:,:,:)
+    real(fp) :: m
+    m = sum(x) / size(x)
+  end function
+
+  !----------------------------------------------------------------------------!
+
+  pure function average_safe_1d(x) result(m)
+    use iso_fortran_env, only: int64
+    real(fp), intent(in) :: x(:)
+    real(fp) :: m
+    integer :: i
+    integer(int64) :: n
+
+    m = 0; n = 0
+    do i = 1, size(x)
+      if (ieee_is_normal(x(i))) then
+        m = m + x(i)
+        n = n + 1
+      end if
+    end do
+    m = m / n
+  end function
+
+  pure function average_safe_2d(x) result(m)
+    use iso_fortran_env, only: int64
+    real(fp), intent(in) :: x(:,:)
+    real(fp) :: m
+    integer :: i, j
+    integer(int64) :: n
+
+    m = 0; n = 0
+    do j = 1, size(x, 2)
+      do i = 1, size(x, 1)
+        if (ieee_is_normal(x(i,j))) then
+          m = m + x(i,j)
+          n = n + 1
+        end if
+      end do
+    end do
+    m = m / n
+  end function
+
+  pure function average_safe_3d(x) result(m)
+    use iso_fortran_env, only: int64
+    real(fp), intent(in) :: x(:,:,:)
+    real(fp) :: m
+    integer :: i, j, k
+    integer(int64) :: n
+
+    m = 0; n = 0
+    do k = 1, size(x, 3)
+      do j = 1, size(x, 2)
+        do i = 1, size(x, 1)
+          if (ieee_is_normal(x(i,j,k))) then
+            m = m + x(i,j,k)
+            n = n + 1
+          end if
+        end do
+      end do
+    end do
+    m = m / n
+  end function
 
 end module

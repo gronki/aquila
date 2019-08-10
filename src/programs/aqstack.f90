@@ -4,6 +4,7 @@ program aqstack
 
   use globals
   use framehandling
+  use statistics
   use findstar, only: extended_source
 
   !----------------------------------------------------------------------------!
@@ -236,8 +237,12 @@ program aqstack
       if (flat_fn /= "") then
         if (strategy == "flat") error stop "why subtract flat from flat?"
         call frame_flat % read_fits(flat_fn)
-        frame_flat % data(:,:) = frame_flat % data &
-          / (sum(frame_flat % data) / (nx * ny))
+        associate (n1 => size(frame_flat % data, 1), n2 => size(frame_flat % data, 2))
+          associate (calibarea => frame_flat % data(33:n1-32, 33:n2-32))
+            frame_flat % data(:,:) = frame_flat % data &
+              / average_safe(calibarea)
+          end associate
+        end associate
         write (0, '(a12,": ",a)') 'flat', trim(flat_fn)
       end if
     end block read_calibration_frames
@@ -400,7 +405,13 @@ program aqstack
         allocate(frame_out % data(size(buffer, 1), size(buffer, 2)))
         select case (method)
         case ('average')
-          frame_out % data(:,:) = sum(buffer(:,:,1:n), 3) / n
+          !$omp parallel do private(i, j)
+          do j = 1, size(buffer,2)
+            do i = 1, size(buffer,1)
+              frame_out % data(i,j) = average(buffer(i,j,1:n))
+            end do
+          end do
+          !$omp end parallel do
         case ('median')
           !$omp parallel do private(i, j, a)
           do j = 1, size(buffer,2)
@@ -414,7 +425,7 @@ program aqstack
           error stop "this averaging method is not supported"
         end select
 
-        frame_out % exptime = average_safe_1d(frames(1:n) % exptime)
+        frame_out % exptime = average_safe(frames(1:n) % exptime)
         call frame_out % write_fits(output_fn)
 
         if ( cfg_estimate_noise ) then
@@ -478,13 +489,5 @@ contains
     call convol_fix(im, krn, im2, 'r')
     call aqfindstar(im2, lst, limit = 256)
   end subroutine
-
-  pure function average_safe_1d(x) result(m)
-    real(fp), intent(in) :: x(:)
-    real(fp) :: m
-    logical :: mask(size(x))
-    mask(:) = ieee_is_normal(x)
-    m = sum(x, mask) / count(mask)
-  end function
 
 end program

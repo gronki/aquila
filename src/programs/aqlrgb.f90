@@ -1,20 +1,23 @@
 program aqlrgb
 
   use globals
-  use framehandling, only: image_frame_t, add_suffix
+  use framehandling
   use convolutions, only: convol_fix
   use kernels, only: gausskrn_alloc
 
   implicit none
   character(len = 256) :: outfn = "lrgb.fits"
-  character(len = 16) :: transform = ""
+  character(len = 8) :: transform = ""
+  logical :: is_lrgb = .false.
   character(len = 256), allocatable :: fnames(:)
+  real(fp), allocatable, target :: cube(:,:,:)
   logical :: cfg_equalize = .false.
   logical :: cfg_color_smooth = .false.
   logical :: cfg_save_cube = .true.
   logical :: cfg_background = .false.
   logical :: cfg_transf_lum = .false.
   real(fp) :: smooth_fwhm = 2.5
+  integer :: nx, ny, nc
 
   call greeting('aq' // cf('l','1') // cf('r','1;91') // cf('g','1;92') // cf('b','1;94'))
 
@@ -54,6 +57,8 @@ program aqlrgb
       case ('-asinh2')
         transform = 'asinh'
         cfg_transf_lum = .true.
+      case ('-lin')
+        transform = ''
       case ('-sqrt')
         transform = 'sqrt'
       case ('-sqrt2')
@@ -86,28 +91,23 @@ program aqlrgb
   if (size(fnames) < 3 .or. size(fnames) > 4) then
     call print_help(); error stop "Incorrect number of files (must be 3 or 4)."
   end if
+  is_lrgb = (size(fnames) == 4)
 
   do_rgb: block
     type(image_frame_t) :: frame_r, frame_g, frame_b, frame_l
-    logical :: with_luminance
 
-    with_luminance = (size(fnames) == 4)
+    call read_fits_naxes(fnames(1), nx, ny)
+    allocate(cube(nx, ny, 4))
 
-    if (with_luminance) call frame_l % read_fits(fnames(1))
-    call frame_r % read_fits(fnames(merge(2, 1, with_luminance)))
-    call frame_g % read_fits(fnames(merge(3, 2, with_luminance)))
-    call frame_b % read_fits(fnames(merge(4, 3, with_luminance)))
+    if (is_lrgb) call frame_l % read_fits(fnames(1))
 
-    if (any(shape(frame_g % data) /= shape(frame_r % data)) &
-    & .or. any(shape(frame_g % data) /= shape(frame_b % data))) then
-      error stop "color image frame size mismatch"
-    end if
-
-    if (with_luminance) then
-      if (any(shape(frame_g % data) /= shape(frame_l % data))) then
-        error stop "color frame size must match luminance"
-      end if
-    end if
+    frame_r % data => cube(:,:,1)
+    call frame_r % read_fits(fnames(merge(2, 1, is_lrgb)))
+    frame_g % data => cube(:,:,2)
+    call frame_g % read_fits(fnames(merge(3, 2, is_lrgb)))
+    frame_b % data => cube(:,:,3)
+    call frame_b % read_fits(fnames(merge(4, 3, is_lrgb)))
+    cube(:,:,4) = 1
 
     if (cfg_equalize .or. cfg_background) then
       perform_equalize: block
@@ -131,13 +131,13 @@ program aqlrgb
 
         call outliers(L, 3.0_fp, 24, maskbg)
         call sigstd(L, mean, stdev, maskbg)
-        maskbg = maskbg .and. mask
+        maskbg = mask .and. (L < mean + 3 * stdev)
         mask = mask .and. (L > mean + 5 * stdev)
 
         associate (nbg => count(maskbg))
-          bg(1) = sum(frame_r % data, maskbg) / nbg
-          bg(2) = sum(frame_g % data, maskbg) / nbg
-          bg(3) = sum(frame_b % data, maskbg) / nbg
+          do i = 1, 3
+            bg(i) = sum(cube(:,:,i), maskbg) / nbg
+          end do
         end associate
 
         write (0, '("stars ", f4.1, "% surface, background ", f4.1, "%")') &
@@ -152,9 +152,9 @@ program aqlrgb
           write (0, '("bkg B-G = ", f8.1)') bg(3) - bg(2)
           frame_b % data = frame_b % data - (bg(3) - bg(2))
           associate (nbg => count(maskbg))
-            bg(1) = sum(frame_r % data, maskbg) / nbg
-            bg(2) = sum(frame_g % data, maskbg) / nbg
-            bg(3) = sum(frame_b % data, maskbg) / nbg
+            do i = 1, 3
+              bg(i) = sum(cube(:,:,i), maskbg) / nbg
+            end do
           end associate
         end if
 
@@ -206,39 +206,61 @@ program aqlrgb
     end if
 
     if (transform /= '') then
-      write (0, '("preforming transform on the image: ", a)') transform
-      if ( cfg_transf_lum ) then
-        write (0, *) 'transform of luminance'
-        transform_lum: block
-          real(fp), allocatable :: x(:,:), y(:,:)
-          x = Lum(frame_r % data, frame_g % data, frame_b % data)
-          allocate(y, mold = x)
-          call apply_transform(transform, x, y)
-          x = y / x
-          frame_r % data(:,:) = frame_r % data(:,:) * x
-          frame_g % data(:,:) = frame_g % data(:,:) * x
-          frame_b % data(:,:) = frame_b % data(:,:) * x
-        end block transform_lum
-      else
-        write (0, *) 'transform of colors'
-        call apply_transform(transform, frame_r % data, frame_r % data)
-        call apply_transform(transform, frame_g % data, frame_g % data)
-        call apply_transform(transform, frame_b % data, frame_b % data)
-      end if
+      do_transform: block
+        integer :: i
+        write (0, '("preforming transform on the image: ", a)') transform
+        if ( cfg_transf_lum ) then
+          write (0, *) 'transform of luminance'
+          transform_lum: block
+            real(fp), allocatable :: x(:,:), y(:,:)
+            if (associated(frame_l % data)) then
+              x = frame_l % data
+            else
+              x = Lum(frame_r % data, frame_g % data, frame_b % data)
+            end if
+            allocate(y, mold = x)
+            call apply_transform(transform, x, y)
+            x = y / x
+            deallocate(y)
+            do i = 1, 3
+              cube(:,:,i) = cube(:,:,i) * x
+            end do
+          end block transform_lum
+        else
+          write (0, *) 'transform of colors'
+          call apply_transform(transform, cube(:,:,1:3), cube(:,:,1:3))
+        end if
+      end block do_transform
     end if
 
     if (cfg_save_cube) then
-      call write_fits_3d(outfn, frame_r, frame_g, frame_b)
+      if (endswith(outfn, '.png')) then
+        block
+          use png
+          real(fp) :: vmin, vmax, av, st
+          real(fp), allocatable :: l(:,:)
+          l = Lum(frame_r % data(64:nx-64,64:ny-64), &
+          &   frame_g % data(64:nx-64,64:ny-64),     &
+          &   frame_b % data(64:nx-64,64:ny-64))
+          av = sum(l) / size(l)
+          st = sqrt(sum((l - av)**2) / (size(l) - 1))
+          deallocate(l)
+          if (transform /= '') then
+            vmin = av - 1.2 * st
+            vmax = av + 15 * st
+          else
+            vmin = av - 0.4 * st
+            vmax = av + 6 * st
+          end if
+          call write_png(outfn, (cube(:,:,1:3) - vmin) / (vmax - vmin))
+        end block
+      else
+        call write_fits_3d(outfn, cube(:,:,1:3))
+      end if
     else
-      save_3files: block
-        character(len = 256) :: outfn_suff
-        call add_suffix(outfn, '.r', outfn_suff)
-        call frame_r % write_fits(outfn_suff)
-        call add_suffix(outfn, '.g', outfn_suff)
-        call frame_g % write_fits(outfn_suff)
-        call add_suffix(outfn, '.b', outfn_suff)
-        call frame_b % write_fits(outfn_suff)
-      end block save_3files
+      call frame_r % write_fits(add_suffix(outfn, '.r'))
+      call frame_g % write_fits(add_suffix(outfn, '.g'))
+      call frame_b % write_fits(add_suffix(outfn, '.b'))
     end if
 
   end block do_rgb
@@ -247,16 +269,16 @@ contains
 
   elemental real(fp) function Lum(R,G,B) result(L)
     real(fp), intent(in) :: R, G, B
-    L = R + 1.5 * G + 0.7 * B
-    L = L / 3
+    real(fp), parameter :: wr = 1.0, wg = 1.5, wb = 0.7
+    L = (wr * R + wg * G + wb * B) / (wr + wg + wb)
   end function
 
-  subroutine apply_transform(transf, x, y)
-    character(len = 16) :: transf
-    real(fp), intent(in) :: x(:,:)
-    real(fp), intent(inout) :: y(:,:)
+  elemental subroutine apply_transform(tt, x, y)
+    character(len = *), intent(in) :: tt
+    real(fp), intent(in) :: x
+    real(fp), intent(out) :: y
     real(fp), parameter :: a = 300
-    select case (transf)
+    select case (tt)
     case ('sqrt')
       y = sqrt(1 + 2 * x / a) - 1
     case ('asinh')
@@ -264,7 +286,7 @@ contains
     case ('log')
       y = log(1 + x / a) - 1
     case default
-        error stop 'transform?'
+      error stop 'transform?'
     end select
   end subroutine
 
@@ -274,6 +296,7 @@ contains
     write (*, '(a)') 'usage: aqlrgb [L] R G B [-o FILE] [options]'
     write (*, '(a)') 'R, G, B are color frames and L is optional luminance'
     write (*, fmt) '-o/-output', 'specifies the output file name'
+    write (*, fmt_ctd) '(allowed formats: fits, png)'
     write (*, fmt) '-split', 'save as 3 files fits rather than one cube'
     write (*, fmt_ctd) 'for example, if image.fits is given to -o, three files'
     write (*, fmt_ctd) 'image.r.fits, image.g.fits, image.b.fits will be written'
@@ -286,14 +309,15 @@ contains
     write (*, fmt) '-h[elp]', 'prints help'
   end subroutine
 
-  subroutine write_fits_3d(fn, frame_r, frame_g, frame_b, errno)
+  subroutine write_fits_3d(fn, cube, errno)
     use framehandling, only: frame_t
     use iso_fortran_env, only: real32
-    class(frame_t), intent(in) :: frame_r, frame_g, frame_b
+    ! class(frame_t), intent(in) :: frame_r, frame_g, frame_b
+    real(fp), intent(in) :: cube(:,:,:)
     character(len = *), intent(in) :: fn
     integer, intent(inout), optional :: errno
     integer :: ftiostat, un
-    real(real32), allocatable :: cube(:,:,:)
+    real(real32), allocatable :: cube2(:,:,:)
 
     ftiostat = 0
 
@@ -309,13 +333,9 @@ contains
       end if
     end if
 
-    allocate(cube(size(frame_g % data, 1), size(frame_g % data, 2), 3))
-    cube(:,:,1) = frame_r % data(:,:)
-    cube(:,:,2) = frame_g % data(:,:)
-    cube(:,:,3) = frame_b % data(:,:)
-    call ftphps(un, -32, 3, shape(cube), ftiostat)
-    call ftppre(un, 1, 1, size(cube), cube, ftiostat)
-    deallocate(cube)
+    cube2 = real(cube, real32)
+    call ftphps(un, -32, 3, shape(cube2), ftiostat)
+    call ftppre(un, 1, 1, size(cube2), cube2, ftiostat)
 
     call ftclos(un, ftiostat)
     call ftfiou(un, ftiostat)

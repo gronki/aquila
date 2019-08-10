@@ -604,9 +604,9 @@ contains
 
   !----------------------------------------------------------------------------!
 
-  subroutine add_suffix(fn, suff, fn_out)
+  function add_suffix(fn, suff) result(fn_out)
     character(len = *), intent(in) :: fn, suff
-    character(len = *), intent(out) :: fn_out
+    character(len = :), allocatable :: fn_out
     integer :: idot
 
     idot = index(fn, '.', back = .True.)
@@ -617,7 +617,20 @@ contains
     else
       fn_out = fn(1:idot-1) // trim(suff) // fn(idot:)
     end if
-  end subroutine
+  end function
+
+  !----------------------------------------------------------------------------!
+
+  pure logical function endswith(buf, suff)
+    character(len = *), intent(in) :: buf, suff
+    integer :: n
+    if (len_trim(buf) >= len_trim(suff)) then
+      n = len_trim(buf)
+      endswith = buf(n - len_trim(suff) + 1 : n) == trim(suff)
+    else
+      endswith = .false.
+    end if
+  end function
 
   !----------------------------------------------------------------------------!
 

@@ -395,8 +395,7 @@ program aqstack
           call frames(1) % write_fits(output_fn)
         else
           do i = 1, n
-            call add_suffix(frames(i) % fn, output_suff, newfn)
-            call frames(i) % write_fits(newfn)
+            call frames(i) % write_fits(add_suffix(frames(i) % fn, output_suff))
           end do
         end if
       end block save_processed

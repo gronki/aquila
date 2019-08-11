@@ -7,14 +7,17 @@ module globals
   integer, parameter :: fp = selected_real_kind(12)
 
   logical :: cfg_verbose = .false.
-  character(len = *), parameter :: version = '190802'
 
 contains
 
   subroutine greeting(progname)
     use iso_fortran_env, only: compiler_options, compiler_version
     character(len = *), intent(in) :: progname
-    write (*, '(a," v.",a)') trim(progname), version
+#   ifdef VERSION
+    write (*, '(a," v.",a)') trim(progname), VERSION
+#   else
+    write (*, '(a)') trim(progname)
+#   endif
     write (*, '("built with ",a)') compiler_version()
     write (*,*)
   end subroutine

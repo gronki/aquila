@@ -2,6 +2,8 @@
 # (c) 2019 Dominik Gronkiewicz <gronki@gmail.com>
 # on MIT license
 
+VERSION = 190811
+
 #-----------------------------------------------------------------------------#
 
 FC := gfortran
@@ -9,6 +11,7 @@ ARCHFLAGS ?= -march=native
 FFLAGS = -O3 -funsafe-math-optimizations $(ARCHFLAGS) -fopenmp
 FFLAGS_EXTRA := -fno-backtrace -fimplicit-none -ffree-line-length-none \
 				  -pedantic -Wall -Wno-unused-dummy-argument -Warray-temporaries
+CPPFLAGS += "-DVERSION='$(VERSION)'"
 
 #-----------------------------------------------------------------------------#
 

@@ -133,6 +133,7 @@ program aqlrgb
         call sigstd(L, mean, stdev, maskbg)
         maskbg = mask .and. (L < mean + 3 * stdev)
         mask = mask .and. (L > mean + 5 * stdev)
+        ! cube(:,:,4) = thrfun((L - mean) / stdev - 4)
 
         associate (nbg => count(maskbg))
           do i = 1, 3
@@ -291,7 +292,7 @@ contains
   end subroutine
 
   subroutine print_help
-    character(len = *), parameter :: fmt = '(a28, 2x, a)', fmt_ctd = '(30x, a)'
+    character(len = *), parameter :: fmt = '(a22, 2x, a)', fmt_ctd = '(24x, a)'
     write (*, '(a)') 'prepares the aligned images for RGB processing'
     write (*, '(a)') 'usage: aqlrgb [L] R G B [-o FILE] [options]'
     write (*, '(a)') 'R, G, B are color frames and L is optional luminance'
@@ -303,9 +304,12 @@ contains
     write (*, fmt) '-smooth [FWHM]', 'smoothes color while preserving luminance'
     write (*, fmt_ctd) 'if FWHM not given, default value (2.5) will be used'
     write (*, fmt) '-wb/-equalize', 'attempt to make stars white'
-    write (*, fmt_ctd) '(only works if background is small)'
+    write (*, fmt_ctd) '(works best if background is small)'
+    write (*, fmt) '-bg/-background', 'attempt to make background black'
+    write (*, fmt_ctd) '(do not use for strong nebulosity)'
     write (*, fmt) '-sqrt/-asinh/-log', 'compress the image levels before saving'
     write (*, fmt) '-sqrt2/-asinh2/-log2', 'same but using luminosity'
+    write (*, fmt_ctd) '(boosts star colors but can kill some details)'
     write (*, fmt) '-h[elp]', 'prints help'
   end subroutine
 

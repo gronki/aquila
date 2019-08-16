@@ -384,6 +384,7 @@ program aqstack
       end block align_frames
     end if
 
+
     if (cfg_process_only) then
       save_processed: block
         integer :: i
@@ -424,7 +425,6 @@ program aqstack
         case default
           error stop "this averaging method is not supported"
         end select
-
         frame_out % exptime = average_safe(frames(1:n) % exptime)
         call frame_out % write_fits(output_fn)
 
@@ -454,11 +454,11 @@ program aqstack
 contains
 
   subroutine print_help
-    character(len = *), parameter :: fmt = '(a28, 2x, a)', &
-                                 fmt_ctd = '(30x, a)'
+    character(len = *), parameter :: fmt = '(a22, 2x, a)', &
+                                 fmt_ctd = '(24x, a)'
     write (*, '(a)') 'usage: aqstack [STRATEGY] [OPTIONS] FILE1 [FILE2 ...] -o OUTPUT'
     write (*, '(a)') 'STRATEGY can be: bias, dark, flat, process, stack'
-    write (*, fmt) '-o/-O/-output FILENAME', 'specifies the output filename'
+    write (*, fmt) '-o/-output FILENAME', 'specifies the output filename'
     write (*, fmt) '-average', 'stack by average value'
     write (*, fmt) '-median', 'stack by median'
     write (*, fmt) '-estimate-noise', 'estimate noise while computing bias'

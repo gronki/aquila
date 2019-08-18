@@ -227,4 +227,23 @@ contains
     m = m / n
   end function
 
+  !----------------------------------------------------------------------------!
+
+  pure subroutine linfit(x, y, a, b)
+    real(fp), dimension(:), intent(in) :: x, y
+    ! logical, dimension(:), intent(in), optional :: mask
+    real(fp), intent(out) :: a, b
+    real(fp) :: xm, ym
+    integer :: n
+
+    if (size(x) /= size(y)) error stop
+
+    n = size(x)
+    xm = sum(x) / n
+    ym = sum(y) / n
+
+    a = sum((x - xm) * (y - ym)) / sum((x - xm)**2)
+    b = sum(y - a * x) / n
+  end subroutine
+
 end module

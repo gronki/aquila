@@ -21,9 +21,11 @@ program aqstack
   logical :: cfg_clean_cosmics = .false.
   logical :: cfg_process_only = .false.
   logical :: cfg_auto_invert = .false.
+  logical :: cfg_normalize = .false.
   logical :: cfg_estimate_noise = .false.
   logical :: cfg_resampling = .false.
   real(fp) :: resample_factor = 1.5
+  integer :: margin = 64
 
   integer :: nframes
 
@@ -114,6 +116,10 @@ program aqstack
 
       case ("-align")
         cfg_align_frames = .true.
+        command_argument_mask(i) = .false.
+
+      case ("-norm", "-normalize")
+        cfg_normalize = .true.
         command_argument_mask(i) = .false.
 
       case ("-resample")
@@ -318,7 +324,7 @@ program aqstack
       write (0, '(a)') 'warning: auto rotation not implemented yet'
     end if
 
-    if (cfg_align_frames .and. n > 1) then
+    if (cfg_align_frames .and. (n > 1 .or. ref_fn /= "")) then
       align_frames: block
         use legacy_align, only: align_xyr, improject
         real(fp), allocatable :: buf_copy(:,:), buffer_resample(:,:,:)
@@ -361,6 +367,10 @@ program aqstack
           call findstar_local(buffer(:,:,i), lst)
           call align_xyr(lst0, lst, mx)
 
+          write (0, '("ALIGN frame(",i0,") matrix:")') i
+          write (0, '(" X --> [",f6.1,2f6.3,"] o [1,X,Y]")') mx(1,:)
+          write (0, '(" Y --> [",f6.1,2f6.3,"] o [1,X,Y]")') mx(2,:)
+
           ! when not resampling, we have only one copy of data, so we copy
           ! each frame to a temporary buffer before projection
           if (.not. cfg_resampling) then
@@ -384,6 +394,40 @@ program aqstack
       end block align_frames
     end if
 
+    if (cfg_normalize) then
+      block_normalize: block
+        use statistics, only: linfit
+        real(fp) :: a, b
+        real(fp), allocatable :: imref(:,:), xx(:), yy(:)
+        logical, allocatable :: mask(:,:)
+        integer :: i, sz(3)
+
+        sz = shape(buffer)
+
+        ! create mean frame to normalize to
+        imref = sum(buffer(:,:,1:n), 3) / n
+
+        ! create mask which excludes edges and the brigtenst pixels
+        allocate(mask(sz(1), sz(2)))
+        mask = imref < (minval(imref) + maxval(imref)) / 2
+        associate (m => margin)
+          mask(:m, :) = .false.; mask(sz(1)-m+1:, :) = .false.
+          mask(:, :m) = .false.; mask(:, sz(2)-m+1:) = .false.
+        end associate
+
+        ! pack it into 1-d array
+        xx = pack(imref, mask)
+        deallocate(imref)
+        allocate(yy, mold = xx)
+
+        do i = 1, n
+          yy(:) = pack(buffer(:,:,i), mask)
+          call linfit(xx, yy, a, b)
+          write (0, '("NORM frame(",i0,") y = ",f6.3,"x + ",f6.1)') i, a, b
+          buffer(:,:,i) = (buffer(:,:,i) - b) / a
+        end do
+      end block block_normalize
+    end if
 
     if (cfg_process_only) then
       save_processed: block
@@ -399,7 +443,7 @@ program aqstack
       end block save_processed
     else
       actual_stack: block
-        use statistics, only: quickselect
+        use statistics
         type(image_frame_t) :: frame_out
         real(fp) :: a(n)
         integer :: i,j

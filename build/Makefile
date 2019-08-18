@@ -2,7 +2,7 @@
 # (c) 2019 Dominik Gronkiewicz <gronki@gmail.com>
 # on MIT license
 
-VERSION = 190811
+VERSION = 190818
 
 #-----------------------------------------------------------------------------#
 

@@ -8,8 +8,8 @@ contains
   !----------------------------------------------------------------------------!
 
   pure subroutine convol(x,k,y)
-    real(fp), dimension(:,:), intent(in) :: x, k
-    real(fp), dimension(:,:), intent(out) :: y
+    real(fp), dimension(:,:), intent(in), contiguous :: x, k
+    real(fp), dimension(:,:), intent(out), contiguous :: y
     real(fp) :: total
     integer :: i, j, ri, rj, i1, j1
 
@@ -19,24 +19,16 @@ contains
     ri = (size(k,1) - 1) / 2
     rj = (size(k,2) - 1) / 2
 
-    do j = 1 + rj, size(x,2) - rj
-      do i = 1 + ri, size(x,1) - ri
-        total = 0
-        do j1 = 1, size(k,2)
-          do i1 = 1, size(k,1)
-            total = total + k(i1, j1) * x(i - ri + i1 - 1, j - rj + j1 - 1)
-          end do
-        end do
-        y(i, j) = total
-      end do
+    do concurrent (j = 1 + rj:size(x,2) - rj, i = 1 + ri:size(x,1) - ri)
+      y(i, j) = sum(k * x(i - ri : i + ri, j - rj : j + rj))
     end do
   end subroutine
 
   !----------------------------------------------------------------------------!
 
   pure subroutine convol_fix(x,k,y,method)
-    real(fp), dimension(:,:), intent(in) :: x, k
-    real(fp), dimension(:,:), intent(out) :: y
+    real(fp), dimension(:,:), intent(in), contiguous :: x, k
+    real(fp), dimension(:,:), intent(out), contiguous :: y
     real(fp), dimension(:,:), allocatable :: tmpx
     character(*), intent(in) :: method
     integer :: ri, rj, i, j, i1, j1
@@ -67,16 +59,8 @@ contains
       error stop "method must be: clone or reflect"
     end select
 
-    do j = 1, size(x,2)
-      do i = 1, size(x,1)
-        total = 0
-        do j1 = 1, size(k,2)
-          do i1 = 1, size(k,1)
-            total = total + k(i1, j1) * tmpx(i - ri + i1 - 1, j - rj + j1 - 1)
-          end do
-        end do
-        y(i, j) = total
-      end do
+    do concurrent (i = 1:size(x,1), j = 1:size(x,2))
+      y(i, j) = sum(k * tmpx(i - ri : i + ri, j - rj : j + rj))
     end do
 
     deallocate(tmpx)
@@ -125,8 +109,8 @@ contains
     use convolutions, only: convol, convol_fix
     use ieee_arithmetic, only: ieee_is_normal
 
-    real(fp), dimension(:,:), intent(in) :: im1, psf
-    real(fp), dimension(:,:), intent(out) :: im2
+    real(fp), dimension(:,:), intent(in), contiguous :: im1, psf
+    real(fp), dimension(:,:), intent(out), contiguous :: im2
     integer, intent(in) :: maxiter
     real(fp), dimension(:,:), allocatable :: buf1, buf2, psf_inv
     real(fp) :: err1, err01, err2, err02

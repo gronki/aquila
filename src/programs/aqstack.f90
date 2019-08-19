@@ -367,9 +367,9 @@ program aqstack
           call findstar_local(buffer(:,:,i), lst)
           call align_xyr(lst0, lst, mx)
 
-          write (0, '("ALIGN frame(",i0,") matrix:")') i
-          write (0, '(" X --> [",f6.1,2f6.3,"] o [1,X,Y]")') mx(1,:)
-          write (0, '(" Y --> [",f6.1,2f6.3,"] o [1,X,Y]")') mx(2,:)
+          write (0, '("ALIGN frame(",i2,") found ",i4," stars")') i, size(lst)
+          write (0, '("newX = ",f6.1," + ",f6.3,"*X + ",f6.3,"*Y")') mx(1,:)
+          write (0, '("newY = ",f6.1," + ",f6.3,"*X + ",f6.3,"*Y")') mx(2,:)
 
           ! when not resampling, we have only one copy of data, so we copy
           ! each frame to a temporary buffer before projection
@@ -423,7 +423,7 @@ program aqstack
         do i = 1, n
           yy(:) = pack(buffer(:,:,i), mask)
           call linfit(xx, yy, a, b)
-          write (0, '("NORM frame(",i0,") y = ",f6.3,"x + ",f6.1)') i, a, b
+          write (0, '("NORM frame(",i2,") y = ",f5.3,"x + ",f6.1)') i, a, b
           buffer(:,:,i) = (buffer(:,:,i) - b) / a
         end do
       end block block_normalize
@@ -522,7 +522,7 @@ contains
     use kernels, only: mexhakrn_alloc
     use findstar, only: aqfindstar
 
-    real(fp), intent(in) :: im(:,:)
+    real(fp), intent(in), contiguous :: im(:,:)
     type(extended_source), intent(out), allocatable :: lst(:)
     real(fp), allocatable :: im2(:,:), krn(:,:)
     integer :: nstars

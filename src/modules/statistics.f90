@@ -108,10 +108,11 @@ contains
   !----------------------------------------------------------------------------!
 
   pure subroutine sigstd(im, mean, stdev, mask)
+    use iso_fortran_env, only: int64
     real(fp), intent(in) :: im(:,:)
     real(fp), intent(out) :: mean, stdev
     logical, intent(in), optional :: mask(:,:)
-    integer :: nn
+    integer(int64) :: nn
 
     if ( present(mask) ) then
       nn    = count(mask)
@@ -128,12 +129,14 @@ contains
 
   subroutine outliers(im, sigma, niter, msk)
     use ieee_arithmetic, only: ieee_is_normal
+    use iso_fortran_env, only: int64
 
     real(fp), intent(in) :: im(:,:), sigma
     integer, intent(in) :: niter
     logical, intent(out) :: msk(:,:)
     real(fp) :: mean, stdev
-    integer :: i,nn
+    integer :: i
+    integer(int64) :: nn
 
     msk(:,:) = ieee_is_normal(im)
 
@@ -230,11 +233,12 @@ contains
   !----------------------------------------------------------------------------!
 
   pure subroutine linfit(x, y, a, b)
+    use iso_fortran_env, only: int64
     real(fp), dimension(:), intent(in) :: x, y
     ! logical, dimension(:), intent(in), optional :: mask
     real(fp), intent(out) :: a, b
     real(fp) :: xm, ym
-    integer :: n
+    integer(int64) :: n
 
     if (size(x) /= size(y)) error stop
 

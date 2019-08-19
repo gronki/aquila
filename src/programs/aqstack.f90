@@ -372,6 +372,8 @@ program aqstack
           write (0, '("newX = ",f6.1," + ",f6.3,"*X + ",f6.3,"*Y")') mx(1,:)
           write (0, '("newY = ",f6.1," + ",f6.3,"*X + ",f6.3,"*Y")') mx(2,:)
 
+          margin = max(margin, ceiling(abs(mx(1,1) * 1.25)), ceiling(abs(mx(2,1) * 1.25)))
+
           ! when not resampling, we have only one copy of data, so we copy
           ! each frame to a temporary buffer before projection
           if (.not. cfg_resampling) then
@@ -410,8 +412,10 @@ program aqstack
 
         ! create mask which excludes edges and the brigtenst pixels
         allocate(mask(sz(1), sz(2)))
-        mask = imref < (minval(imref) + maxval(imref)) / 2
         associate (m => margin)
+          associate (imc => imref(1+m : sz(1)-m, 1+m : sz(2)-m))
+            mask = imref < (minval(imc) + maxval(imc)) / 2
+          end associate
           mask(:m, :) = .false.; mask(sz(1)-m+1:, :) = .false.
           mask(:, :m) = .false.; mask(:, sz(2)-m+1:) = .false.
         end associate
@@ -424,7 +428,7 @@ program aqstack
         do i = 1, n
           yy(:) = pack(buffer(:,:,i), mask)
           call linfit(xx, yy, a, b)
-          write (0, '("NORM frame(",i2,") y = ",f5.3,"x + ",f6.1)') i, a, b
+          write (0, '("NORM frame(",i2,") y = ",f5.3,"x + ",f7.1)') i, a, b
           buffer(:,:,i) = (buffer(:,:,i) - b) / a
         end do
       end block block_normalize

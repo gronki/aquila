@@ -6,6 +6,8 @@ module globals
 
   integer, parameter :: fp = selected_real_kind(12)
 
+  character(len = *), parameter :: hlp_fmt = '(a22, 2x, a)', hlp_fmtc = '(24x, a)'
+
   logical :: cfg_verbose = .false.
 
 contains

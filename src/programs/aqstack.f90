@@ -84,6 +84,7 @@ program aqstack
       case ("process")
         if (i == 1) then
           strategy = "process"
+          cfg_align_frames = .false.
           cfg_clean_cosmics = .true.
           cfg_process_only = .true.
           command_argument_mask(i) = .false.
@@ -498,23 +499,23 @@ program aqstack
 contains
 
   subroutine print_help
-    character(len = *), parameter :: fmt = '(a22, 2x, a)', &
-                                 fmt_ctd = '(24x, a)'
+    use globals, only: hlp_fmt, hlp_fmtc
     write (*, '(a)') 'usage: aqstack [STRATEGY] [OPTIONS] FILE1 [FILE2 ...] -o OUTPUT'
-    write (*, '(a)') 'STRATEGY can be: bias, dark, flat, process, stack'
-    write (*, fmt) '-o/-output FILENAME', 'specifies the output filename'
-    write (*, fmt) '-average', 'stack by average value'
-    write (*, fmt) '-median', 'stack by median'
-    write (*, fmt) '-estimate-noise', 'estimate noise while computing bias'
-    write (*, fmt) '-align', 'align frames'
-    write (*, fmt) '-ref FILENAME', 'align to this frame rather than first frame'
-    write (*, fmt) '-resample', 'resample before stacking (only with -align)'
-    write (*, fmt) '-factor FACTOR', 'resampling factor (default: 1.5)'
-    write (*, fmt) '-nostack', 'do not stack images'
-    write (*, fmt) '-suffix/-S FILENAME', 'suffix that will be added to file names'
-    write (*, fmt_ctd) 'when using -nostack (default: R)'
-    write (*, fmt) '-bias FILENAME', 'subtract this master bias'
-    write (*, fmt) '-flat FILENAME', 'remove this master flat'
+    write (*, '(a)') 'STRATEGY can be: bias, dark, flat, process, final'
+    write (*, hlp_fmt) '-o/-output FILENAME', 'specifies the output filename'
+    write (*, hlp_fmt) '-average', 'stack by average value'
+    write (*, hlp_fmt) '-median', 'stack by median'
+    write (*, hlp_fmt) '-estimate-noise', 'estimate noise while computing bias'
+    write (*, hlp_fmt) '-align', 'align frames'
+    write (*, hlp_fmt) '-ref FILENAME', 'align to this frame rather than first frame'
+    write (*, hlp_fmt) '-resample', 'resample before stacking (only with -align)'
+    write (*, hlp_fmt) '-factor FACTOR', 'resampling factor (default: 1.5)'
+    write (*, hlp_fmt) '-norm[alize]', 'normalize to average before stacking'
+    write (*, hlp_fmt) '-nostack', 'process but do not stack images'
+    write (*, hlp_fmt) '-suffix/-S FILENAME', 'suffix that will be added to file names'
+    write (*, hlp_fmtc) 'when using -nostack (default: R)'
+    write (*, hlp_fmt) '-bias FILENAME', 'subtract this master bias'
+    write (*, hlp_fmt) '-flat FILENAME', 'remove this master flat'
   end subroutine print_help
 
   subroutine findstar_local(im, lst)

@@ -2,8 +2,6 @@
 # (c) 2019 Dominik Gronkiewicz <gronki@gmail.com>
 # on MIT license
 
-VERSION = 190818
-
 #-----------------------------------------------------------------------------#
 
 FC := gfortran
@@ -11,7 +9,6 @@ ARCHFLAGS ?= -march=native
 FFLAGS = -O3 -funsafe-math-optimizations $(ARCHFLAGS) -fopenmp
 FFLAGS_EXTRA := -fno-backtrace -fimplicit-none -ffree-line-length-none \
 				  -pedantic -Wall -Wno-unused-dummy-argument -Warray-temporaries
-CPPFLAGS += "-DVERSION='$(VERSION)'"
 
 #-----------------------------------------------------------------------------#
 
@@ -61,15 +58,14 @@ OBJECTS = kernels.o statistics.o convolution.o globals.o transforms.o \
 all: $(PROGRAMS)
 
 debug: $(TESTS) all
-debug: FFLAGS = -g -Og
+debug: FFLAGS = -g
 debug: FFLAGS_EXTRA += -fcheck=all -fbacktrace
 
 install: all
 	install -d $(prefix)/bin
 	install $(PROGRAMS) $(prefix)/bin
 
-install-home: override prefix = $(HOME)/.local
-install-home: install
+.PHONY: all debug install clean
 
 include deps.inc
 

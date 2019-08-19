@@ -188,7 +188,11 @@ program aqstack
     scan_inpfiles: do i = 1, command_argument_count()
       if (command_argument_mask(i)) then
         call get_command_argument(i, arg)
-        input_fn = [input_fn, arg]
+        if (size(input_fn) == 0) then
+          input_fn = [arg]
+        else
+          input_fn = [input_fn, arg]
+        end if
       end if
     end do scan_inpfiles
 

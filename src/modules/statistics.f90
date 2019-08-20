@@ -14,6 +14,10 @@ module statistics
     module procedure :: average_fast_1d, average_fast_2d, average_fast_3d
   end interface
 
+  interface avsd
+    module procedure :: avsd_1d_m, avsd_1d
+  end interface
+
 contains
 
   !----------------------------------------------------------------------------!
@@ -249,5 +253,50 @@ contains
     a = sum((x - xm) * (y - ym)) / sum((x - xm)**2)
     b = sum(y - a * x) / n
   end subroutine
+
+  !----------------------------------------------------------------------------!
+
+  pure subroutine avsd_1d_m(x, msk, av, sd)
+    real(fp), intent(in) :: x(:)
+    logical, intent(in) :: msk(:)
+    real(fp), intent(out) :: av, sd
+    associate (n => count(msk))
+      av = sum(x, msk) / n
+      sd = sqrt(sum((x - av)**2, msk) / (n - 1))
+    end associate
+  end subroutine
+
+  pure subroutine avsd_1d(x, av, sd)
+    real(fp), intent(in) :: x(:)
+    real(fp), intent(out) :: av, sd
+    associate (n => size(x))
+      av = sum(x) / n
+      sd = sqrt(sum((x - av)**2) / (n - 1))
+    end associate
+  end subroutine
+
+  !----------------------------------------------------------------------------!
+
+  pure subroutine sigclip2(x, xm)
+    real(fp), intent(in) :: x(:)
+    real(fp), intent(out) :: xm
+    real(fp) :: av, sd
+    real(fp), parameter :: kap = 3.0
+    logical :: msk(size(x))
+    integer :: i, imax
+
+    call avsd(x, av, sd); xm = av
+    msk(:) = .true.
+
+    reject: do i = 1, size(x) - 2
+      imax = maxloc(abs(x - av), 1, msk)
+      msk(imax) = .false.
+      call avsd(x, msk, av, sd)
+      if (abs(x(imax) - av) <= kap * sd) exit reject
+      xm = av
+    end do reject
+  end subroutine
+  
+  !----------------------------------------------------------------------------!
 
 end module

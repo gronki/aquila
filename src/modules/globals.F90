@@ -7,7 +7,7 @@ module globals
   integer, parameter :: fp = selected_real_kind(12)
 
   character(len = *), parameter :: hlp_fmt = '(a22, 2x, a)', hlp_fmtc = '(24x, a)'
-  character(len = *), parameter :: version = '190819'
+  character(len = *), parameter :: version = '190820'
 
   logical :: cfg_verbose = .false.
 

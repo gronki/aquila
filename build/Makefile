@@ -56,28 +56,27 @@ OBJECTS = kernels.o statistics.o convolution.o globals.o transforms.o \
 #-----------------------------------------------------------------------------#
 
 all: $(PROGRAMS)
-
-debug: $(TESTS) all
-debug: FFLAGS = -g
-debug: FFLAGS_EXTRA += -fcheck=all -fbacktrace
+debug: $(PROGRAMS)
+tests: $(TESTS)
+debug tests: FFLAGS = -g -fcheck=all -fbacktrace
 
 install: all
 	install -d $(prefix)/bin
 	install $(PROGRAMS) $(prefix)/bin
 
-.PHONY: all debug install clean
+.PHONY: all debug install clean tests
 
 include deps.inc
 
 %.o: %.f90
-	$(FC) $(INCLUDE) $(FFLAGS) $(FFLAGS_EXTRA) -c $< -o $@
+	$(FC) $(INCLUDE) $(FFLAGS_EXTRA) $(FFLAGS) -c $< -o $@
 %.o: %.F90
-	$(FC) $(INCLUDE) $(CPPFLAGS) $(FFLAGS) $(FFLAGS_EXTRA) -c $< -o $@
+	$(FC) $(INCLUDE) $(CPPFLAGS) $(FFLAGS_EXTRA) $(FFLAGS) -c $< -o $@
 
 $(PROGRAMS): %: $(OBJECTS) %.f90
-	$(FC) $(FFLAGS) $(FFLAGS_EXTRA) $(LDFLAGS) $^ $(LDLIBS) -o $@
+	$(FC) $(FFLAGS_EXTRA) $(FFLAGS) $(LDFLAGS) $^ $(LDLIBS) -o $@
 $(TESTS): %: $(OBJECTS) %.f90
-	$(FC) $(FFLAGS) $(FFLAGS_EXTRA) $(LDFLAGS) $^ $(LDLIBS) -o $@
+	$(FC) $(FFLAGS_EXTRA) $(FFLAGS) $(LDFLAGS) $^ $(LDLIBS) -o $@
 
 clean:
 	$(RM) *.o *.mod $(PROGRAMS) $(TESTS)

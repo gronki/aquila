@@ -18,9 +18,7 @@ program aqstack
   character(len = 64) :: output_suff = ""
   character(len = 256), allocatable :: input_fn(:)
   logical :: cfg_align_frames = .false.
-  logical :: cfg_clean_cosmics = .false.
   logical :: cfg_process_only = .false.
-  logical :: cfg_auto_invert = .false.
   logical :: cfg_normalize = .false.
   logical :: cfg_estimate_noise = .false.
   logical :: cfg_resampling = .false.
@@ -71,7 +69,6 @@ program aqstack
       case ("dark")
         if (i == 1) then
           strategy = "dark"
-          cfg_clean_cosmics = .true.
           command_argument_mask(i) = .false.
         end if
 
@@ -85,7 +82,6 @@ program aqstack
         if (i == 1) then
           strategy = "process"
           cfg_align_frames = .false.
-          cfg_clean_cosmics = .true.
           cfg_process_only = .true.
           command_argument_mask(i) = .false.
         end if
@@ -94,8 +90,15 @@ program aqstack
         if (i == 1) then
           strategy = "final"
           cfg_align_frames = .true.
-          cfg_clean_cosmics = .true.
-          cfg_auto_invert = .true.
+          command_argument_mask(i) = .false.
+        end if
+
+      case ("best")
+        if (i == 1) then
+          strategy = "final"
+          cfg_align_frames = .true.
+          cfg_normalize = .true.
+          method = "sigclip"
           command_argument_mask(i) = .false.
         end if
 
@@ -105,6 +108,12 @@ program aqstack
 
       case ("-average")
         method = "average"
+        command_argument_mask(i) = .false.
+
+      case ("-sigclip")
+        method = "sigclip"
+        if (strategy /= 'bias' .and. strategy /= 'dark') &
+        &     cfg_normalize = .true.
         command_argument_mask(i) = .false.
 
       case ("-estimate-noise")
@@ -321,15 +330,8 @@ program aqstack
       error stop "no frames to stack"
     end if
 
-    if (cfg_clean_cosmics) then
-      write (0, '(a)') 'warning: cosmic rays clean not implemented yet'
-    end if
-
-    if (cfg_auto_invert) then
-      write (0, '(a)') 'warning: auto rotation not implemented yet'
-    end if
-
     if (cfg_align_frames .and. (n > 1 .or. ref_fn /= "")) then
+      write (0, '(a)') 'ALIGN STARTED'
       align_frames: block
         use legacy_align, only: align_xyr, improject
         real(fp), allocatable :: buf_copy(:,:), buffer_resample(:,:,:)
@@ -402,6 +404,7 @@ program aqstack
     end if
 
     if (cfg_normalize) then
+      write (0, '(a)') 'NORM STARTED'
       block_normalize: block
         use statistics, only: linfit
         real(fp) :: a, b
@@ -451,12 +454,15 @@ program aqstack
         end if
       end block save_processed
     else
+      write (0, '(a)') 'STACK STARTED'
       actual_stack: block
         use statistics
         type(image_frame_t) :: frame_out
         real(fp) :: a(n)
         integer :: i,j
+
         allocate(frame_out % data(size(buffer, 1), size(buffer, 2)))
+
         select case (method)
         case ('average')
           !$omp parallel do private(i, j)
@@ -475,9 +481,19 @@ program aqstack
             end do
           end do
           !$omp end parallel do
+        case ('sigclip')
+          !$omp parallel do private(i, j, a)
+          do j = 1, size(buffer,2)
+            do i = 1, size(buffer,1)
+              a(:) = buffer(i,j,1:n)
+              call sigclip2(a, frame_out % data(i,j))
+            end do
+          end do
+          !$omp end parallel do
         case default
           error stop "this averaging method is not supported"
         end select
+
         frame_out % exptime = average_safe(frames(1:n) % exptime)
         call frame_out % write_fits(output_fn)
 
@@ -509,10 +525,11 @@ contains
   subroutine print_help
     use globals, only: hlp_fmt, hlp_fmtc
     write (*, '(a)') 'usage: aqstack [STRATEGY] [OPTIONS] FILE1 [FILE2 ...] -o OUTPUT'
-    write (*, '(a)') 'STRATEGY can be: bias, dark, flat, process, final'
+    write (*, '(a)') 'STRATEGY can be: bias, dark, flat, process, final, best'
     write (*, hlp_fmt) '-o/-output FILENAME', 'specifies the output filename'
     write (*, hlp_fmt) '-average', 'stack by average value'
     write (*, hlp_fmt) '-median', 'stack by median'
+    write (*, hlp_fmt) '-sigclip', 'stack by 3-sigma clipped average'
     write (*, hlp_fmt) '-estimate-noise', 'estimate noise while computing bias'
     write (*, hlp_fmt) '-align', 'align frames'
     write (*, hlp_fmt) '-ref FILENAME', 'align to this frame rather than first frame'

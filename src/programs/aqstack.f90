@@ -61,7 +61,7 @@ program aqstack
       case ("bias")
         if (i == 1) then
           strategy = "bias"
-          method = 'median'
+          method = 'sigclip'
           cfg_estimate_noise = .true.
           command_argument_mask(i) = .false.
         end if
@@ -69,6 +69,7 @@ program aqstack
       case ("dark")
         if (i == 1) then
           strategy = "dark"
+          method = 'sigclip'
           command_argument_mask(i) = .false.
         end if
 
@@ -328,6 +329,14 @@ program aqstack
 
     if (n == 0) then
       error stop "no frames to stack"
+    end if
+
+    if (method == 'sigclip' .and. n < 4) then
+      method = 'average'
+      if ((strategy == 'bias' .or. strategy == 'dark') .and. n > 2) then
+        method = 'median'
+      end if
+      write (0, '("warning: too few frames; stacking method changed to ",a)') trim(method)
     end if
 
     if (cfg_align_frames .and. (n > 1 .or. ref_fn /= "")) then

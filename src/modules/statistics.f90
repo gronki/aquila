@@ -137,12 +137,10 @@ contains
 
     real(fp), intent(in) :: im(:,:), sigma
     integer, intent(in) :: niter
-    logical, intent(out) :: msk(:,:)
+    logical, intent(inout) :: msk(:,:)
     real(fp) :: mean, stdev
     integer :: i
     integer(int64) :: nn
-
-    msk(:,:) = ieee_is_normal(im)
 
     do i = 1, niter
       call sigstd(im, mean, stdev, msk)
@@ -296,7 +294,7 @@ contains
       xm = av
     end do reject
   end subroutine
-  
+
   !----------------------------------------------------------------------------!
 
 end module

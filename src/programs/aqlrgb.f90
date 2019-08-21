@@ -115,25 +115,28 @@ program aqlrgb
         use ieee_arithmetic, only: ieee_is_normal
         logical, dimension(:,:), allocatable :: mask, maskbg
         real(fp), dimension(:,:), allocatable :: L
-        integer :: i, j, sz(2)
+        integer :: i, j, sz(3)
         integer, parameter :: margin = 64
         real(fp) :: coeff, mean, stdev, bg(3)
 
-        mask = ieee_is_normal(frame_g % data)
-        allocate(maskbg, mold = mask)
-        sz = shape(mask)
+        sz = shape(cube)
+
+        allocate(mask(sz(1), sz(2))); mask(:,:) = .true.
         mask(1:margin, :) = .false.
         mask(sz(1) - margin + 1:, :) = .false.
         mask(:, 1:margin) = .false.
         mask(:, sz(2) - margin + 1:) = .false.
+        maskbg = mask
 
         L = Lum(frame_r % data, frame_g % data, frame_b % data)
 
-        call outliers(L, 3.0_fp, 24, maskbg)
+        call outliers(L, 2.5_fp, 16, maskbg)
         call sigstd(L, mean, stdev, maskbg)
-        maskbg = mask .and. (L < mean + 3 * stdev)
-        mask = mask .and. (L > mean + 5 * stdev)
+        ! maskbg = mask .and. (L < mean + 2 * stdev)
+        mask = mask .and. (L > mean + 4 * stdev)
         ! cube(:,:,4) = thrfun((L - mean) / stdev - 4)
+
+        deallocate(L)
 
         associate (nbg => count(maskbg))
           do i = 1, 3

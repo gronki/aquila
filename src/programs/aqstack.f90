@@ -6,6 +6,7 @@ program aqstack
   use framehandling
   use statistics
   use findstar, only: extended_source
+  use iso_fortran_env, only: real64
 
   !----------------------------------------------------------------------------!
 
@@ -24,6 +25,7 @@ program aqstack
   logical :: cfg_resampling = .false.
   real(fp) :: resample_factor = 1.5
   integer :: margin = 64
+  real(real64) :: t1, t2
 
   integer :: nframes
 
@@ -377,6 +379,7 @@ program aqstack
           end if
         end if
 
+        call cpu_time(t1)
         !$omp parallel do private(i, lst, buf_copy, mx)
         do i = istart, n
           ! find the transform between frames
@@ -400,6 +403,8 @@ program aqstack
           end if
         end do
         !$omp end parallel do
+        call cpu_time(t2)
+        print perf_fmt, 'align', t2 - t1
 
         ! if resampling was performed, replace the normal buffer with resampled
         if (cfg_resampling) then
@@ -422,6 +427,8 @@ program aqstack
         integer :: i, sz(3)
 
         sz = shape(buffer)
+
+        call cpu_time(t1)
 
         ! create mean frame to normalize to
         imref = sum(buffer(:,:,1:n), 3) / n
@@ -447,6 +454,9 @@ program aqstack
           write (0, '("NORM frame(",i2,") y = ",f5.3,"x + ",f7.1)') i, a, b
           buffer(:,:,i) = (buffer(:,:,i) - b) / a
         end do
+
+        call cpu_time(t2)
+        print perf_fmt, 'norm', t2 - t1
       end block block_normalize
     end if
 
@@ -471,6 +481,8 @@ program aqstack
         integer :: i,j
 
         allocate(frame_out % data(size(buffer, 1), size(buffer, 2)))
+
+        call cpu_time(t1)
 
         select case (method)
         case ('average')
@@ -502,6 +514,9 @@ program aqstack
         case default
           error stop "this averaging method is not supported"
         end select
+
+        call cpu_time(t2)
+        print perf_fmt, 'stack', t2 - t1
 
         frame_out % exptime = average_safe(frames(1:n) % exptime)
         call frame_out % write_fits(output_fn)

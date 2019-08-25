@@ -6,7 +6,7 @@
 
 FC := gfortran
 ARCHFLAGS ?= -march=native
-FFLAGS = -O3 -funsafe-math-optimizations $(ARCHFLAGS) -fopenmp
+FFLAGS = -O3 -funsafe-math-optimizations $(ARCHFLAGS) -flto -fopenmp
 FFLAGS_EXTRA := -fno-backtrace -fimplicit-none -ffree-line-length-none \
 				  -pedantic -Wall -Wno-unused-dummy-argument -Warray-temporaries
 

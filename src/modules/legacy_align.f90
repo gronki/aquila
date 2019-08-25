@@ -144,8 +144,8 @@ contains
   end subroutine
 
   subroutine improject(im0, mx, im, resample)
-    real(fp), dimension(:,:), intent(in) :: im0
-    real(fp), dimension(:,:), intent(out) :: im
+    real(fp), dimension(:,:), intent(in), contiguous :: im0
+    real(fp), dimension(:,:), intent(out), contiguous :: im
     real(fp), intent(in), optional :: resample
 
     real(fp) :: mx(2,3)

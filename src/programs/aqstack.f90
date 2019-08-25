@@ -89,14 +89,15 @@ program aqstack
           command_argument_mask(i) = .false.
         end if
 
-      case ("final")
+      case ("align")
         if (i == 1) then
-          strategy = "final"
+          strategy = "process"
           cfg_align_frames = .true.
+          cfg_process_only = .true.
           command_argument_mask(i) = .false.
         end if
 
-      case ("best")
+      case ("final")
         if (i == 1) then
           strategy = "final"
           cfg_align_frames = .true.
@@ -549,7 +550,7 @@ contains
   subroutine print_help
     use globals, only: hlp_fmt, hlp_fmtc
     write (*, '(a)') 'usage: aqstack [STRATEGY] [OPTIONS] FILE1 [FILE2 ...] -o OUTPUT'
-    write (*, '(a)') 'STRATEGY can be: bias, dark, flat, process, final, best'
+    write (*, '(a)') 'STRATEGY can be: bias, dark, flat, process, align, final'
     write (*, hlp_fmt) '-o/-output FILENAME', 'specifies the output filename'
     write (*, hlp_fmt) '-average', 'stack by average value'
     write (*, hlp_fmt) '-median', 'stack by median'

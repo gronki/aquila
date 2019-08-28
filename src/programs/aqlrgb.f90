@@ -30,8 +30,6 @@ program aqlrgb
     character(len = 256) :: arg, buf
     logical :: skip = .false.
 
-    allocate(fnames(0))
-
     do i = 1, command_argument_count()
       if (skip) then
         skip = .false.; cycle
@@ -83,7 +81,11 @@ program aqlrgb
         call print_help(); stop
       case default
         if (arg(1:1) == '-') error stop "unknown option: " // trim(arg)
-        fnames = [fnames, arg]
+        if (allocated(fnames)) then
+          fnames = [fnames, arg]
+        else
+          fnames = [arg]
+        end if
       end select
     end do
   end block parse_cli
@@ -117,7 +119,7 @@ program aqlrgb
         real(fp), dimension(:,:), allocatable :: L
         integer :: i, j, sz(3)
         integer, parameter :: margin = 64
-        real(fp) :: coeff, mean, stdev, bg(3)
+        real(fp) :: coeff, av, sd, bg(3)
 
         sz = shape(cube)
 
@@ -131,18 +133,17 @@ program aqlrgb
         L = Lum(frame_r % data, frame_g % data, frame_b % data)
 
         call outliers(L, 2.5_fp, 16, maskbg)
-        call sigstd(L, mean, stdev, maskbg)
-        ! maskbg = mask .and. (L < mean + 2 * stdev)
-        mask = mask .and. (L > mean + 4 * stdev)
-        ! cube(:,:,4) = thrfun((L - mean) / stdev - 4)
+        call sigstd(L, av, sd, maskbg)
+        ! maskbg = mask .and. (L < av + 2 * sd)
+        mask = mask .and. (L > av + 4 * sd)
+        ! cube(:,:,4) = thrfun((L - av) / sd - 4)
 
         deallocate(L)
 
-        associate (nbg => count(maskbg))
-          do i = 1, 3
-            bg(i) = sum(cube(:,:,i), maskbg) / nbg
-          end do
-        end associate
+        do i = 1, 3
+          call sigstd(cube(:,:,i), av, sd, maskbg)
+          bg(i) = av - sd
+        end do
 
         write (0, '("stars ", f4.1, "% surface, background ", f4.1, "%")') &
         &     100 * real(count(mask)) / size(mask),     &
@@ -155,11 +156,11 @@ program aqlrgb
           frame_r % data = frame_r % data - (bg(1) - bg(2))
           write (0, '("bkg B-G = ", f8.1)') bg(3) - bg(2)
           frame_b % data = frame_b % data - (bg(3) - bg(2))
-          associate (nbg => count(maskbg))
-            do i = 1, 3
-              bg(i) = sum(cube(:,:,i), maskbg) / nbg
-            end do
-          end associate
+          do i = 1, 3
+            call sigstd(cube(:,:,i), av, sd, maskbg)
+            bg(i) = av - sd
+          end do
+          write (0, '("' // cf('background', '93') // ' R,G,B = ", 3f6.1)') bg
         end if
 
         if (cfg_equalize) then
@@ -212,9 +213,9 @@ program aqlrgb
     if (transform /= '') then
       do_transform: block
         integer :: i
-        write (0, '("preforming transform on the image: ", a)') transform
+        write (0, '("performing ",a," transform on the image: ",a)') &
+            trim(merge('luminance', 'color    ', cfg_transf_lum)), transform
         if ( cfg_transf_lum ) then
-          write (0, *) 'transform of luminance'
           transform_lum: block
             real(fp), allocatable :: x(:,:), y(:,:)
             if (associated(frame_l % data)) then
@@ -231,7 +232,6 @@ program aqlrgb
             end do
           end block transform_lum
         else
-          write (0, *) 'transform of colors'
           call apply_transform(transform, cube(:,:,1:3), cube(:,:,1:3))
         end if
       end block do_transform
@@ -241,22 +241,27 @@ program aqlrgb
       if (endswith(outfn, '.png')) then
         block
           use png
-          real(fp) :: vmin, vmax, av, st
+          real(fp) :: vmin, vmax, av, sd
           real(fp), allocatable :: l(:,:)
           l = Lum(frame_r % data(64:nx-64,64:ny-64), &
           &   frame_g % data(64:nx-64,64:ny-64),     &
           &   frame_b % data(64:nx-64,64:ny-64))
           av = sum(l) / size(l)
-          st = sqrt(sum((l - av)**2) / (size(l) - 1))
+          sd = sqrt(sum((l - av)**2) / (size(l) - 1))
           deallocate(l)
-          if (transform /= '') then
-            vmin = av - 1.2 * st
-            vmax = av + 15 * st
-          else
-            vmin = av - 0.4 * st
-            vmax = av + 6 * st
-          end if
+          select case(transform)
+          case('')
+            vmin = av - 0.4 * sd
+            vmax = av + 6 * sd
+          case('sqrt')
+            vmin = av - 0.8 * sd
+            vmax = av + 12 * sd
+          case default
+            vmin = av - 1.2 * sd
+            vmax = av + 15 * sd
+          end select
           call write_png(outfn, (cube(:,:,1:3) - vmin) / (vmax - vmin))
+          call write_fits_3d(trim(outfn) // '.fits', cube(:,:,1:3))
         end block
       else
         call write_fits_3d(outfn, cube(:,:,1:3))
@@ -323,11 +328,17 @@ contains
     real(fp), intent(in) :: cube(:,:,:)
     character(len = *), intent(in) :: fn
     integer, intent(inout), optional :: errno
-    integer :: ftiostat, un
+    integer :: ftiostat, un, iostat
     real(real32), allocatable :: cube2(:,:,:)
 
-    ftiostat = 0
+    iostat = 0
+    open (99, file = fn, status = 'old', iostat = iostat)
+    if (iostat == 0) then
+      write (0, '("file ",a," exists, deleting...")') trim(fn)
+      close (99, status = 'delete')
+    end if
 
+    ftiostat = 0
     call ftgiou(un, ftiostat)
     call ftdkinit(un, fn, 1, ftiostat)
 

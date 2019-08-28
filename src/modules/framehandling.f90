@@ -150,10 +150,16 @@ contains
     class(frame_t) :: self
     character(len = *), intent(in) :: fn
     integer, intent(inout), optional :: errno
-    integer :: ftiostat, un
+    integer :: ftiostat, un, iostat
+
+    iostat = 0
+    open (99, file = fn, status = 'old', iostat = iostat)
+    if (iostat == 0) then
+      write (0, '("file ",a," exists, deleting...")') trim(fn)
+      close (99, status = 'delete')
+    end if
 
     ftiostat = 0
-
     call ftgiou(un, ftiostat)
     call ftdkinit(un, fn, 1, ftiostat)
 
@@ -226,7 +232,7 @@ contains
   subroutine finalize(self)
     type(frame_t) :: self
     if (self % auto_allocated .and. associated(self % data)) then
-      print '("' // cf('finalizing','91') // '", 1x, dt)', self
+      ! print '("' // cf('finalizing','91') // '", 1x, dt)', self
       deallocate(self % data)
     end if
   end subroutine
@@ -472,8 +478,8 @@ contains
 
     if (status == 0) then
       call self % hdr % add_str(k, s)
-    else
-      write (0, *) 'warning: no keyword ', trim(k)
+    ! else
+    !   write (0, *) 'warning: no keyword ', trim(k)
     end if
   end subroutine
 
@@ -482,8 +488,6 @@ contains
     character(len = *), intent(in) :: fn
     integer, intent(inout), optional :: errno
     integer :: un, status, bsize
-
-    write (0, *) 'image_frame_t % read_fits'
 
     status = 0
 
@@ -514,8 +518,6 @@ contains
     class(image_frame_t) :: self
     character(len = *), intent(in) :: fn
     integer, intent(inout), optional :: errno
-
-    write (0, *) 'image_frame_t % write_fits'
 
     call self % frame_t % write_fits(fn, errno)
   end subroutine

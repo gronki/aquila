@@ -16,6 +16,7 @@ module statistics
 
   interface avsd
     module procedure :: avsd_1d_m, avsd_1d
+    module procedure :: avsd_2d_m, avsd_2d
   end interface
 
 contains
@@ -266,6 +267,25 @@ contains
 
   pure subroutine avsd_1d(x, av, sd)
     real(fp), intent(in) :: x(:)
+    real(fp), intent(out) :: av, sd
+    associate (n => size(x))
+      av = sum(x) / n
+      sd = sqrt(sum((x - av)**2) / (n - 1))
+    end associate
+  end subroutine
+
+  pure subroutine avsd_2d_m(x, msk, av, sd)
+    real(fp), intent(in) :: x(:,:)
+    logical, intent(in) :: msk(:,:)
+    real(fp), intent(out) :: av, sd
+    associate (n => count(msk))
+      av = sum(x, msk) / n
+      sd = sqrt(sum((x - av)**2, msk) / (n - 1))
+    end associate
+  end subroutine
+
+  pure subroutine avsd_2d(x, av, sd)
+    real(fp), intent(in) :: x(:,:)
     real(fp), intent(out) :: av, sd
     associate (n => size(x))
       av = sum(x) / n

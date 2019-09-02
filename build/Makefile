@@ -6,8 +6,7 @@
 
 FC := gfortran
 ARCHFLAGS ?= -march=native
-OPT := $(if $(findstring x86_64,$(shell uname -m)),-O3,-O2)
-FFLAGS = $(OPT) -funsafe-math-optimizations $(ARCHFLAGS) -flto -fopenmp
+FFLAGS = -O3 -funsafe-math-optimizations $(ARCHFLAGS) -fopenmp
 FFLAGS_EXTRA := -fno-backtrace -fimplicit-none -ffree-line-length-none \
 				  -pedantic -Wall -Wno-unused-dummy-argument -Warray-temporaries
 
@@ -30,12 +29,12 @@ LDLIBS += $(shell pkg-config --libs libpng)
 INCLUDE += $(shell pkg-config --cflags libpng)
 endif
 
-ifeq ($(shell pkg-config --modversion fftw3),)
-LDLIBS += -lfftw3
-else
-LDLIBS += $(shell pkg-config --libs fftw3)
-INCLUDE += $(shell pkg-config --cflags fftw3)
-endif
+# ifeq ($(shell pkg-config --modversion fftw3),)
+# LDLIBS += -lfftw3
+# else
+# LDLIBS += $(shell pkg-config --libs fftw3)
+# INCLUDE += $(shell pkg-config --cflags fftw3)
+# endif
 
 #-----------------------------------------------------------------------------#
 

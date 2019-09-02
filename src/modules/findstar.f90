@@ -27,13 +27,12 @@ contains
     logical, allocatable :: mask0(:,:)
     integer :: i, j
 
+    ! important: mask must be zero by the edge!
+
     growmask: do
       mask0 = mask
-      do concurrent (i = 2:size(mask, 1) - 1, j = 2:size(mask, 2) - 1, mask0(i,j))
-        mask(i,j-1) = .true.
-        mask(i-1,j) = .true.
-        mask(i+1,j) = .true.
-        mask(i,j+1) = .true.
+      do concurrent (i = 2:size(mask, 1) - 1, j = 2:size(mask, 2) - 1)
+        mask(i,j) = mask0(i,j) .or. mask0(i-1,j) .or. mask0(i+1,j) .or. mask0(i,j-1) .or. mask0(i,j+1)
       end do
       mask = mask .and. master_mask
       if (all(mask0 .eqv. mask)) exit growmask

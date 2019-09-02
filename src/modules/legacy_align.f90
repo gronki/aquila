@@ -102,7 +102,7 @@ contains
       integer :: i0, i
 
       y = 0
-      y_dv = 0
+      y_dv(:) = 0
 
       xy1 % x = v(i_x) + cos(v(i_r) / r0) * (xy % x - x0m) &
       &                - sin(v(i_r) / r0) * (xy % y - y0m) + x0m
@@ -132,7 +132,6 @@ contains
     subroutine v2mx(v,mx)
       real(fp), intent(in) :: v(3)
       real(fp), intent(out) :: mx(2,3)
-      mx = 0
       mx(1,1) =   v(i_x) + x0m * (1 - cos(v(i_r) / r0)) + y0m * sin(v(i_r) / r0)
       mx(1,2) =   cos(v(i_r) / r0)
       mx(1,3) = - sin(v(i_r) / r0)

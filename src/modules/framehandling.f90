@@ -108,7 +108,6 @@ contains
 
     ! get image dimensions
     call ftgisz(un, 2, sz, ftiostat)
-
     if ( .not. associated(self % data) ) then
       allocate(self % data(sz(1), sz(2)))
       self % auto_allocated = .true.
@@ -265,7 +264,7 @@ module fitsheader_m
   type, public :: fhdict
     type(fhentry), pointer :: list => null()
   contains
-    procedure :: add_str, get_str, get_float, get_int, has_key
+    procedure :: add_str, get_str, get_float, get_int, has_key, erase
     procedure, private :: fhdict_repr
     generic :: write(formatted) => fhdict_repr
     procedure, pass(self), private :: has_key_op
@@ -306,19 +305,24 @@ contains
     character(len = *), intent(in) :: k, v
     type(fhentry), pointer :: newentry, cur
 
-    allocate(newentry)
-    newentry % key = k
-    newentry % value = v
-
     if ( associated(self % list) ) then
       cur => self % list
       find_tail: do
+        if (cur % key == k) then
+          cur % value = v; exit
+        end if
         if (.not. associated(cur % next)) then
+          allocate(newentry)
+          newentry % key = k
+          newentry % value = v
           cur % next => newentry; exit
         end if
         cur => cur % next
       end do find_tail
     else
+      allocate(newentry)
+      newentry % key = k
+      newentry % value = v
       self % list => newentry
     end if
   end subroutine
@@ -412,6 +416,12 @@ contains
 
   subroutine finalize(self)
     type(fhdict), intent(inout) :: self
+    call self % erase()
+  end subroutine
+  !----------------------------------------------------------------------------!
+
+  subroutine erase(self)
+    class(fhdict), intent(inout) :: self
     class(fhentry), pointer :: cur, nxt
     cur => self % list
     do while (associated(cur))
@@ -420,7 +430,8 @@ contains
       deallocate(cur)
       cur => nxt
     end do
-  end subroutine finalize
+    self % list => null()
+  end subroutine
 
 end module
 

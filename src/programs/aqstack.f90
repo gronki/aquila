@@ -23,6 +23,8 @@ program aqstack
   logical :: cfg_normalize = .false.
   logical :: cfg_estimate_noise = .false.
   logical :: cfg_resampling = .false.
+  logical :: cfg_temperature_filter = .false.
+  real(fp) :: cfg_temperature_point = 0
   real(fp) :: resample_factor = 1.5
   integer :: margin = 64
   real(real64) :: t1, t2
@@ -149,6 +151,16 @@ program aqstack
           command_argument_mask(i : i + 1) = .false.
         end if
 
+      case ("-temperature","-T")
+        if (.not. command_argument_mask(i + 1)) then
+          error stop "temperature point in celsius (float) expected"
+        else
+          call get_command_argument(i + 1, buf)
+          read (buf, *) cfg_temperature_point
+          cfg_temperature_filter = .true.
+          command_argument_mask(i : i + 1) = .false.
+        end if
+
       case ("-o","-output")
         if (.not. command_argument_mask(i + 1)) then
           error stop "output file name expected"
@@ -223,16 +235,10 @@ program aqstack
       output_fn = "out.fits"
     end if
   end if
-  if (output_suff == "") output_suff = "R"
+  if (output_suff == "") output_suff = "_R"
 
-  verify_cli_arguments: block
-    character(len = *), parameter :: fmt = '(a12, ": ", g0)'
-    integer :: i
-
-    write (stderr, fmt) 'frames', nframes
-    write (stderr, fmt) 'method', trim(method)
-    write (stderr, fmt) 'output', trim(output_fn)
-  end block verify_cli_arguments
+  if (cfg_temperature_filter) &
+  &     write (0, '("temperature filter: ",f5.1,"C")') cfg_temperature_point
 
   !----------------------------------------------------------------------------!
 
@@ -273,12 +279,13 @@ program aqstack
 
     n = 0
     allocate(frames(nframes))
+    print '(a27, a9, a7, a9, a8)', 'FILENAME', 'AVG', 'STD', 'EXPOS', 'TEMP'
 
     read_frames_loop: do i = 1, nframes
 
       errno = 0
 
-      if (n == 0) then
+      if (n == 0 .and. .not. allocated(buffer)) then
         call read_fits_naxes(input_fn(i), nx, ny, errno)
 
         if (errno /= 0) then
@@ -292,6 +299,7 @@ program aqstack
       associate (cur_frame => frames(n + 1), cur_buffer => buffer(:, :, n + 1))
 
         cur_frame % data => cur_buffer
+        call cur_frame % hdr % erase()
         call cur_frame % read_fits(input_fn(i), errno)
 
         if (errno /= 0) then
@@ -310,18 +318,30 @@ program aqstack
         ! print some frame statistics for quick check
         frame_stats: block
           real(fp) :: avg, std
-          integer :: nn
+          character(len = 192) :: buf
 
-          nn = size(cur_buffer)
-          avg = sum(cur_buffer) / nn
-          std = sqrt(sum((cur_buffer - avg)**2) / (nn - 1))
+          call avsd(cur_buffer, avg, std)
 
-          if (n == 0) print '(a24, a10, a9, a10, a9)', 'FILENAME', 'AVG', 'STD', 'EXPOS', 'TEMP'
-
-          if (ieee_is_normal(cur_frame % ccdtemp)) then
-            print '(a24, f10.1, f9.1, f10.2, f9.2)', trim(input_fn(i)), avg, std, cur_frame % exptime, cur_frame % ccdtemp
+          if ('CCD-TEMP' .in. cur_frame % hdr) then
+            associate (ccdtemp => cur_frame % hdr % get_float('CCD-TEMP'))
+              write (buf, '(a27, f9.1, f7.1, f9.2, f8.2)') trim(input_fn(i)), avg, std, &
+              &     cur_frame % exptime, ccdtemp
+              if (cfg_temperature_filter) then
+                if (abs(cfg_temperature_point - ccdtemp) > 0.5) then
+                  write (*, '("' // cf('",a,"','31') // '")') trim(buf)
+                  cycle read_frames_loop
+                end if
+              end if
+              write (*, '(a)') trim(buf)
+            end associate
           else
-            print '(a24, f10.1, f9.1, f10.2, a9)', trim(input_fn(i)), avg, std, cur_frame % exptime, '--'
+            write (buf, '(a27, f9.1, f7.1, f9.2, a8)') trim(input_fn(i)), &
+            &     avg, std, cur_frame % exptime, '--'
+            if (cfg_temperature_filter) then
+              write (*, '("' // cf('",a,"','31') // '")') trim(buf)
+              cycle read_frames_loop
+            end if
+            write (*, '(a)') trim(buf)
           end if
         end block frame_stats
 
@@ -341,6 +361,8 @@ program aqstack
       end if
       write (0, '("warning: too few frames; stacking method changed to ",a)') trim(method)
     end if
+
+    write (0, '("' // cf('stacking ",i0," frames using ",a,"','1') // '")') n, trim(method)
 
     if (cfg_align_frames .and. (n > 1 .or. ref_fn /= "")) then
       write (0, '(a)') 'ALIGN STARTED'
@@ -564,6 +586,7 @@ contains
     write (*, hlp_fmt) '-nostack', 'process but do not stack images'
     write (*, hlp_fmt) '-suffix/-S FILENAME', 'suffix that will be added to file names'
     write (*, hlp_fmtc) 'when using -nostack (default: R)'
+    write (*, hlp_fmt) '-temperature/-T [TEMP]', 'stack only frames with given CCD temperature'
     write (*, hlp_fmt) '-bias FILENAME', 'subtract this master bias'
     write (*, hlp_fmt) '-flat FILENAME', 'remove this master flat'
   end subroutine print_help

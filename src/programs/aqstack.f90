@@ -21,12 +21,11 @@ program aqstack
   logical :: cfg_align_frames = .false.
   logical :: cfg_process_only = .false.
   logical :: cfg_normalize = .false.
-  logical :: cfg_estimate_noise = .false.
   logical :: cfg_resampling = .false.
   logical :: cfg_temperature_filter = .false.
   real(fp) :: cfg_temperature_point = 0
   real(fp) :: resample_factor = 1.5
-  integer :: margin = 64
+  integer :: margin = 32
   real(real64) :: t1, t2
 
   integer :: nframes
@@ -66,7 +65,6 @@ program aqstack
         if (i == 1) then
           strategy = "bias"
           method = 'sigclip'
-          cfg_estimate_noise = .true.
           command_argument_mask(i) = .false.
         end if
 
@@ -120,10 +118,6 @@ program aqstack
         method = "sigclip"
         if (strategy /= 'bias' .and. strategy /= 'dark') &
         &     cfg_normalize = .true.
-        command_argument_mask(i) = .false.
-
-      case ("-estimate-noise")
-        cfg_estimate_noise = .true.
         command_argument_mask(i) = .false.
 
       case ("-nostack")
@@ -413,7 +407,9 @@ program aqstack
           write (0, '("newX = ",f6.1," + ",f6.3,"*X + ",f6.3,"*Y")') mx(1,:)
           write (0, '("newY = ",f6.1," + ",f6.3,"*X + ",f6.3,"*Y")') mx(2,:)
 
+          !$omp critical
           margin = max(margin, ceiling(abs(mx(1,1) * 1.25)), ceiling(abs(mx(2,1) * 1.25)))
+          !$omp end critical
 
           ! when not resampling, we have only one copy of data, so we copy
           ! each frame to a temporary buffer before projection
@@ -441,7 +437,6 @@ program aqstack
     end if
 
     if (cfg_normalize) then
-      write (0, '(a)') 'NORM STARTED'
       block_normalize: block
         use statistics, only: linfit
         real(fp) :: a, b
@@ -496,7 +491,6 @@ program aqstack
         end if
       end block save_processed
     else
-      write (0, '(a)') 'STACK STARTED'
       actual_stack: block
         use statistics
         type(image_frame_t) :: frame_out
@@ -509,13 +503,7 @@ program aqstack
 
         select case (method)
         case ('average')
-          !$omp parallel do private(i, j)
-          do j = 1, size(buffer,2)
-            do i = 1, size(buffer,1)
-              frame_out % data(i,j) = average(buffer(i,j,1:n))
-            end do
-          end do
-          !$omp end parallel do
+          frame_out % data(:,:) = sum(buffer(:,:,1:n), 3) / n
         case ('median')
           !$omp parallel do private(i, j, a)
           do j = 1, size(buffer,2)
@@ -526,11 +514,10 @@ program aqstack
           end do
           !$omp end parallel do
         case ('sigclip')
-          !$omp parallel do private(i, j, a)
+          !$omp parallel do private(i, j)
           do j = 1, size(buffer,2)
             do i = 1, size(buffer,1)
-              a(:) = buffer(i,j,1:n)
-              call sigclip2(a, frame_out % data(i,j))
+              call sigclip2(buffer(i,j,1:n), frame_out % data(i,j))
             end do
           end do
           !$omp end parallel do
@@ -544,7 +531,7 @@ program aqstack
         frame_out % exptime = average_safe(frames(1:n) % exptime)
         call frame_out % write_fits(output_fn)
 
-        if ( cfg_estimate_noise ) then
+        if (strategy == 'bias' .or. strategy == 'dark') then
           estimate_noise: block
             real(fp) :: noise
             integer :: i
@@ -577,7 +564,6 @@ contains
     write (*, hlp_fmt) '-average', 'stack by average value'
     write (*, hlp_fmt) '-median', 'stack by median'
     write (*, hlp_fmt) '-sigclip', 'stack by 3-sigma clipped average'
-    write (*, hlp_fmt) '-estimate-noise', 'estimate noise while computing bias'
     write (*, hlp_fmt) '-align', 'align frames'
     write (*, hlp_fmt) '-ref FILENAME', 'align to this frame rather than first frame'
     write (*, hlp_fmt) '-resample', 'resample before stacking (only with -align)'

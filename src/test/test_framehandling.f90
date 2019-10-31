@@ -58,13 +58,13 @@ program test_framehandling
     type(fhdict) :: d
     character(len = 80) :: a
     print *, ' -- test 6'
-    call d % add_str('key', 'val')
-    call d % add_str('a', 'b')
-    call d % add_str('EXPTIME', '60.000')
-    call d % add_str('negexp', '-7e-11')
-    call d % add_str('opt', '-33')
+    call d % add('key', 'val')
+    call d % add('a', 'b')
+    call d % add('EXPTIME', 60.0)
+    call d % add('negexp', -7e-11)
+    call d % add('opt', -33)
     print *, d
-    call d % get_str('key', a)
+    a = d % get_str('key')
     print *, 'key is ', a
     print *, 'EXPTIME = ', d % get_float('EXPTIME')
     print *, 'opt = ', d % get_int('opt')

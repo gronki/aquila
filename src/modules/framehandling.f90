@@ -16,10 +16,10 @@ module frame_m
     logical, private :: auto_allocated = .false.
   contains
     procedure :: read_fits, write_fits, alloc_zeros
-    procedure :: assign_2d, assign_frame, assign_const_f, assign_const_i
+    procedure, private :: read_image_data
+    procedure :: assign_2d, assign_frame, assign_const_f, assign_const_i, repr
     generic :: assignment(=) => assign_2d, assign_frame, &
     &   assign_const_f, assign_const_i
-    procedure :: repr
     generic :: write(formatted) => repr
     final :: finalize
   end type
@@ -68,6 +68,8 @@ contains
     real(fp), intent(in) :: c
     if (associated(fr % data)) then
       fr % data(:,:) = c
+    else
+      error stop
     end if
   end subroutine
 
@@ -76,32 +78,17 @@ contains
     integer, intent(in) :: c
     if (associated(fr % data)) then
       fr % data(:,:) = c
+    else
+      error stop
     end if
   end subroutine
 
   !----------------------------------------------------------------------------!
 
-  subroutine read_fits(self, fn, errno)
-    class(frame_t) :: self
-    character(len = *), intent(in) :: fn
-    integer, intent(inout), optional :: errno
+  subroutine read_image_data(self, un, ftiostat)
+    class(frame_t), intent(inout) :: self
     integer :: sz(2), ndim, bsize, ftiostat, un
     logical :: anyf
-
-    ftiostat = 0
-
-    call ftgiou(un, ftiostat)
-    call ftdkopn(un, fn, 0, bsize, ftiostat)
-
-    if (ftiostat /= 0) then
-      call ftrprt("stderr", ftiostat)
-      if (present(errno)) then
-        errno = ftiostat; return
-      else
-        error stop "error opening FITS file: " // trim(fn)
-      end if
-    end if
-
     ! get number of dimensions
     call ftgidm(un, ndim, ftiostat)
     if (ndim /= 2) error stop "only monochrome images are supported for now"
@@ -126,8 +113,29 @@ contains
     case default
       error stop
     end select
+  end subroutine
 
-    if (anyf) write (0, '("warning: anyf in ", a)') trim(fn)
+  subroutine read_fits(self, fn, errno)
+    class(frame_t), intent(inout) :: self
+    character(len = *), intent(in) :: fn
+    integer, intent(inout), optional :: errno
+    integer :: bsize, ftiostat, un
+
+    ftiostat = 0
+
+    call ftgiou(un, ftiostat)
+    call ftdkopn(un, fn, 0, bsize, ftiostat)
+
+    if (ftiostat /= 0) then
+      call ftrprt("stderr", ftiostat)
+      if (present(errno)) then
+        errno = ftiostat; return
+      else
+        error stop "error opening FITS file: " // trim(fn)
+      end if
+    end if
+
+    call self % read_image_data(un, ftiostat)
 
     ! close the unit
     call ftclos(un, ftiostat)
@@ -254,23 +262,31 @@ module fitsheader_m
 
   !----------------------------------------------------------------------------!
 
-  integer, parameter :: kvlen = 128
-
   type fhentry
-    character(len = kvlen) :: key, value
+    character(len = 12) :: key = ''
+    character(len = 80) :: value = ''
     class(fhentry), pointer :: next => null()
   end type
 
   type, public :: fhdict
     type(fhentry), pointer :: list => null()
   contains
-    procedure :: add_str, get_str, get_float, get_int, has_key, erase
+    procedure :: add_str, add_float, add_int
+    generic :: add => add_str, add_float, add_int
+    procedure :: get_str, get_float, get_int
+    procedure :: has_key, erase
+    procedure, private :: add_raw, get_raw
+    procedure :: read_from_file, read_from_unit
+    generic :: load => read_from_file, read_from_unit
     procedure, private :: fhdict_repr
     generic :: write(formatted) => fhdict_repr
     procedure, pass(self), private :: has_key_op
     generic :: operator(.in.) => has_key_op
     final :: finalize
   end type
+
+  character(len = 12), parameter :: excludes(*) = [character(12) :: 'END', 'COMMENT', &
+    'SIMPLE', 'BITPIX', 'NAXIS', 'NAXIS1', 'NAXIS2', 'NAXIS3', 'EXTEND', 'BSCALE', 'BZERO']
 
 contains
 
@@ -300,10 +316,12 @@ contains
 
   !----------------------------------------------------------------------------!
 
-  subroutine add_str(self, k, v)
+  subroutine add_raw(self, k, v)
     class(fhdict), intent(inout) :: self
     character(len = *), intent(in) :: k, v
     type(fhentry), pointer :: newentry, cur
+
+    if (k == '') error stop
 
     if ( associated(self % list) ) then
       cur => self % list
@@ -329,7 +347,38 @@ contains
 
   !----------------------------------------------------------------------------!
 
-  subroutine get_str(self, k, buf, errno)
+  subroutine add_int(self, k, v)
+    class(fhdict), intent(inout) :: self
+    character(len = *), intent(in) :: k
+    integer, intent(in) :: v
+    character(len = 80) :: buf
+
+    write (buf, *) v
+    call self % add_raw(k, buf)
+  end subroutine
+
+  subroutine add_float(self, k, v)
+    class(fhdict), intent(inout) :: self
+    character(len = *), intent(in) :: k
+    real, intent(in) :: v
+    character(len = 80) :: buf
+
+    write (buf, *) v
+    call self % add_raw(k, buf)
+  end subroutine
+
+  subroutine add_str(self, k, v)
+    class(fhdict), intent(inout) :: self
+    character(len = *), intent(in) :: k
+    character(len = *), intent(in) :: v
+    character(len = 80) :: buf
+
+    call self % add_raw(k, "'" // trim(v) // "'")
+  end subroutine
+
+  !----------------------------------------------------------------------------!
+
+  subroutine get_raw(self, k, buf, errno)
     class(fhdict), intent(in) :: self
     character(len = *), intent(in) :: k
     character(len = *), intent(inout) :: buf
@@ -356,13 +405,29 @@ contains
 
   !----------------------------------------------------------------------------!
 
+  function get_str(self, k, errno) result(v)
+    class(fhdict), intent(in) :: self
+    character(len = *), intent(in) :: k
+    character(len = 80) :: v
+    integer, intent(inout), optional :: errno
+    character(len = 128) :: buf
+
+    call self % get_raw(k, buf, errno)
+    if (present(errno)) then
+      if (errno /= 0) return
+      read (buf, *, iostat = errno) v
+    else
+      read (buf, *) v
+    end if
+  end function
+
   real function get_float(self, k, errno) result(v)
     class(fhdict), intent(in) :: self
     character(len = *), intent(in) :: k
     integer, intent(inout), optional :: errno
-    character(len = kvlen) :: buf
+    character(len = 128) :: buf
 
-    call self % get_str(k, buf, errno)
+    call self % get_raw(k, buf, errno)
     if (present(errno)) then
       if (errno /= 0) return
       read (buf, *, iostat = errno) v
@@ -375,9 +440,9 @@ contains
     class(fhdict), intent(in) :: self
     character(len = *), intent(in) :: k
     integer, intent(inout), optional :: errno
-    character(len = kvlen) :: buf
+    character(len = 128) :: buf
 
-    call self % get_str(k, buf, errno)
+    call self % get_raw(k, buf, errno)
     if (present(errno)) then
       if (errno /= 0) return
       read (buf, *, iostat = errno) v
@@ -433,6 +498,62 @@ contains
     self % list => null()
   end subroutine
 
+  !----------------------------------------------------------------------------!
+
+  subroutine read_from_unit(self, un)
+    class(fhdict), intent(inout) :: self
+    integer, intent(in) :: un
+    integer :: status
+    character(len = 128) :: fn, key, val, comment
+    integer :: nkeys, ikey
+
+    status = 0
+
+    next_kw: do
+      call ftghps(un, nkeys, ikey, status)
+      if (ikey > nkeys) exit next_kw
+      call ftgkyn(un, ikey, key, val, comment, status)
+      if (status /= 0) exit next_kw
+      if (any(key == excludes)) cycle next_kw
+      call self % add_raw(key, val)
+    end do next_kw
+  end subroutine
+
+  subroutine read_from_file(self, fn, errno)
+    class(fhdict), intent(inout) :: self
+    character(len = *), intent(in) :: fn
+    integer :: un, bsize, status
+    integer, intent(out), optional :: errno
+
+    status = 0
+
+    call ftgiou(un, status)
+    call ftdkopn(un, fn, 0, bsize, status)
+
+    if (status /= 0) then
+      if (present(errno)) then
+        errno = status; return
+      else
+        error stop
+      end if
+    end if
+
+    call self % erase()
+    call self % read_from_unit(un)
+
+    call ftclos(un, status)
+    call ftfiou(un, status)
+
+    if (status /= 0) then
+      if (present(errno)) then
+        errno = status; return
+      else
+        error stop
+      end if
+    end if
+
+    if (present(errno)) errno = 0
+  end subroutine
 end module
 
 !------------------------------------------------------------------------------!
@@ -458,7 +579,6 @@ module image_frame_m
     type(fhdict) :: hdr
   contains
     procedure :: read_fits, write_fits
-    procedure, private :: loadkw
     ! procedure :: image_repr
     ! generic :: write(formatted) => image_repr
   end type image_frame_t
@@ -474,28 +594,8 @@ module image_frame_m
 
 contains
 
-  subroutine loadkw(self, u, k, errno)
-    class(image_frame_t) :: self
-    integer, intent(in) :: u
-    character(len = *), intent(in) :: k
-    integer, intent(inout), optional :: errno
-
-    character(len = 256) :: commt, s
-    integer :: status
-
-    status = 0
-    call ftgkys(u, trim(k), s, commt, status)
-    if (present(errno)) errno = status
-
-    if (status == 0) then
-      call self % hdr % add_str(k, s)
-    ! else
-    !   write (0, *) 'warning: no keyword ', trim(k)
-    end if
-  end subroutine
-
   subroutine read_fits(self, fn, errno)
-    class(image_frame_t) :: self
+    class(image_frame_t), intent(inout) :: self
     character(len = *), intent(in) :: fn
     integer, intent(inout), optional :: errno
     integer :: un, status, bsize
@@ -507,21 +607,14 @@ contains
 
     if (status == 0) then
       self % fn = fn
+      call self % hdr % load(fn)
 
-      call ftgiou(un, status)
-      call ftdkopn(un, fn, 0, bsize, status)
-
-      call self % loadkw(un, 'EXPTIME')
       if ('EXPTIME' .in. self % hdr) &
         self % exptime = self % hdr % get_float('EXPTIME')
-      call self % loadkw(un, 'CCD-TEMP')
       if ('CCD-TEMP' .in. self % hdr) &
         self % ccdtemp = self % hdr % get_float('CCD-TEMP')
-      call self % loadkw(un, 'FRAME')
-      call self % loadkw(un, 'DATE-OBS')
-
-      call ftclos(un, status)
-      call ftfiou(un, status)
+      if ('FRAME' .in. self % hdr) &
+        self % frametyp = self % hdr % get_str('FRAME')
     end if
   end subroutine
 

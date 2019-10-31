@@ -7,7 +7,7 @@
 FC := gfortran
 ARCHFLAGS ?= -march=native
 FFLAGS = -O3 -funsafe-math-optimizations $(ARCHFLAGS) -fopenmp
-FFLAGS_EXTRA := -fno-backtrace -fimplicit-none -ffree-line-length-none \
+FFLAGS_EXTRA := -fimplicit-none -ffree-line-length-none -std=f2018 \
 				  -pedantic -Wall -Wno-unused-dummy-argument -Warray-temporaries
 
 #-----------------------------------------------------------------------------#
@@ -48,8 +48,6 @@ endif
 
 VPATH = ../src/modules:../src/programs:../src/test
 PROGRAMS = aqstack aqlrgb
-TESTS = test_transforms test_background test_kernels test_findstar test_legacy_align \
-			test_framehandling test_addsuffix test_deconvolution test_png
 OBJECTS = kernels.o statistics.o convolution.o globals.o transforms.o \
 				  findstar.o legacy_align.o framehandling.o png.o
 
@@ -57,8 +55,7 @@ OBJECTS = kernels.o statistics.o convolution.o globals.o transforms.o \
 
 all: $(PROGRAMS)
 debug: $(PROGRAMS)
-tests: $(TESTS)
-debug tests: FFLAGS = -g -fcheck=all -fbacktrace
+debug test_%: FFLAGS = -g -fcheck=all -fbacktrace
 
 install: all
 	install -d $(prefix)/bin
@@ -75,7 +72,7 @@ include deps.inc
 
 $(PROGRAMS): %: $(OBJECTS) %.f90
 	$(FC) $(FFLAGS_EXTRA) $(FFLAGS) $(LDFLAGS) $^ $(LDLIBS) -o $@
-$(TESTS): %: $(OBJECTS) %.f90
+test_%: $(OBJECTS) test_%.f90
 	$(FC) $(FFLAGS_EXTRA) $(FFLAGS) $(LDFLAGS) $^ $(LDLIBS) -o $@
 
 clean:

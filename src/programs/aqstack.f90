@@ -350,13 +350,17 @@ program aqstack
 
     if (method == 'sigclip' .and. n < 4) then
       method = 'average'
-      if ((strategy == 'bias' .or. strategy == 'dark') .and. n > 2) then
+      if ((strategy == 'bias' .or. strategy == 'dark') .and. n == 3) then
         method = 'median'
       end if
       write (0, '("warning: too few frames; stacking method changed to ",a)') trim(method)
     end if
 
-    write (0, '("' // cf('stacking ",i0," frames using ",a,"','1') // '")') n, trim(method)
+    if (cfg_process_only) then
+      write (0, '("' // cf('processing ",i0," frames, filename suffix: ",a,"','1') // '")') n, trim(output_suff)
+    else
+      write (0, '("' // cf('stacking ",i0," frames using ",a,"','1') // '")') n, trim(method)
+    end if
 
     if (cfg_align_frames .and. (n > 1 .or. ref_fn /= "")) then
       write (0, '(a)') 'ALIGN STARTED'
@@ -408,7 +412,7 @@ program aqstack
           write (0, '("newY = ",f6.1," + ",f6.3,"*X + ",f6.3,"*Y")') mx(2,:)
 
           !$omp critical
-          margin = max(margin, ceiling(abs(mx(1,1) * 1.25)), ceiling(abs(mx(2,1) * 1.25)))
+          margin = max(margin, ceiling(abs(mx(1,1) * 1.1)) + 1, ceiling(abs(mx(2,1) * 1.1)) + 1)
           !$omp end critical
 
           ! when not resampling, we have only one copy of data, so we copy

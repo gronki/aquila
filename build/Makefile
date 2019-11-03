@@ -7,7 +7,7 @@
 FC := gfortran
 ARCHFLAGS ?= -march=native
 FFLAGS = -O3 -funsafe-math-optimizations $(ARCHFLAGS) -fopenmp
-FFLAGS_EXTRA := -fimplicit-none -ffree-line-length-none -std=f2018 \
+FFLAGS += -fimplicit-none -ffree-line-length-none -std=f2018 \
 				  -pedantic -Wall -Wno-unused-dummy-argument -Warray-temporaries
 
 #-----------------------------------------------------------------------------#
@@ -55,7 +55,7 @@ OBJECTS = kernels.o statistics.o convolution.o globals.o transforms.o \
 
 all: $(PROGRAMS)
 debug: $(PROGRAMS)
-debug test_%: FFLAGS = -g -fcheck=all -fbacktrace
+debug test_%: FFLAGS = -g -fcheck=all
 
 install: all
 	install -d $(prefix)/bin
@@ -66,14 +66,15 @@ install: all
 include deps.inc
 
 %.o: %.f90
-	$(FC) $(INCLUDE) $(FFLAGS_EXTRA) $(FFLAGS) -c $< -o $@
+	$(FC) $(INCLUDE) $(FFLAGS) -c $< -o $@
 %.o: %.F90
-	$(FC) $(INCLUDE) $(CPPFLAGS) $(FFLAGS_EXTRA) $(FFLAGS) -c $< -o $@
+	$(FC) $(INCLUDE) $(CPPFLAGS) $(FFLAGS) -c $< -o $@
 
+$(PROGRAMS): LDFLAGS += -fwhole-program
 $(PROGRAMS): %: $(OBJECTS) %.f90
-	$(FC) $(FFLAGS_EXTRA) $(FFLAGS) $(LDFLAGS) $^ $(LDLIBS) -o $@
+	$(FC) $(FFLAGS) $(LDFLAGS) $^ $(LDLIBS) -o $@
 test_%: $(OBJECTS) test_%.f90
-	$(FC) $(FFLAGS_EXTRA) $(FFLAGS) $(LDFLAGS) $^ $(LDLIBS) -o $@
+	$(FC) $(FFLAGS) $(LDFLAGS) $^ $(LDLIBS) -o $@
 
 clean:
 	$(RM) *.o *.mod $(PROGRAMS) $(TESTS)

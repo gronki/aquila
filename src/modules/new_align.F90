@@ -138,15 +138,13 @@ contains
     real(fp) :: y0_dv(transform_vec_size), y0n_dv(transform_vec_size)
     real(fp) :: lam, y_dlam, len0, r0
     real(fp) :: x0m, y0m
-    real(fp), parameter :: k0min = 0.9, k0decr = 1 / 2**(1.0_fp / 3)
+    real(fp), parameter :: k0min = 1.0, k0decr = 0.667
 
     k0 = 0.5 * (v0 % r0) / sqrt(real(size(xy0)))
     nmax = ceiling(log(k0min / k0) / log(k0decr))
 
 #   ifdef _DEBUG
     write (0, '("k0 =", g10.4)') k0
-    write (0, '("r0 =", g10.4)') v % r0
-    write (0, '("nmax =", g10.4)') nmax
     write (0, '(a4, a7  , a9  , 3a9  )') &
     &     'ii', 'k0', 'lam', 'vec(1)', 'vec(2)', '...'
 #   endif
@@ -160,7 +158,7 @@ contains
 
       lam = -0.01
 
-      call minimize_along_vec(lam, 1.0_fp)
+      call minimize_along_vec(lam, 0.1 * k0)
       v0 % vec = v0 % vec + y0n_dv * lam
 
 #     ifdef _DEBUG
@@ -244,5 +242,48 @@ contains
 
   !------------------------------------------------------------------------------------!
 
+  subroutine improject2(v, im0, im, resample)
+    class(transform_t), intent(in) :: v
+    real(fp), dimension(:,:), intent(in), contiguous :: im0
+    real(fp), dimension(:,:), intent(out), contiguous :: im
+    real(fp), intent(in), optional :: resample
 
+    integer   ::  i,  j
+    integer   :: ki, kj
+    real(fp)  :: xi, xj, ri, rj, i1, j1, ci, cj
+
+    ci = (size(im0, 1) + 1.0_fp) / 2
+    cj = (size(im0, 2) + 1.0_fp) / 2
+
+    do j = 1, size(im, 2)
+      do i = 1, size(im, 1)
+
+        if ( present(resample) ) then
+          i1 = (i - 0.5_fp) / resample + 0.5_fp
+          j1 = (j - 0.5_fp) / resample + 0.5_fp
+        else
+          i1 = i; j1 = j
+        end if
+
+        call v % apply(i1 - ci, j1 - cj, xi, xj)
+
+        xi = xi + ci
+        xj = xj + cj
+
+        ki = max(1, min(floor(xi), size(im0, 1) - 1))
+        kj = max(1, min(floor(xj), size(im0, 2) - 1))
+
+        ri = xi - ki
+        rj = xj - kj
+
+        if ( abs(2 * ri - 1) <= 2 .and. abs(2 * rj - 1) <= 2 ) then
+          im(i,j)  = im0(ki,   kj  ) * (1 - ri)  * (1 - rj)  &
+          &        + im0(ki+1, kj  ) * ri        * (1 - rj)  &
+          &        + im0(ki,   kj+1) * (1 - ri)  * rj        &
+          &        + im0(ki+1, kj+1) * ri        * rj
+        end if
+      end do
+    end do
+
+  end subroutine
 end module

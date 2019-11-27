@@ -54,7 +54,7 @@ program test_align_2
     call cpu_time(t2)
 
     print '(a12,2f9.3,es12.3)', 'LEGACY =', mx(1,1), mx(2,1), asin(mx(2,2))
-    print *, 'PERF =', t2 - t1
+    write (0, '("PERF =", f9.3)') t2 - t1
   end block test_legacy
 
   test_new: block
@@ -67,7 +67,7 @@ program test_align_2
     call cpu_time(t2)
 
     print '(a12,2f9.3,es12.3)', 'MODERN =', v % vec(1:2), v % vec(3) / v % r0
-    print *, 'PERF =', t2 - t1
+    write (0, '("PERF =", f9.3)') t2 - t1
   end block test_new
 
 

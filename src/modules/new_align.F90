@@ -217,7 +217,7 @@ contains
       class(transform_t), intent(in) :: v
       real(fp), intent(out) :: y, y_dv(transform_vec_size)
       real(fp) :: aa, bb, y_dx1, y_dy1
-      real(fp), dimension(transform_vec_size, size(xy)) :: x1_dv, y1_dv
+      real(fp), dimension(transform_vec_size) :: x1_dv, y1_dv
       integer :: i0, i
 
       y = 0
@@ -226,19 +226,16 @@ contains
       call v % apply(xy % x, xy % y, xy1 % x, xy1 % y)
       xy1 % flux = xy % flux
 
-      do concurrent (i = 1:size(xy))
-        call v % pder(xy(i) % x, xy(i) % y, x1_dv(:,i), y1_dv(:,i))
-      end do
-
-      do i0 = 1, size(xy0)
-        do i = 1, size(xy)
+      do i = 1, size(xy)
+        call v % pder(xy(i) % x, xy(i) % y, x1_dv(:), y1_dv(:))
+        do i0 = 1, size(xy0)
           aa = sqrt((xy1(i) % x - xy0(i0) % x)**2 &
           &   + (xy1(i) % y - xy0(i0) % y)**2 + k0**2)
           bb = sqrt(xy0(i0) % flux * xy(i) % flux) * k0
           y = y + bb / aa
           y_dx1 = - (xy1(i) % x - xy0(i0) % x) * bb / aa**3
           y_dy1 = - (xy1(i) % y - xy0(i0) % y) * bb / aa**3
-          y_dv(:) = y_dv(:) + y_dx1 * x1_dv(:,i) + y_dy1 * y1_dv(:,i)
+          y_dv(:) = y_dv(:) + y_dx1 * x1_dv(:) + y_dy1 * y1_dv(:)
         end do
       end do
     end subroutine

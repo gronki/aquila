@@ -48,14 +48,14 @@ endif
 
 VPATH = ../src/modules:../src/programs:../src/test
 PROGRAMS = aqstack aqlrgb
-OBJECTS = kernels.o statistics.o convolution.o globals.o transforms.o \
+OBJECTS = kernels.o statistics.o convolution.o globals.o new_align.o \
 				  findstar.o legacy_align.o framehandling.o png.o
 
 #-----------------------------------------------------------------------------#
 
 all: $(PROGRAMS)
 debug: $(PROGRAMS)
-debug test_%: FFLAGS = -g -fcheck=all
+debug test_%: FFLAGS = -g -fcheck=all -D_DEBUG
 
 install: all
 	install -d $(prefix)/bin

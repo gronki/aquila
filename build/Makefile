@@ -6,7 +6,7 @@
 
 FC := gfortran
 ARCHFLAGS ?= -march=native
-FFLAGS = -O3 -funsafe-math-optimizations $(ARCHFLAGS) -fopenmp
+FFLAGS := -O3 -funsafe-math-optimizations $(ARCHFLAGS) -fopenmp
 FFLAGS += -fimplicit-none -ffree-line-length-none -std=f2018 \
 				  -pedantic -Wall -Wno-unused-dummy-argument -Warray-temporaries
 
@@ -38,30 +38,27 @@ endif
 
 #-----------------------------------------------------------------------------#
 
-ifeq ($(USER),root)
-prefix = /usr/local
-else
-prefix = $(HOME)/.local
-endif
+prefix := $(shell if test -w "/usr/local"; then echo "/usr/local"; \
+	else echo "$$HOME/.local"; fi)
 
 #-----------------------------------------------------------------------------#
 
-VPATH = ../src/modules:../src/programs:../src/test
-PROGRAMS = aqstack aqlrgb
-OBJECTS = kernels.o statistics.o convolution.o globals.o new_align.o \
+VPATH := ../src/modules:../src/programs:../src/test
+PROGRAMS := aqstack aqlrgb
+OBJECTS := kernels.o statistics.o convolution.o globals.o new_align.o \
 				  findstar.o legacy_align.o framehandling.o png.o
 
 #-----------------------------------------------------------------------------#
 
 all: $(PROGRAMS)
 debug: $(PROGRAMS)
-debug test_%: FFLAGS = -g -fcheck=all -D_DEBUG
+debug test_%: FFLAGS := -g -fcheck=all -D_DEBUG
 
 install: all
 	install -d $(prefix)/bin
 	install $(PROGRAMS) $(prefix)/bin
 
-.PHONY: all debug install clean tests
+.PHONY: all debug install clean
 
 include deps.inc
 
@@ -77,4 +74,4 @@ test_%: $(OBJECTS) test_%.f90
 	$(FC) $(FFLAGS) $(LDFLAGS) $^ $(LDLIBS) -o $@
 
 clean:
-	$(RM) *.o *.mod $(PROGRAMS) $(TESTS)
+	$(RM) *.o *.mod $(PROGRAMS) test_*

@@ -1,10 +1,10 @@
 module globals
 
-  use iso_fortran_env, only: stderr => error_unit, stdout => output_unit
+  use iso_fortran_env, stderr => error_unit, stdout => output_unit
 
   implicit none
 
-  integer, parameter :: fp = selected_real_kind(12)
+  integer, parameter :: fp = real64
 
   character(len = *), parameter :: hlp_fmt = '(a22, 2x, a)', hlp_fmtc = '(24x, a)'
   character(len = *), parameter :: version = '190902'

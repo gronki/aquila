@@ -10,3 +10,48 @@ Currently, the package consists of following programs:
 
 1. ``aqstack`` for stacking and reduction of monochromatic CCD images
 2. ``aqlrgb`` for compositing images from many filters into one color picture
+
+## aqstack
+
+```
+usage: aqstack [STRATEGY] [OPTIONS] FILE1 [FILE2 ...] -o OUTPUT
+STRATEGY can be: bias, dark, flat, process, align, final
+   -o/-output FILENAME  specifies the output filename
+              -average  stack by average value
+               -median  stack by median
+              -sigclip  stack by 3-sigma clipped average
+                -align  align frames
+         -ref FILENAME  align to this frame rather than first frame
+             -resample  resample before stacking (only with -align)
+        -factor FACTOR  resampling factor (default: 1.5)
+          -norm[alize]  normalize to average before stacking
+              -nostack  process but do not stack images
+   -suffix/-S FILENAME  suffix that will be added to file names
+                        when using -nostack (default: R)
+-temperature/-T [TEMP]  stack only frames with given CCD temperature
+        -bias FILENAME  subtract this master bias
+        -flat FILENAME  remove this master flat
+```
+
+## aqlrgb
+
+```
+prepares the aligned images for RGB processing
+usage: aqlrgb [L] R G B [-o FILE] [options]
+R, G, B are color frames and L is optional luminance
+            -o/-output  specifies the output file name
+                        (allowed formats: fits, png)
+                -split  save as 3 files fits rather than one cube
+                        for example, if image.fits is given to -o, three files
+                        image.r.fits, image.g.fits, image.b.fits will be written
+        -smooth [FWHM]  smoothes color while preserving luminance
+                        if FWHM not given, default value (2.5) will be used
+         -wb/-equalize  attempt to make stars white
+                        (works best if background is small)
+       -bg/-background  attempt to make background black
+                        (do not use for strong nebulosity)
+     -sqrt/-asinh/-log  compress the image levels before saving
+  -sqrt2/-asinh2/-log2  same but using luminosity
+                        (boosts star colors but can kill some details)
+               -h[elp]  prints help
+```

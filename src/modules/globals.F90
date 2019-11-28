@@ -27,6 +27,9 @@ contains
     character(len = *), intent(in) :: s, f
     character(len = :), allocatable :: cf
 #   ifdef _WIN32
+#   define _NOCOLOR
+#   endif
+#   ifdef _NOCOLOR
     cf = trim(s)
 #   else
     cf = achar(27) // '[' // trim(f) // 'm' // trim(s) // achar(27) // '[0m'

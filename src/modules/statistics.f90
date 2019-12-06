@@ -132,7 +132,7 @@ contains
 
   !----------------------------------------------------------------------------!
 
-  subroutine outliers(im, sigma, niter, msk)
+  pure subroutine outliers(im, sigma, niter, msk)
     use ieee_arithmetic, only: ieee_is_normal
     use iso_fortran_env, only: int64
 

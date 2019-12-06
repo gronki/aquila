@@ -46,7 +46,7 @@ prefix := $(shell if test -w "/usr/local"; then echo "/usr/local"; \
 VPATH := ../src/modules:../src/programs:../src/test
 PROGRAMS := aqstack aqlrgb
 OBJECTS := kernels.o statistics.o convolution.o globals.o new_align.o \
-				  findstar.o legacy_align.o framehandling.o png.o
+				  findstar.o legacy_align.o framehandling.o png.o hotpixel.o
 
 #-----------------------------------------------------------------------------#
 
@@ -68,9 +68,9 @@ include deps.inc
 	$(FC) $(INCLUDE) $(CPPFLAGS) $(FFLAGS) -c $< -o $@
 
 $(PROGRAMS): LDFLAGS += -fwhole-program
-$(PROGRAMS): %: $(OBJECTS) %.f90
+$(PROGRAMS): %: $(OBJECTS) %.o
 	$(FC) $(FFLAGS) $(LDFLAGS) $^ $(LDLIBS) -o $@
-test_%: $(OBJECTS) test_%.f90
+test_%: $(OBJECTS) test_%.o
 	$(FC) $(FFLAGS) $(LDFLAGS) $^ $(LDLIBS) -o $@
 
 clean:

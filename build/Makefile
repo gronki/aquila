@@ -7,13 +7,14 @@
 FC := gfortran
 ARCHFLAGS ?= -march=native
 FFLAGS := -O3 -funsafe-math-optimizations $(ARCHFLAGS) -fopenmp
-FFLAGS += -fimplicit-none -ffree-line-length-none -std=f2018 \
+# below are Fortran language flags
+FFLAGS_EXTRA := -fimplicit-none -ffree-line-length-none -std=f2018 \
 				  -pedantic -Wall -Wno-unused-dummy-argument -Warray-temporaries
 
 #-----------------------------------------------------------------------------#
 
 LDLIBS :=
-INCLUDE :=
+INCLUDE := -I/usr/include
 
 ifeq ($(shell pkg-config --modversion cfitsio),)
 LDLIBS += -lcfitsio
@@ -29,12 +30,12 @@ LDLIBS += $(shell pkg-config --libs libpng)
 INCLUDE += $(shell pkg-config --cflags libpng)
 endif
 
-# ifeq ($(shell pkg-config --modversion fftw3),)
-# LDLIBS += -lfftw3
-# else
-# LDLIBS += $(shell pkg-config --libs fftw3)
-# INCLUDE += $(shell pkg-config --cflags fftw3)
-# endif
+ifeq ($(shell pkg-config --modversion fftw3),)
+LDLIBS += -lfftw3
+else
+LDLIBS += $(shell pkg-config --libs fftw3)
+INCLUDE += $(shell pkg-config --cflags fftw3)
+endif
 
 #-----------------------------------------------------------------------------#
 
@@ -55,17 +56,17 @@ debug: $(PROGRAMS)
 debug test_%: FFLAGS := -g -fcheck=all -D_DEBUG
 
 install: all
-	install -d $(prefix)/bin
-	install $(PROGRAMS) $(prefix)/bin
+	install -d $(DESTDIR)$(prefix)/bin
+	install $(PROGRAMS) $(DESTDIR)$(prefix)/bin
 
 .PHONY: all debug install clean
 
 include deps.inc
 
 %.o: %.f90
-	$(FC) $(INCLUDE) $(FFLAGS) -c $< -o $@
+	$(FC) $(INCLUDE) $(FFLAGS) $(FFLAGS_EXTRA) -c $< -o $@
 %.o: %.F90
-	$(FC) $(INCLUDE) $(CPPFLAGS) $(FFLAGS) -c $< -o $@
+	$(FC) $(INCLUDE) $(CPPFLAGS) $(FFLAGS) $(FFLAGS_EXTRA) -c $< -o $@
 
 $(PROGRAMS): LDFLAGS += -fwhole-program
 $(PROGRAMS): %: $(OBJECTS) %.o

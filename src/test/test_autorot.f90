@@ -1,3 +1,9 @@
+
+module fftw
+  use, intrinsic :: iso_c_binding
+  include 'fftw3.f03'
+end module
+
 program test_autorot
 
   use new_align
@@ -6,7 +12,7 @@ program test_autorot
 
   implicit none
 
-  integer, parameter :: num_stars = 250, n = 5
+  integer, parameter :: num_stars = 100, n = 4, ntries = 100
   real(fp), parameter :: d = 1000, pi = 4 * atan(1.0_fp), reliability = 0.95, &
   &     max_shift = 0.05 * d
   logical :: flip = .false.
@@ -16,14 +22,12 @@ program test_autorot
 
   call random_seed()
 
-  repeat_experiment: do it = 1, 1000
+  repeat_experiment: do it = 1, ntries
     block
       real :: a
       call random_number(a)
       flip = a < 0.5
     end block
-
-    print *, 'flip =', flip
 
     generate_stars: block
       real(fp), dimension(num_stars) :: a
@@ -42,7 +46,7 @@ program test_autorot
       call random_number(dy); dy = max_shift * (2 * dy - 1)
       call random_number(dr); dr = 0.5 * max_shift / (d / 2) * (2 * dr - 1) + merge(pi, 0.0_fp, flip)
 
-      print '(a12,2f9.3,es12.3)', 'ASSUMED =', dx, dy, dr
+      print '(a12,2f9.3,es12.3)', 'TRANSFORM =', dx, dy, dr
 
       call random_number(a)
       stars1 % flux = stars0 % flux * (1 + 0.01 * (2 * a - 1))
@@ -69,30 +73,52 @@ program test_autorot
     ! end block write_stars
 
     block
-      complex, dimension(n,n) :: ft0, ft1, ft01, ft10, fti
-      integer :: i
+      use fftw
+      complex(fp), dimension(n,n) :: ft0, ft1, ft01, ft10, ft10a, fti
+      integer :: i, j
       logical :: pass
+      type(C_PTR) :: plan
 
       call stars_ft(stars0, real(d), real(d), ft0)
       call stars_ft(stars1, real(d), real(d), ft1)
       ft01(:,:) = ft0 * ft1
       ft10(:,:) = conjg(ft0) * ft1
 
-      ! do i = 1, n
-      !   print '(*("(",2f6.2," )",:,2x))', ft0(i,:)
-      ! end do
-      ! print *, '--------'
-      ! do i = 1, n
-      !   print '(*("(",2f6.2," )",:,2x))', ft1(i,:)
-      ! end do
-      ! print *, '--------'
-      ! do i = 1, n
-      !   print '(*("(",2f6.2," )",:,2x))', ft10(i,:)
-      !   write (13, '(*(f9.3))') real(ft10(i,:))
-      ! end do
+      ft10a(:,:) = ft10; ft10a(1,1) = 0
+      plan = fftw_plan_dft_2d(n, n, ft10a, fti, FFTW_BACKWARD, FFTW_ESTIMATE)
+      call fftw_execute_dft(plan, ft10a, fti)
+      call fftw_destroy_plan(plan)
+
+      if (ntries == 1) then
+        print *, '---- ft0 -----'
+        do i = 1, n
+          print '(*("(",f6.2,1x,f6.2," )",:,2x))', ft0(i,:)
+        end do
+        print *, '---- ft1 -----'
+        do i = 1, n
+          print '(*("(",f6.2,1x,f6.2," )",:,2x))', ft1(i,:)
+        end do
+        print *, '---- ft01 ----'
+        do i = 1, n
+          print '(*("(",f6.2,1x,f6.2," )",:,2x))', ft01(i,:)
+        end do
+        print *, '---- ft10 ----'
+        do i = 1, n
+          print '(*("(",f6.2,1x,f6.2," )",:,2x))', ft10(i,:)
+          print '(*("=",f6.2," ",f6.2,"r ",:,2x))', &
+            (abs(ft10(i,j)), atan2(ft10(i,j) % im, ft10(i,j) % re) / pi, j = 1, n)
+          write (13, *) atan2(ft10(i,:) % im, ft10(i,:) % re) / pi
+        end do
+        print *, '---- fti -----'
+        do i = 1, n
+          print '(*("(",f6.2,1x,f6.2," )",:,2x))', fti(i,:)
+          write (14, *) abs(fti(i,:))
+        end do
+      end if
 
       pass = flip .eqv. sum(real(ft10)) < sum(real(ft01))
-      print *, 'TEST', sum(real(ft01)), ' > ', sum(real(ft10)), &
+      print '(a, 2x, a, 2x, f8.2, a, f8.2, 5x,a)', 'TEST', merge('FLIP','STR8',flip), &
+        sum(real(ft01)) - real(ft10(1,1)), ' > ', sum(real(ft10)) - real(ft10(1,1)),  &
         merge('PASS', 'FAIL', pass)
       if (pass) npass = npass + 1
       if (.not. pass) nfail = nfail + 1
@@ -101,19 +127,21 @@ program test_autorot
     deallocate(stars0, stars1)
   end do repeat_experiment
 
-  print *, 'for ', num_stars, ' stars and n=', n, 'got pass/fail = ', npass, '/', nfail
+  print '(a, i4, a, i3, a, i4, a, i4)', 'for ', num_stars, ' stars and n=', &
+  & n, ' got pass/fail = ', npass, ' /', nfail
+
 contains
 
   subroutine stars_ft(stars, wx, wy, ft)
     integer :: i, j
     type(source) :: stars(:)
-    complex :: ft(:,:)
+    complex(fp) :: ft(:,:)
     real :: wx, wy
-    real :: a(size(stars))
+    real(fp) :: a(size(stars))
 
     do concurrent (i = 1:size(ft,1), j = 1:size(ft,2))
       a(:) = 2 * pi * ((i - 1) * stars(:) % x / wx + (j - 1) * stars(:) % y / wy)
-      ft(i,j) = sum(stars(:) % flux * cmplx(cos(a(:)), sin(a(:)))) / size(stars)
+      ft(i,j) = sum(stars(:) % flux * cmplx(cos(a(:)), sin(a(:)), fp)) / size(stars)
     end do
   end subroutine
 

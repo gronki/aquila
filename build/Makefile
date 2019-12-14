@@ -13,8 +13,7 @@ FFLAGS_EXTRA := -fimplicit-none -ffree-line-length-none -std=f2018 \
 
 #-----------------------------------------------------------------------------#
 
-LDLIBS :=
-INCLUDE := -I/usr/include
+INCLUDE += -I/usr/include
 
 ifeq ($(shell pkg-config --modversion cfitsio),)
 LDLIBS += -lcfitsio

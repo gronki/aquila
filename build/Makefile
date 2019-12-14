@@ -65,7 +65,9 @@ include deps.inc
 	$(FC) $(INCLUDE) $(CPPFLAGS) $(FFLAGS) $(FFLAGS_EXTRA) -c $< -o $@
 
 $(PROGRAMS): LDFLAGS += -fwhole-program
-$(PROGRAMS) test_%:
+$(PROGRAMS):
+	$(FC) $(FFLAGS) $(LDFLAGS) $^ $(LDLIBS) -o $@
+test_%:
 	$(FC) $(FFLAGS) $(LDFLAGS) $^ $(LDLIBS) -o $@
 
 clean:

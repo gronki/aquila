@@ -1,5 +1,4 @@
 convolution.o: globals.o
-fftw.o: fftw3.f03
 convolution.o: globals.o
 test_transforms.o: transforms.o globals.o
 test_findstar.o: globals.o kernels.o convolution.o findstar.o

@@ -46,8 +46,6 @@ prefix := $(shell if test -w "/usr/local"; then echo "/usr/local"; \
 
 VPATH := ../src/modules:../src/programs:../src/test
 PROGRAMS := aqstack aqlrgb
-OBJECTS := kernels.o statistics.o convolution.o globals.o new_align.o \
-				  findstar.o legacy_align.o framehandling.o png.o hotpixel.o
 
 #-----------------------------------------------------------------------------#
 
@@ -59,8 +57,6 @@ install: all
 	install -d $(DESTDIR)$(prefix)/bin
 	install $(PROGRAMS) $(DESTDIR)$(prefix)/bin
 
-.PHONY: all debug install clean
-
 include deps.inc
 
 %.o: %.f90
@@ -69,10 +65,10 @@ include deps.inc
 	$(FC) $(INCLUDE) $(CPPFLAGS) $(FFLAGS) $(FFLAGS_EXTRA) -c $< -o $@
 
 $(PROGRAMS): LDFLAGS += -fwhole-program
-$(PROGRAMS): %: $(OBJECTS) %.o
-	$(FC) $(FFLAGS) $(LDFLAGS) $^ $(LDLIBS) -o $@
-test_%: $(OBJECTS) test_%.o
+$(PROGRAMS) test_%:
 	$(FC) $(FFLAGS) $(LDFLAGS) $^ $(LDLIBS) -o $@
 
 clean:
 	$(RM) *.o *.mod $(PROGRAMS) test_*
+
+.PHONY: all debug install clean

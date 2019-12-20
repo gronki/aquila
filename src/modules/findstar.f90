@@ -17,6 +17,8 @@ module findstar
     real(fp) :: deviation_uv
   end type
 
+  real(fp), parameter :: max_rms = 12
+
 contains
 
   !----------------------------------------------------------------------------!
@@ -50,7 +52,7 @@ contains
     integer, parameter :: rslice = 16, margin = 5
 
     logical, dimension(size(im,1), size(im,2)) :: mask, master_mask
-    integer, dimension(size(im,1), size(im,2)) :: xx, yy
+    real(fp), dimension(size(im,1), size(im,2)) :: xx, yy
     ! real(fp) :: xax(size(im,1),size(im,2)), yax(size(im,1),size(im,2))
     integer :: i, ix,iy,nx,ny, xymax(2)
     real(fp) :: sthr
@@ -59,8 +61,8 @@ contains
     ny = size(im, 2)
 
     do concurrent (ix = 1:nx, iy = 1:ny)
-      xx(ix,iy) = ix
-      yy(ix,iy) = iy
+      xx(ix, iy) = ix - 0.5_fp * (nx + 1)
+      yy(ix, iy) = iy - 0.5_fp * (ny + 1)
     end do
 
     ! calculate the threshold
@@ -68,8 +70,8 @@ contains
     if (present(threshold)) sthr = threshold
     ! we consider only pixels brighter than the threshold and far away from the edge
     master_mask = (im > sthr) &
-      .and. (xx >= 1 + margin) .and. (xx <= nx - margin) &
-      .and. (yy >= 1 + margin) .and. (yy <= ny - margin)
+      .and. abs(xx) < 0.5 * nx - margin  &
+      .and. abs(yy) < 0.5 * ny - margin 
 
     if (allocated(list)) deallocate(list)
     allocate(list(0))
@@ -114,7 +116,7 @@ contains
 
             rms = sqrt(sum(c_im * ((c_xx - cx)**2 + (c_yy - cy)**2), c_mask) / flx)
 
-            if (rms > 10) cycle extract_stars
+            if (rms > max_rms) cycle extract_stars
 
             star % deviation_xy = sum(c_im * (c_xx - cx) * (c_yy - cy), c_mask) / (flx * rms**2)
             star % deviation_uv = sum(c_im * ((c_xx - cx)**2 - (c_yy - cy)**2) / 2, c_mask) / (flx * rms**2)

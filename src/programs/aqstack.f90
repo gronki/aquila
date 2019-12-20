@@ -365,11 +365,14 @@ program aqstack
     if (cfg_align_frames .and. (n > 1 .or. ref_fn /= "")) then
       write (0, '(a)') 'ALIGN STARTED'
       align_frames: block
-        use legacy_align, only: align_xyr, improject
+        use new_align
         real(fp), allocatable :: buf_copy(:,:), buffer_resample(:,:,:)
         type(extended_source), dimension(:), allocatable :: lst0, lst
-        real(fp) :: mx(2,3)
         integer :: i, istart
+        class(transform_t), allocatable :: tx, tx0
+
+        allocate(transform_xyr_t :: tx0)
+        tx0 % r0 = 0.33 * sqrt(real(nx)**2 + real(ny)**2)
 
         if (cfg_resampling) then
           write (0, '("WARNING ", a)') 'resampling may require a lot of memory'
@@ -388,31 +391,46 @@ program aqstack
           end block read_ref_frame
           istart = 1
         else
-          call findstar_local(buffer(:,:,1), lst0)
-          istart = 2
-          if (cfg_resampling) then
-            ! neutral transform (identity)
-            mx(:,1) = [0, 0]
-            mx(:,2) = [1, 0]
-            mx(:,3) = [0, 1]
-            ! scale the first frame
-            call improject(buffer(:,:,1), mx, buffer_resample(:,:,1), resample_factor)
-          end if
+          findstar_initial: block
+            type(transform_xyr_t) :: ity
+            call findstar_local(buffer(:,:,1), lst0)
+            istart = 2
+            if (cfg_resampling) then
+              ! scale the first frame
+              call improject2(ity, buffer(:,:,1), buffer_resample(:,:,1), resample_factor)
+            end if
+          end block findstar_initial
         end if
 
         call cpu_time(t1)
-        !$omp parallel do private(i, lst, buf_copy, mx)
+        !$omp parallel do private(i, lst, buf_copy, tx)
         do i = istart, n
+          allocate(tx, source = tx0)
+
           ! find the transform between frames
           call findstar_local(buffer(:,:,i), lst)
-          call align_xyr(lst0, lst, mx)
+          call align2(lst0, lst, tx)
+
+#         ifdef _DEBUG
+          !$omp critical
+          block
+            character(len = 256) :: fn1
+            integer :: jj
+            write (fn1, '("stars.",i0.3,".txt")') i
+            open (11, file = fn1, action = 'write')
+            write (11, '(2f15.4)') (lst(jj) % x, lst(jj) % y, jj = 1, size(lst))
+            close (11)
+          end block
+          !$omp end critical
+#         endif
 
           write (0, '("ALIGN frame(",i2,") found ",i4," stars")') i, size(lst)
-          write (0, '("newX = ",f6.1," + ",f6.3,"*X + ",f6.3,"*Y")') mx(1,:)
-          write (0, '("newY = ",f6.1," + ",f6.3,"*X + ",f6.3,"*Y")') mx(2,:)
+          write (0, '(" solution(",i2,") =", *(f8.2))') i, tx % vec(1 : tx % npar())
 
           !$omp critical
-          margin = max(margin, ceiling(abs(mx(1,1) * 1.1)) + 1, ceiling(abs(mx(2,1) * 1.1)) + 1)
+          margin = max(margin, ceiling(abs(tx % vec(1) * 1.1)) + 1, &
+            ceiling(abs(tx % vec(2) * 1.1)) + 1)
+          margin = max(margin, check_corners(tx, nx, ny))
           !$omp end critical
 
           ! when not resampling, we have only one copy of data, so we copy
@@ -420,10 +438,12 @@ program aqstack
           if (.not. cfg_resampling) then
             buf_copy(:,:) = buffer(:,:,i)
             buffer(:,:,i) = 0
-            call improject(buf_copy, mx, buffer(:,:,i))
+            call improject2(tx, buf_copy, buffer(:,:,i))
           else
-            call improject(buffer(:,:,i), mx, buffer_resample(:,:,i), resample_factor)
+            call improject2(tx, buffer(:,:,i), buffer_resample(:,:,i), resample_factor)
           end if
+
+          deallocate(tx)
         end do
         !$omp end parallel do
         call cpu_time(t2)
@@ -553,12 +573,56 @@ program aqstack
       end block actual_stack
     end if
 
-
   end block actual_job
 
   !----------------------------------------------------------------------------!
 
 contains
+
+  !----------------------------------------------------------------------------!
+
+  subroutine findstar_local(im, lst)
+    use convolutions, only: convol_fix
+    use kernels, only: mexhakrn_alloc
+    use findstar, only: aqfindstar
+
+    real(fp), intent(in), contiguous :: im(:,:)
+    type(extended_source), intent(out), allocatable :: lst(:)
+    real(fp), allocatable :: im2(:,:), krn(:,:)
+    integer :: nstars
+
+    krn = mexhakrn_alloc(2.3_fp)
+
+    allocate(im2(size(im,1), size(im,2)))
+    call convol_fix(im, krn, im2, 'r')
+    call aqfindstar(im2, lst, limit = 256)
+  end subroutine
+
+  !----------------------------------------------------------------------------!
+
+  function check_corners(tx, nx, ny) result(margin)
+    use new_align, only: transform_t
+
+    class(transform_t), intent(in) :: tx
+    integer, intent(in) :: nx, ny
+    real(fp) :: rx, ry, sx, sy
+    integer :: margin
+
+    rx = 0.5_fp * (nx - 1)
+    ry = 0.5_fp * (ny - 1)
+
+    margin = 0
+    call tx % apply(-rx, -ry, sx, sy)
+    margin = max(margin, ceiling(abs(-rx - sx)), ceiling(abs(-ry - sy)))
+    call tx % apply( rx, -ry, sx, sy)
+    margin = max(margin, ceiling(abs( rx - sx)), ceiling(abs(-ry - sy)))
+    call tx % apply( rx,  ry, sx, sy)
+    margin = max(margin, ceiling(abs( rx - sx)), ceiling(abs( ry - sy)))
+    call tx % apply(-rx,  ry, sx, sy)
+    margin = max(margin, ceiling(abs(-rx - sx)), ceiling(abs( ry - sy)))
+  end function
+
+  !----------------------------------------------------------------------------!
 
   subroutine print_help
     use globals, only: hlp_fmt, hlp_fmtc
@@ -581,21 +645,6 @@ contains
     write (*, hlp_fmt) '-flat FILENAME', 'remove this master flat'
   end subroutine print_help
 
-  subroutine findstar_local(im, lst)
-    use convolutions, only: convol_fix
-    use kernels, only: mexhakrn_alloc
-    use findstar, only: aqfindstar
-
-    real(fp), intent(in), contiguous :: im(:,:)
-    type(extended_source), intent(out), allocatable :: lst(:)
-    real(fp), allocatable :: im2(:,:), krn(:,:)
-    integer :: nstars
-
-    krn = mexhakrn_alloc(2.3_fp)
-
-    allocate(im2(size(im,1), size(im,2)))
-    call convol_fix(im, krn, im2, 'r')
-    call aqfindstar(im2, lst, limit = 256)
-  end subroutine
+  !----------------------------------------------------------------------------!
 
 end program

@@ -4,7 +4,7 @@ module new_align
   use findstar, only: source
   implicit none
   private
-  public :: transform_t, transform_xyr_t, transform_vec_size, align2
+  public :: transform_t, transform_xyr_t, transform_vec_size, align2, improject2
 
   integer, parameter :: transform_vec_size = 8
 
@@ -133,15 +133,16 @@ contains
     class(source), intent(in) :: xy0(:)
     class(transform_t), intent(inout) :: v0
     type(source) :: xy1(size(xy))
-    integer :: ii, i, nmax
-    real(fp) :: k0, y0
+    integer :: ii, nmax
+    real(fp) :: k0, y0, lam
     real(fp) :: y0_dv(transform_vec_size), y0n_dv(transform_vec_size)
-    real(fp) :: lam, y_dlam, len0, r0
-    real(fp) :: x0m, y0m
-    real(fp), parameter :: k0min = 1.0, k0decr = 0.667
+    ! maximum dF/dx at x = k0 / sqrt(2)
+    real(fp), parameter :: k0min = 1.4, k0decr = 0.75
 
     k0 = 0.5 * (v0 % r0) / sqrt(real(size(xy0)))
     nmax = ceiling(log(k0min / k0) / log(k0decr))
+    nmax = max(nmax, 3)
+    k0 = k0min / k0decr**(nmax - 1)
 
 #   ifdef _DEBUG
     write (0, '("k0 =", g10.4)') k0
@@ -158,15 +159,17 @@ contains
 
       lam = -0.01
 
-      call minimize_along_vec(lam, 0.1 * k0)
+      call minimize_along_vec(lam, 0.25 * k0)
       v0 % vec = v0 % vec + y0n_dv * lam
 
 #     ifdef _DEBUG
       write (0, '(i4, f7.2, f9.4, *(f9.4))') ii, k0, lam, v0 % vec(1:v0 % npar())
 #     endif
 
-      if ( lam .lt. 1e-3 ) then
+      if ( lam .lt. 0.005 ) then
+#       ifdef _DEBUG
         write (0,*) ' ---- precision reached'
+#       endif
         exit loop_star_sharpness
       end if
 
@@ -190,7 +193,7 @@ contains
 
       ! write (0, '(2A3,A20  ,2 A14  )') 'ii', 'i', 'x', 'y', 'y_dx'
 
-      loop_scales: do ii = 1, 10
+      loop_scales: do ii = 1, 7
         scan_interval: do i = 1, 10
           x = x + dx
 
@@ -201,12 +204,16 @@ contains
           ! write (0, '(2I3,F20.8,2Es14.6)') ii, i, x, y, y_dx
 
           if (y_dx < 0) then
+            ! write (0, *) '             < < <'
             x = x - dx
             dx = dx / 10
             exit scan_interval
           end if
         end do scan_interval
       end do loop_scales
+
+      ! write (0, *) '  ================='
+
 
     end subroutine
 
@@ -229,7 +236,7 @@ contains
         do i0 = 1, size(xy0)
           aa = sqrt((xy1(i) % x - xy0(i0) % x)**2 &
           &   + (xy1(i) % y - xy0(i0) % y)**2 + k0**2)
-          bb = sqrt(xy0(i0) % flux * xy(i) % flux) * k0
+          bb = (xy0(i0) % flux * xy(i) % flux)**0.33_fp * k0
           y = y + bb / aa
           y_dx1 = - (xy1(i) % x - xy0(i0) % x) * bb / aa**3
           y_dy1 = - (xy1(i) % y - xy0(i0) % y) * bb / aa**3
@@ -252,8 +259,8 @@ contains
     integer   :: ki, kj
     real(fp)  :: xi, xj, ri, rj, i1, j1, ci, cj
 
-    ci = (size(im0, 1) + 1.0_fp) / 2
-    cj = (size(im0, 2) + 1.0_fp) / 2
+    ci = 0.5_fp * (size(im0, 1) + 1)
+    cj = 0.5_fp * (size(im0, 2) + 1)
 
     do j = 1, size(im, 2)
       do i = 1, size(im, 1)

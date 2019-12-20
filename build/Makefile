@@ -39,7 +39,7 @@ endif
 #-----------------------------------------------------------------------------#
 
 prefix := $(shell if test -w "/usr/local"; then echo "/usr/local"; \
-	else echo "$$HOME/.local"; fi)
+	else echo "$(HOME)/.local"; fi)
 
 #-----------------------------------------------------------------------------#
 
@@ -61,7 +61,7 @@ include deps.inc
 %.o: %.f90
 	$(FC) $(INCLUDE) $(FFLAGS) $(FFLAGS_EXTRA) -c $< -o $@
 %.o: %.F90
-	$(FC) $(INCLUDE) $(CPPFLAGS) $(FFLAGS) $(FFLAGS_EXTRA) -c $< -o $@
+	$(FC) $(INCLUDE) $(FFLAGS) $(FFLAGS_EXTRA) -c $< -o $@
 
 $(PROGRAMS): LDFLAGS += -fwhole-program
 $(PROGRAMS):

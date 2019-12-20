@@ -1,7 +1,6 @@
 module legacy_align
 
   use globals
-  use transforms
   use findstar, only: extended_source, source
   implicit none
 

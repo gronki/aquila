@@ -86,7 +86,7 @@ contains
     real(fp), allocatable :: k(:,:)
     integer :: n
 
-    n = nint(7.5 * fwhm / fwhm_over_sigma)
+    n = nint(8.0 * fwhm / fwhm_over_sigma)
     if (mod(n,2) == 0) n = n + 1
     if (n < 3) n = 3
 
@@ -140,7 +140,7 @@ contains
     real(fp), allocatable :: k(:,:)
     integer :: n
 
-    n = nint(5.7 * fwhm / fwhm_over_sigma)
+    n = nint(6.0 * fwhm / fwhm_over_sigma)
     if (mod(n,2) == 0) n = n + 1
     if (n < 3) n = 3
 

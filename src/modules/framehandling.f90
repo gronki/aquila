@@ -274,10 +274,15 @@ module fitsheader_m
     procedure :: add_str, add_float, add_int
     generic :: add => add_str, add_float, add_int
     procedure :: get_str, get_float, get_int
-    procedure :: has_key, erase
+    procedure :: has_key, erase, nrecords
     procedure, private :: add_raw, get_raw
+
     procedure :: read_from_file, read_from_unit
     generic :: load => read_from_file, read_from_unit
+
+    procedure :: write_to_file, write_to_unit
+    generic :: dump => write_to_file, write_to_unit
+        
     procedure, private :: fhdict_repr
     generic :: write(formatted) => fhdict_repr
     procedure, pass(self), private :: has_key_op
@@ -453,6 +458,22 @@ contains
 
   !----------------------------------------------------------------------------!
 
+  function nrecords(self) result(nrec)
+    class(fhdict), intent(in) :: self
+    integer :: nrec
+    class(fhentry), pointer :: cur
+    
+    nrec = 0
+    
+    cur => self % list
+    do while (associated(cur))
+      nrec = nrec + 1
+      cur => cur % next
+    end do
+  end function
+
+  !----------------------------------------------------------------------------!
+
   subroutine fhdict_repr(self, u, iotype, vlist, iostat, iomsg)
     class(fhdict), intent(in) :: self
     integer, intent(in)         :: u
@@ -483,7 +504,6 @@ contains
     type(fhdict), intent(inout) :: self
     call self % erase()
   end subroutine
-  !----------------------------------------------------------------------------!
 
   subroutine erase(self)
     class(fhdict), intent(inout) :: self
@@ -522,8 +542,8 @@ contains
   subroutine read_from_file(self, fn, errno)
     class(fhdict), intent(inout) :: self
     character(len = *), intent(in) :: fn
-    integer :: un, bsize, status
     integer, intent(out), optional :: errno
+    integer :: un, bsize, status
 
     status = 0
 
@@ -554,7 +574,66 @@ contains
 
     if (present(errno)) errno = 0
   end subroutine
-end module
+
+  !----------------------------------------------------------------------------!
+  
+  subroutine write_to_unit(self, un, errno)
+    class(fhdict), intent(inout) :: self
+    integer, intent(out), optional :: errno
+    integer, intent(in) :: un
+    integer :: status
+    class(fhentry), pointer :: cur
+    character(len = 128) :: buf
+
+    cur => self % list
+
+    status = 0
+
+    do while (associated(cur))
+      write (buf, '(a8, "= ", a70)') cur % key, cur % value
+      call ftprec(un, buf, status)
+      if (status /= 0) then
+        if (.not. present(errno)) error stop 'writing FITS keyword'
+        errno = status; exit
+      end if
+      cur => cur % next
+    end do
+  end subroutine
+
+  subroutine write_to_file(self, fn, errno)
+    class(fhdict), intent(inout) :: self
+    character(len = *), intent(in) :: fn
+    integer, intent(out), optional :: errno
+    integer :: un, bsize, status
+
+    status = 0
+
+    call ftgiou(un, status)
+    call ftdkopn(un, fn, 1, bsize, status)
+
+    if (status /= 0) then
+      if (.not.present(errno)) error stop 'opening FITS to write header'
+      errno = status; return
+    end if
+
+    call fthdef(un, self % nrecords(), status)
+    call self % write_to_unit(un, status)
+
+    call ftclos(un, status)
+    call ftfiou(un, status)
+
+    if (status /= 0) then
+      if (.not.present(errno)) error stop
+      errno = status; return
+    end if
+
+    if (present(errno)) errno = 0
+  end subroutine
+
+  !------------------------------------------------------------------------------!
+
+end module  
+
 
 !------------------------------------------------------------------------------!
 !------------------------------------------------------------------------------!
@@ -607,7 +686,7 @@ contains
 
     if (status == 0) then
       self % fn = fn
-      call self % hdr % load(fn)
+      call self % hdr % load(fn, errno)
 
       if ('EXPTIME' .in. self % hdr) &
         self % exptime = self % hdr % get_float('EXPTIME')
@@ -624,7 +703,8 @@ contains
     integer, intent(inout), optional :: errno
 
     call self % frame_t % write_fits(fn, errno)
-  end subroutine
+    call self % hdr % dump(fn, errno)
+    end subroutine
 
 ! !----------------------------------------------------------------------------!
 !

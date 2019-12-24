@@ -25,7 +25,7 @@ program aqstack
   logical :: cfg_temperature_filter = .false.
   real(fp) :: cfg_temperature_point = 0
   real(fp) :: resample_factor = 1.5
-  integer :: margin = 32
+  integer :: margin = 32, margins(2,2) = 0
   real(real64) :: t1, t2
 
   integer :: nframes
@@ -292,6 +292,8 @@ program aqstack
 
       associate (cur_frame => frames(n + 1), cur_buffer => buffer(:, :, n + 1))
 
+        ! TODO: filter by temperature
+
         cur_frame % data => cur_buffer
         call cur_frame % hdr % erase()
         call cur_frame % read_fits(input_fn(i), errno)
@@ -552,7 +554,15 @@ program aqstack
         call cpu_time(t2)
         print perf_fmt, 'stack', t2 - t1
 
-        frame_out % exptime = average_safe(frames(1:n) % exptime)
+        block
+          real :: exp_avg 
+          exp_avg = average_safe(frames(1:n) % exptime)
+          if (ieee_is_normal(exp_avg)) then 
+            frame_out % exptime = exp_avg
+            call frame_out % hdr % add_float('EXPTIME', exp_avg)
+          end if
+        end block
+
         call frame_out % write_fits(output_fn)
 
         if (strategy == 'bias' .or. strategy == 'dark') then

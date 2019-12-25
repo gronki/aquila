@@ -554,13 +554,13 @@ program aqstack
         call cpu_time(t2)
         print perf_fmt, 'stack', t2 - t1
 
-        call frame_out % hdr % add_int('NSTACK', n)
-        call frame_out % hdr % add_str('STCKMTD', method)
-        if (strategy /= '') & 
-          call frame_out % hdr % add_str('FRAMETYP', strategy)
-
-        block
+        write_extra_info_hdr: block
           real :: exp_avg, temp_avg
+
+          call frame_out % hdr % add_int('NSTACK', n)
+          call frame_out % hdr % add_str('STCKMTD', method)
+          if (strategy /= '') & 
+            call frame_out % hdr % add_str('FRAMETYP', strategy)
 
           exp_avg = average_safe(frames(1:n) % exptime)
           if (ieee_is_normal(exp_avg)) then 
@@ -571,7 +571,7 @@ program aqstack
           if (ieee_is_normal(temp_avg)) then 
             call frame_out % hdr % add_float('CCD-TEMP', temp_avg)
           end if
-        end block
+        end block write_extra_info_hdr
 
         if ((strategy == 'bias' .or. strategy == 'dark') .and. n > 1) then
           estimate_noise: block

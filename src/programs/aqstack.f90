@@ -554,30 +554,43 @@ program aqstack
         call cpu_time(t2)
         print perf_fmt, 'stack', t2 - t1
 
+        call frame_out % hdr % add_int('NSTACK', n)
+        call frame_out % hdr % add_str('STCKMTD', method)
+        if (strategy /= '') & 
+          call frame_out % hdr % add_str('FRAMETYP', strategy)
+
         block
-          real :: exp_avg 
+          real :: exp_avg, temp_avg
+
           exp_avg = average_safe(frames(1:n) % exptime)
           if (ieee_is_normal(exp_avg)) then 
-            frame_out % exptime = exp_avg
             call frame_out % hdr % add_float('EXPTIME', exp_avg)
+          end if
+          
+          temp_avg = average_safe(frames(1:n) % ccdtemp)
+          if (ieee_is_normal(temp_avg)) then 
+            call frame_out % hdr % add_float('CCD-TEMP', temp_avg)
           end if
         end block
 
-        call frame_out % write_fits(output_fn)
-
-        if (strategy == 'bias' .or. strategy == 'dark') then
+        if ((strategy == 'bias' .or. strategy == 'dark') .and. n > 1) then
           estimate_noise: block
-            real(fp) :: noise
+            real(fp) :: rms
             integer :: i
 
-            noise = 0
-            do i = 1, n
-              noise = noise + sum((buffer(:,:,i) - frame_out % data)**2) / (nx * ny)
+            rms = 0
+            do i = 1, n - 1
+              rms = rms + sum((buffer(:,:,i) - buffer(:,:,i+1))**2) / (2 * nx * ny)
             end do
 
-            write (*, '("RMS = ", f10.2)') sqrt(noise / n)
+            rms = sqrt(rms / (n - 1))
+
+            write (*, '("RMS = ", f10.2)') rms
+            call frame_out % hdr % add_float('RMS', real(rms))
           end block estimate_noise
         end if
+
+        call frame_out % write_fits(output_fn)
 
         deallocate(frame_out % data)
       end block actual_stack

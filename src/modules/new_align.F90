@@ -16,6 +16,8 @@ module new_align
     procedure(iface_det), deferred :: det
     procedure(iface_apply), deferred :: apply
     procedure(iface_pder), deferred :: pder
+    procedure, pass(v) :: project => improject2
+    procedure, pass(v0) :: align => align2
     ! procedure(iface_getvec), deferred :: vec
     ! procedure(iface_setvec), deferred, private :: setvec
     ! generic :: operator(=) => setvec

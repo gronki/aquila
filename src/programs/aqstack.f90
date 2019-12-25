@@ -399,7 +399,7 @@ program aqstack
             istart = 2
             if (cfg_resampling) then
               ! scale the first frame
-              call improject2(ity, buffer(:,:,1), buffer_resample(:,:,1), resample_factor)
+              call ity % project(buffer(:,:,1), buffer_resample(:,:,1), resample_factor)
             end if
           end block findstar_initial
         end if
@@ -411,7 +411,7 @@ program aqstack
 
           ! find the transform between frames
           call findstar_local(buffer(:,:,i), lst)
-          call align2(lst0, lst, tx)
+          call tx % align(lst0, lst)
 
 #         ifdef _DEBUG
           !$omp critical
@@ -440,9 +440,9 @@ program aqstack
           if (.not. cfg_resampling) then
             buf_copy(:,:) = buffer(:,:,i)
             buffer(:,:,i) = 0
-            call improject2(tx, buf_copy, buffer(:,:,i))
+            call tx % project(buf_copy, buffer(:,:,i))
           else
-            call improject2(tx, buffer(:,:,i), buffer_resample(:,:,i), resample_factor)
+            call tx % project(buffer(:,:,i), buffer_resample(:,:,i), resample_factor)
           end if
 
           deallocate(tx)

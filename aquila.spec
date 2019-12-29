@@ -1,5 +1,5 @@
 Name:           aquila
-Version:        191216
+Version:        191222
 Release:        1%{?dist}
 Summary:        aquila
 

@@ -6,7 +6,7 @@ program aqstack
   use framehandling
   use statistics
   use findstar, only: extended_source
-  use iso_fortran_env, only: real64
+  use iso_fortran_env, only: real64, stderr => error_unit
 
   !----------------------------------------------------------------------------!
 
@@ -23,8 +23,7 @@ program aqstack
   logical :: cfg_normalize = .false.
   logical :: cfg_resampling = .false.
   logical :: cfg_temperature_filter = .false.
-  real(fp) :: cfg_temperature_point = 0
-  real(fp) :: resample_factor = 1.5
+  real(fp) :: resample_factor = 1.5, cfg_temperature_point = 0
   integer :: margin = 32, margins(2,2) = 0
   real(real64) :: t1, t2
 
@@ -45,7 +44,7 @@ program aqstack
   !----------------------------------------------------------------------------!
 
   parse_cli: block
-    integer :: i, nargs
+    integer :: i, nargs, errno
     character(len = 256) :: arg, buf
     logical, allocatable :: command_argument_mask(:)
 
@@ -135,14 +134,12 @@ program aqstack
       case ("-resample")
         cfg_resampling = .true.
         command_argument_mask(i) = .false.
-
-      case ("-factor")
-        if (.not. command_argument_mask(i + 1)) then
-          error stop "resampling factor (float) expected"
+        call get_command_argument(i + 1, buf)
+        read (buf, *, iostat = errno) resample_factor
+        if (errno == 0 .and. resample_factor >= 1.0 .and. resample_factor <= 3.0) then
+          command_argument_mask(i + 1) = .false.
         else
-          call get_command_argument(i + 1, buf)
-          read (buf, *) resample_factor
-          command_argument_mask(i : i + 1) = .false.
+          resample_factor = 1.5
         end if
 
       case ("-temperature","-T")
@@ -232,7 +229,10 @@ program aqstack
   if (output_suff == "") output_suff = "_R"
 
   if (cfg_temperature_filter) &
-  &     write (0, '("temperature filter: ",f5.1,"C")') cfg_temperature_point
+  &     write (stderr, '("temperature filter: ",f5.1,"C")') cfg_temperature_point
+
+  if (cfg_resampling) write (stderr, '(a12,": ",f6.2)') 'resampling', resample_factor
+  
 
   !----------------------------------------------------------------------------!
 
@@ -249,13 +249,13 @@ program aqstack
       if (bias_fn /= "") then
         if (strategy == "bias") error stop "why subtract bias from bias?"
         call frame_bias % read_fits(bias_fn)
-        write (0, '(a12,": ",a)') 'bias', trim(bias_fn)
+        write (stderr, '(a12,": ",a)') 'bias', trim(bias_fn)
       end if
 
       if (dark_fn /= "") then
         if (strategy == "dark") error stop "why subtract dark from dark?"
         call frame_dark % read_fits(dark_fn)
-        write (0, '(a12,": ",a)') 'dark', trim(dark_fn)
+        write (stderr, '(a12,": ",a)') 'dark', trim(dark_fn)
       end if
 
       if (flat_fn /= "") then
@@ -267,7 +267,7 @@ program aqstack
               / average_safe(calibarea)
           end associate
         end associate
-        write (0, '(a12,": ",a)') 'flat', trim(flat_fn)
+        write (stderr, '(a12,": ",a)') 'flat', trim(flat_fn)
       end if
     end block read_calibration_frames
 
@@ -283,7 +283,7 @@ program aqstack
         call read_fits_naxes(input_fn(i), nx, ny, errno)
 
         if (errno /= 0) then
-          write (0, '("problem opening file: ", a)') trim(input_fn(i))
+          write (stderr, '("problem opening file: ", a)') trim(input_fn(i))
           cycle read_frames_loop
         end if
 
@@ -299,7 +299,7 @@ program aqstack
         call cur_frame % read_fits(input_fn(i), errno)
 
         if (errno /= 0) then
-          write (0, '("problem opening file: ", a)') trim(input_fn(i))
+          write (stderr, '("problem opening file: ", a)') trim(input_fn(i))
           cycle read_frames_loop
         end if
 
@@ -355,17 +355,17 @@ program aqstack
       if ((strategy == 'bias' .or. strategy == 'dark') .and. n == 3) then
         method = 'median'
       end if
-      write (0, '("warning: too few frames; stacking method changed to ",a)') trim(method)
+      write (stderr, '("warning: too few frames; stacking method changed to ",a)') trim(method)
     end if
 
     if (cfg_process_only) then
-      write (0, '("' // cf('processing ",i0," frames, filename suffix: ",a,"','1') // '")') n, trim(output_suff)
+      write (stderr, '("' // cf('processing ",i0," frames, filename suffix: ",a,"','1') // '")') n, trim(output_suff)
     else
-      write (0, '("' // cf('stacking ",i0," frames using ",a,"','1') // '")') n, trim(method)
+      write (stderr, '("' // cf('stacking ",i0," frames using ",a,"','1') // '")') n, trim(method)
     end if
 
     if (cfg_align_frames .and. (n > 1 .or. ref_fn /= "")) then
-      write (0, '(a)') 'ALIGN STARTED'
+      write (stderr, '(a)') 'ALIGN STARTED'
       align_frames: block
         use new_align
         real(fp), allocatable :: buf_copy(:,:), buffer_resample(:,:,:)
@@ -377,7 +377,7 @@ program aqstack
         tx0 % r0 = 0.33 * sqrt(real(nx)**2 + real(ny)**2)
 
         if (cfg_resampling) then
-          write (0, '("WARNING ", a)') 'resampling may require a lot of memory'
+          write (stderr, '("WARNING ", a)') 'resampling may require a lot of memory'
           allocate(buffer_resample(nint(resample_factor * nx), nint(resample_factor * ny), n))
           buffer_resample(:,:,:) = 0
         else
@@ -426,8 +426,8 @@ program aqstack
           !$omp end critical
 #         endif
 
-          write (0, '("ALIGN frame(",i2,") found ",i4," stars")') i, size(lst)
-          write (0, '(" solution(",i2,") =", *(f8.2))') i, tx % vec(1 : tx % npar())
+          write (stderr, '("ALIGN frame(",i2,") found ",i4," stars")') i, size(lst)
+          write (stderr, '(" solution(",i2,") =", *(f8.2))') i, tx % vec(1 : tx % npar())
 
           !$omp critical
           margin = max(margin, ceiling(abs(tx % vec(1) * 1.1)) + 1, &
@@ -495,7 +495,7 @@ program aqstack
         do i = 1, n
           yy(:) = pack(buffer(:,:,i), mask)
           call linfit(xx, yy, a, b)
-          write (0, '("NORM frame(",i2,") y = ",f5.3,"x + ",f7.1)') i, a, b
+          write (stderr, '("NORM frame(",i2,") y = ",f5.3,"x + ",f7.1)') i, a, b
           buffer(:,:,i) = (buffer(:,:,i) - b) / a
         end do
 
@@ -657,13 +657,13 @@ contains
     write (*, hlp_fmt) '-sigclip', 'stack by 3-sigma clipped average'
     write (*, hlp_fmt) '-align', 'align frames'
     write (*, hlp_fmt) '-ref FILENAME', 'align to this frame rather than first frame'
-    write (*, hlp_fmt) '-resample', 'resample before stacking (only with -align)'
-    write (*, hlp_fmt) '-factor FACTOR', 'resampling factor (default: 1.5)'
+    write (*, hlp_fmt) '-resample [FACTOR]', 'resample before stacking (only with -align)'
+    write (*, hlp_fmtc) 'default resampling factor = 1.5x'
     write (*, hlp_fmt) '-norm[alize]', 'normalize to average before stacking'
     write (*, hlp_fmt) '-nostack', 'process but do not stack images'
     write (*, hlp_fmt) '-suffix/-S FILENAME', 'suffix that will be added to file names'
     write (*, hlp_fmtc) 'when using -nostack (default: R)'
-    write (*, hlp_fmt) '-temperature/-T [TEMP]', 'stack only frames with given CCD temperature'
+    write (*, hlp_fmt) '-temperature/-T TEMP', 'stack only frames with given CCD temperature'
     write (*, hlp_fmt) '-bias FILENAME', 'subtract this master bias'
     write (*, hlp_fmt) '-flat FILENAME', 'remove this master flat'
   end subroutine print_help

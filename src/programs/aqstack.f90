@@ -66,7 +66,7 @@ program aqstack
     type(image_frame_t), dimension(:), allocatable :: frames
     real(fp), allocatable, target :: buffer(:,:,:)
     type(image_frame_t) :: frame_bias, frame_dark, frame_flat
-    integer :: i, n, errno
+    integer :: i, nstack, errno
     integer :: nx, ny
 
 
@@ -96,7 +96,7 @@ program aqstack
       end if
     end block read_calibration_frames
 
-    n = 0
+    nstack = 0
     allocate(frames(nframes))
     print '(a27, a9, a7, a9, a8)', 'FILENAME', 'AVG', 'STD', 'EXPOS', 'TEMP'
 
@@ -104,7 +104,7 @@ program aqstack
 
       errno = 0
 
-      if (n == 0 .and. .not. allocated(buffer)) then
+      if (nstack == 0 .and. .not. allocated(buffer)) then
         call read_fits_naxes(input_fn(i), nx, ny, errno)
 
         if (errno /= 0) then
@@ -115,7 +115,7 @@ program aqstack
         allocate(buffer(nx, ny, nframes))
       end if
 
-      associate (cur_frame => frames(n + 1), cur_buffer => buffer(:, :, n + 1))
+      associate (cur_frame => frames(nstack + 1), cur_buffer => buffer(:, :, nstack + 1))
 
         ! TODO: filter by temperature
 
@@ -168,28 +168,28 @@ program aqstack
 
       end associate
 
-      n = n + 1
+      nstack = nstack + 1
     end do read_frames_loop
 
-    if (n == 0) then
+    if (nstack == 0) then
       error stop "no frames to stack"
     end if
 
-    if (method == 'sigclip' .and. n < 4) then
+    if (method == 'sigclip' .and. nstack < 4) then
       method = 'average'
-      if ((strategy == 'bias' .or. strategy == 'dark') .and. n == 3) then
+      if ((strategy == 'bias' .or. strategy == 'dark') .and. nstack == 3) then
         method = 'median'
       end if
       write (stderr, '("warning: too few frames; stacking method changed to ",a)') trim(method)
     end if
 
     if (cfg_process_only) then
-      write (stderr, '("' // cf('processing ",i0," frames, filename suffix: ",a,"','1') // '")') n, trim(output_suff)
+      write (stderr, '("' // cf('processing ",i0," frames, filename suffix: ",a,"','1') // '")') nstack, trim(output_suff)
     else
-      write (stderr, '("' // cf('stacking ",i0," frames using ",a,"','1') // '")') n, trim(method)
+      write (stderr, '("' // cf('stacking ",i0," frames using ",a,"','1') // '")') nstack, trim(method)
     end if
 
-    if (cfg_align_frames .and. (n > 1 .or. ref_fn /= "")) then
+    if (cfg_align_frames .and. (nstack > 1 .or. ref_fn /= "")) then
       write (stderr, '(a)') 'ALIGN STARTED'
       align_frames: block
         use new_align
@@ -203,7 +203,7 @@ program aqstack
 
         if (cfg_resampling) then
           write (stderr, '("WARNING ", a)') 'resampling may require a lot of memory'
-          allocate(buffer_resample(nint(resample_factor * nx), nint(resample_factor * ny), n))
+          allocate(buffer_resample(nint(resample_factor * nx), nint(resample_factor * ny), nstack))
           buffer_resample(:,:,:) = 0
         else
           allocate(buf_copy(nx, ny))
@@ -231,7 +231,7 @@ program aqstack
 
         call cpu_time(t1)
         !$omp parallel do private(i, lst, buf_copy, tx)
-        do i = istart, n
+        do i = istart, nstack
           allocate(tx, source = tx0)
 
           ! find the transform between frames
@@ -280,7 +280,7 @@ program aqstack
         if (cfg_resampling) then
           deallocate(buffer)
           call move_alloc(buffer_resample, buffer)
-          do i = 1, n
+          do i = 1, nstack
             frames(i) % data => buffer(:,:,i)
           end do
         end if
@@ -300,7 +300,7 @@ program aqstack
         call cpu_time(t1)
 
         ! create mean frame to normalize to
-        imref = sum(buffer(:,:,1:n), 3) / n
+        imref = sum(buffer(:,:,1:nstack), 3) / nstack
 
         ! create mask which excludes edges and the brigtenst pixels
         allocate(mask(sz(1), sz(2)))
@@ -317,7 +317,7 @@ program aqstack
         deallocate(imref)
         allocate(yy, mold = xx)
 
-        do i = 1, n
+        do i = 1, nstack
           yy(:) = pack(buffer(:,:,i), mask)
           call linfit(xx, yy, a, b)
           write (stderr, '("NORM frame(",i2,") y = ",f5.3,"x + ",f7.1)') i, a, b
@@ -333,10 +333,10 @@ program aqstack
       save_processed: block
         integer :: i
         character(len = 256) :: newfn
-        if ( n == 1 ) then
+        if ( nstack == 1 ) then
           call frames(1) % write_fits(output_fn)
         else
-          do i = 1, n
+          do i = 1, nstack
             call frames(i) % write_fits(add_suffix(frames(i) % fn, output_suff))
           end do
         end if
@@ -345,7 +345,7 @@ program aqstack
       actual_stack: block
         use statistics
         type(image_frame_t) :: frame_out
-        real(fp) :: a(n)
+        real(fp) :: a(nstack)
         integer :: i,j
 
         allocate(frame_out % data(size(buffer, 1), size(buffer, 2)))
@@ -354,13 +354,13 @@ program aqstack
 
         select case (method)
         case ('average')
-          frame_out % data(:,:) = sum(buffer(:,:,1:n), 3) / n
+          frame_out % data(:,:) = sum(buffer(:,:,1:nstack), 3) / nstack
         case ('median')
           !$omp parallel do private(i, j, a)
           do j = 1, size(buffer,2)
             do i = 1, size(buffer,1)
-              a(:) = buffer(i,j,1:n)
-              frame_out % data(i,j) = quickselect(a, (n + 1) / 2)
+              a(:) = buffer(i,j,1:nstack)
+              frame_out % data(i,j) = quickselect(a, (nstack + 1) / 2)
             end do
           end do
           !$omp end parallel do
@@ -368,7 +368,7 @@ program aqstack
           !$omp parallel do private(i, j)
           do j = 1, size(buffer,2)
             do i = 1, size(buffer,1)
-              call sigclip2(buffer(i,j,1:n), frame_out % data(i,j))
+              call sigclip2(buffer(i,j,1:nstack), frame_out % data(i,j))
             end do
           end do
           !$omp end parallel do
@@ -382,37 +382,31 @@ program aqstack
         write_extra_info_hdr: block
           real :: exp_avg, temp_avg
 
-          call frame_out % hdr % add_int('NSTACK', n)
+          call frame_out % hdr % add_int('NSTACK', nstack)
           call frame_out % hdr % add_str('STCKMTD', method)
           if (strategy /= '') & 
             call frame_out % hdr % add_str('FRAMETYP', strategy)
 
-          exp_avg = average_safe(frames(1:n) % exptime)
-          if (ieee_is_normal(exp_avg)) then 
+          exp_avg = average_safe(frames(1:nstack) % exptime)
+          if (ieee_is_normal(exp_avg)) then
             call frame_out % hdr % add_float('EXPTIME', exp_avg)
           end if
-          
-          temp_avg = average_safe(frames(1:n) % ccdtemp)
-          if (ieee_is_normal(temp_avg)) then 
+
+          temp_avg = average_safe(frames(1:nstack) % ccdtemp)
+          if (ieee_is_normal(temp_avg)) then
             call frame_out % hdr % add_float('CCD-TEMP', temp_avg)
           end if
         end block write_extra_info_hdr
 
-        if ((strategy == 'bias' .or. strategy == 'dark') .and. n > 1) then
+        if ((strategy == 'bias' .or. strategy == 'dark') .and. nstack > 1) then
           estimate_noise: block
             real(fp) :: rms
-            integer :: i
 
-            rms = 0
-            do i = 1, n - 1
-              rms = rms + sum((buffer(:,:,i) - buffer(:,:,i+1))**2) / (2 * nx * ny)
-            end do
-
-            rms = sqrt(rms / (n - 1))
+            rms = estimate_differential_noise(buffer)
 
             write (*, '("RMS = ", f10.2)') rms
             call frame_out % hdr % add_float('RMS', real(rms))
-            call frame_out % hdr % add_float('STACKRMS', real(rms / sqrt(1.0_fp * n)))
+            call frame_out % hdr % add_float('STACKRMS', real(rms / sqrt(1.0_fp * nstack)))
           end block estimate_noise
         end if
 
@@ -427,6 +421,26 @@ program aqstack
   !----------------------------------------------------------------------------!
 
 contains
+
+  !----------------------------------------------------------------------------!
+
+  function estimate_differential_noise(buffer) result(rms)
+    use iso_fortran_env, only: int64
+    real(fp), intent(in), contiguous :: buffer(:,:,:)
+    real(fp) :: rms
+    integer :: i, n
+    integer(int64) :: nxny
+
+    nxny = size(buffer, 1) * size(buffer, 2)
+    n = size(buffer, 3)
+
+    rms = 0
+    do i = 1, n - 1
+      rms = rms + sum((buffer(:,:,i) - buffer(:,:,i+1))**2) / (2 * nxny)
+    end do
+
+    rms = sqrt(rms / (n - 1))
+  end function
 
   !----------------------------------------------------------------------------!
 

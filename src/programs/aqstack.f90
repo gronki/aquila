@@ -31,192 +31,17 @@ program aqstack
 
   !----------------------------------------------------------------------------!
 
-  allocate(input_fn(0))
-
-  !----------------------------------------------------------------------------!
-
   call greeting('aq' // cf('stack','1'))
 
   if (command_argument_count() == 0) then
     call print_help(); stop
   end if
 
-  !----------------------------------------------------------------------------!
-
-  parse_cli: block
-    integer :: i, nargs, errno
-    character(len = 256) :: arg, buf
-    logical, allocatable :: command_argument_mask(:)
-
-    nargs = command_argument_count()
-    allocate(command_argument_mask(nargs + 1))
-    command_argument_mask(:nargs) = .true.
-    command_argument_mask(nargs+1:) = .false.
-
-    scan_cli: do i = 1, command_argument_count()
-
-      if (.not. command_argument_mask(i)) cycle scan_cli
-      call get_command_argument(i, arg)
-
-      select case (arg)
-
-      case ("bias")
-        if (i == 1) then
-          strategy = "bias"
-          method = 'sigclip'
-          command_argument_mask(i) = .false.
-        end if
-
-      case ("dark")
-        if (i == 1) then
-          strategy = "dark"
-          method = 'sigclip'
-          command_argument_mask(i) = .false.
-        end if
-
-      case ("flat")
-        if (i == 1) then
-          strategy = "flat"
-          command_argument_mask(i) = .false.
-        end if
-
-      case ("process")
-        if (i == 1) then
-          strategy = "process"
-          cfg_align_frames = .false.
-          cfg_process_only = .true.
-          command_argument_mask(i) = .false.
-        end if
-
-      case ("align")
-        if (i == 1) then
-          strategy = "process"
-          cfg_align_frames = .true.
-          cfg_process_only = .true.
-          command_argument_mask(i) = .false.
-        end if
-
-      case ("final")
-        if (i == 1) then
-          strategy = "final"
-          cfg_align_frames = .true.
-          cfg_normalize = .true.
-          method = "sigclip"
-          command_argument_mask(i) = .false.
-        end if
-
-      case ("-median")
-        method = "median"
-        command_argument_mask(i) = .false.
-
-      case ("-average")
-        method = "average"
-        command_argument_mask(i) = .false.
-
-      case ("-sigclip")
-        method = "sigclip"
-        if (strategy /= 'bias' .and. strategy /= 'dark') &
-        &     cfg_normalize = .true.
-        command_argument_mask(i) = .false.
-
-      case ("-nostack")
-        cfg_process_only = .true.
-        command_argument_mask(i) = .false.
-
-      case ("-align")
-        cfg_align_frames = .true.
-        command_argument_mask(i) = .false.
-
-      case ("-norm", "-normalize")
-        cfg_normalize = .true.
-        command_argument_mask(i) = .false.
-
-      case ("-resample")
-        cfg_resampling = .true.
-        command_argument_mask(i) = .false.
-        call get_command_argument(i + 1, buf)
-        read (buf, *, iostat = errno) resample_factor
-        if (errno == 0 .and. resample_factor >= 1.0 .and. resample_factor <= 3.0) then
-          command_argument_mask(i + 1) = .false.
-        else
-          resample_factor = 1.5
-        end if
-
-      case ("-temperature","-T")
-        if (.not. command_argument_mask(i + 1)) then
-          error stop "temperature point in celsius (float) expected"
-        else
-          call get_command_argument(i + 1, buf)
-          read (buf, *) cfg_temperature_point
-          cfg_temperature_filter = .true.
-          command_argument_mask(i : i + 1) = .false.
-        end if
-
-      case ("-o","-output")
-        if (.not. command_argument_mask(i + 1)) then
-          error stop "output file name expected"
-        else
-          call get_command_argument(i + 1, output_fn)
-          command_argument_mask(i : i + 1) = .false.
-        end if
-
-      case ("-suffix", "-S")
-        if (.not. command_argument_mask(i + 1)) then
-          error stop "suffix expected"
-        else
-          call get_command_argument(i + 1, output_suff)
-          command_argument_mask(i : i + 1) = .false.
-        end if
-
-      case ("-bias")
-        if (.not. command_argument_mask(i + 1)) then
-          error stop "bias file name expected"
-        else
-          call get_command_argument(i + 1, bias_fn)
-          command_argument_mask(i : i + 1) = .false.
-        end if
-
-      case ("-flat")
-        if (.not. command_argument_mask(i + 1)) then
-          error stop "flat file name expected"
-        else
-          call get_command_argument(i + 1, flat_fn)
-          command_argument_mask(i : i + 1) = .false.
-        end if
-
-      case ("-ref", "-reference")
-        if (.not. command_argument_mask(i + 1)) then
-          error stop "reference frame file name expected"
-        else
-          call get_command_argument(i + 1, ref_fn)
-          command_argument_mask(i : i + 1) = .false.
-        end if
-
-      case ("-h", "-help")
-        call print_help(); stop
-
-      case default
-        if (arg(1:1) == '-') error stop "unknown option: " // trim(arg)
-
-      end select
-    end do scan_cli
-
-    scan_inpfiles: do i = 1, command_argument_count()
-      if (command_argument_mask(i)) then
-        call get_command_argument(i, arg)
-        if (size(input_fn) == 0) then
-          input_fn = [arg]
-        else
-          input_fn = [input_fn, arg]
-        end if
-      end if
-    end do scan_inpfiles
-
-  end block parse_cli
+  call parse_cli()
 
   !----------------------------------------------------------------------------!
 
-  nframes = size(input_fn)
+  nframes = merge(size(input_fn), 0, allocated(input_fn))
   if (nframes == 0) error stop "no input files!"
 
   if (output_fn == "") then
@@ -231,9 +56,9 @@ program aqstack
   if (cfg_temperature_filter) &
   &     write (stderr, '("temperature filter: ",f5.1,"C")') cfg_temperature_point
 
+  cfg_resampling = cfg_resampling .and. cfg_align_frames
   if (cfg_resampling) write (stderr, '(a12,": ",f6.2)') 'resampling', resample_factor
   
-
   !----------------------------------------------------------------------------!
 
   actual_job: block
@@ -587,6 +412,7 @@ program aqstack
 
             write (*, '("RMS = ", f10.2)') rms
             call frame_out % hdr % add_float('RMS', real(rms))
+            call frame_out % hdr % add_float('STACKRMS', real(rms / sqrt(1.0_fp * n)))
           end block estimate_noise
         end if
 
@@ -646,6 +472,178 @@ contains
   end function
 
   !----------------------------------------------------------------------------!
+  ! parse the command line args
+  ! note: this subroutine fills the global variables
+
+  subroutine parse_cli
+    integer :: i, errno, skip
+    character(len = 256) :: arg, buf
+
+    skip = 0
+
+    scan_cli: do i = 1, command_argument_count()
+
+      if (skip > 0) then
+        skip = skip - 1; cycle scan_cli
+      end if
+
+      call get_command_argument(i, arg)
+
+      ! in the first argument the strategy might be given
+      if ( i == 1 ) then
+        select case (arg)
+
+        case ("bias")
+          strategy = "bias"
+          method = 'sigclip'
+          cycle scan_cli
+
+        case ("dark")
+          strategy = "dark"
+          method = 'sigclip'
+          cfg_find_hot = .true.
+          cycle scan_cli
+          
+        case ("flat")
+          strategy = "flat"
+          cycle scan_cli
+
+        case ("process")
+          strategy = "process"
+          cfg_align_frames = .false.
+          cfg_process_only = .true.
+          cycle scan_cli
+
+        case ("align")
+          strategy = "process"
+          cfg_align_frames = .true.
+          cfg_process_only = .true.
+          cycle scan_cli
+
+        case ("final")
+          strategy = "final"
+          cfg_align_frames = .true.
+          cfg_normalize = .true.
+          method = "sigclip"
+          cycle scan_cli
+
+        end select
+      end if
+
+      ! here we deal with the rest of possible args (other than strategy)
+      select case (arg)
+
+      case ("-median")
+        method = "median"
+
+      case ("-average")
+        method = "average"
+
+      case ("-sigclip")
+        method = "sigclip"
+        if (strategy /= 'bias' .and. strategy /= 'dark') &
+        &     cfg_normalize = .true.
+
+      case ("-nostack")
+        cfg_process_only = .true.
+
+      case ("-align")
+        cfg_align_frames = .true.
+
+      case ("-norm", "-normalize")
+        cfg_normalize = .true.
+
+      case ("-resample")
+        cfg_resampling = .true.
+        call get_command_argument(i + 1, buf)
+        read (buf, *, iostat = errno) resample_factor
+        if (errno == 0 .and. resample_factor >= 1.0 .and. resample_factor <= 3.0) then
+          skip = 1
+        else
+          resample_factor = 1.5
+        end if
+
+      case ("-temperature", "-T")
+        call get_command_argument(i + 1, buf)
+        read (buf, *, iostat = errno) cfg_temperature_point
+        if (errno == 0) then
+          cfg_temperature_filter = .true.
+          skip = 1
+        else
+          error stop "command line: temperature point in celsius (float) expected"
+        end if
+
+      case ("-o", "-output")
+        call get_command_argument(i + 1, buf)
+        if (is_valid_fn_arg(buf)) then
+          output_fn = buf; skip = 1
+        else
+          error stop "command line: output file name expected"
+        end if
+
+      case ("-suffix", "-S")
+        call get_command_argument(i + 1, buf)
+        if (buf /= '' .and. index(trim(buf), ' ') == 0) then
+          output_suff = buf; skip = 1
+        else
+          error stop "command line: suffix expected"
+        end if
+
+      case ("-bias")
+        call get_command_argument(i + 1, buf)
+        if (is_valid_fn_arg(buf)) then
+          bias_fn = buf; skip = 1
+        else
+          error stop "command line: bias file name expected"
+        end if
+
+      case ("-flat")
+        call get_command_argument(i + 1, buf)
+        if (is_valid_fn_arg(buf)) then
+          flat_fn = buf; skip = 1
+        else
+          error stop "command line: flat file name expected"
+        end if
+
+      case ("-ref", "-reference")
+        call get_command_argument(i + 1, buf)
+        if (is_valid_fn_arg(buf)) then
+          ref_fn = buf; skip = 1
+        else
+          error stop "command line: reference frame file name expected"
+        end if
+
+      case ("-h", "-help")
+        call print_help(); stop
+
+      case default
+        if (.not. is_valid_fn_arg(arg)) error stop "command line: unknown option: " // trim(arg)
+        if (allocated(input_fn)) then
+          input_fn = [input_fn, arg]
+        else
+          input_fn = [arg]
+        end if
+
+      end select
+    end do scan_cli
+  end subroutine parse_cli
+
+  ! a little helper function to check if parameter of an argument
+  ! is good (for example: -o filename)
+
+  pure logical function is_valid_fn_arg(arg) result(isok)
+    character(len = *), intent(in) :: arg
+    character(len = :), allocatable :: argl
+    if (len_trim(arg) > 0) then
+      argl = adjustl(arg)
+      isok = argl == '-' .or. argl == '--' .or. argl(1:1) /= '-'
+    else
+      isok = .false.
+    end if
+  end function
+
+  !----------------------------------------------------------------------------!
+  ! print the help
 
   subroutine print_help
     use globals, only: hlp_fmt, hlp_fmtc

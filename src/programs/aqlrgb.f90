@@ -16,7 +16,7 @@ program aqlrgb
   logical :: cfg_save_cube = .true.
   logical :: cfg_background = .false.
   logical :: cfg_transf_lum = .false.
-  real(fp) :: smooth_fwhm = 2.5
+  real(fp) :: smooth_fwhm = 2.35
   integer :: nx, ny, nc
 
   call greeting('aq' // cf('l','1') // cf('r','1;91') // cf('g','1;92') // cf('b','1;94'))

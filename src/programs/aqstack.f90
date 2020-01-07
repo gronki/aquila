@@ -288,45 +288,10 @@ program aqstack
     end if
 
     if (cfg_normalize) then
-      block_normalize: block
-        use statistics, only: linfit
-        real(fp) :: a, b
-        real(fp), allocatable :: imref(:,:), xx(:), yy(:)
-        logical, allocatable :: mask(:,:)
-        integer :: i, sz(3)
-
-        sz = shape(buffer)
-
-        call cpu_time(t1)
-
-        ! create mean frame to normalize to
-        imref = sum(buffer(:,:,1:nstack), 3) / nstack
-
-        ! create mask which excludes edges and the brigtenst pixels
-        allocate(mask(sz(1), sz(2)))
-        associate (m => margin)
-          associate (imc => imref(1+m : sz(1)-m, 1+m : sz(2)-m))
-            mask = imref < (minval(imc) + maxval(imc)) / 2
-          end associate
-          mask(:m, :) = .false.; mask(sz(1)-m+1:, :) = .false.
-          mask(:, :m) = .false.; mask(:, sz(2)-m+1:) = .false.
-        end associate
-
-        ! pack it into 1-d array
-        xx = pack(imref, mask)
-        deallocate(imref)
-        allocate(yy, mold = xx)
-
-        do i = 1, nstack
-          yy(:) = pack(buffer(:,:,i), mask)
-          call linfit(xx, yy, a, b)
-          write (stderr, '("NORM frame(",i2,") y = ",f5.3,"x + ",f7.1)') i, a, b
-          buffer(:,:,i) = (buffer(:,:,i) - b) / a
-        end do
-
-        call cpu_time(t2)
-        print perf_fmt, 'norm', t2 - t1
-      end block block_normalize
+      call cpu_time(t1)
+      call normalize_offset_gain(buffer(:, :, 1:nstack))
+      call cpu_time(t2)
+      print perf_fmt, 'norm', t2 - t1
     end if
 
     if (cfg_process_only) then
@@ -441,6 +406,45 @@ contains
 
     rms = sqrt(rms / (n - 1))
   end function
+
+  !----------------------------------------------------------------------------!
+
+  subroutine normalize_offset_gain(buffer)
+    use statistics, only: linfit
+    real(fp) :: a, b
+    real(fp), allocatable :: imref(:,:), xx(:), yy(:)
+    real(fp), intent(inout), contiguous :: buffer(:,:,:)
+    logical, allocatable :: mask(:,:)
+    integer :: i, sz(3), nstack
+
+    sz = shape(buffer)
+    nstack = sz(3)
+
+    ! create mean frame to normalize to
+    imref = sum(buffer, 3) / nstack
+
+    ! create mask which excludes edges and the brigtenst pixels
+    allocate(mask(sz(1), sz(2)))
+    associate (m => margin)
+      associate (imc => imref(1+m : sz(1)-m, 1+m : sz(2)-m))
+        mask = imref < (minval(imc) + maxval(imc)) / 2
+      end associate
+      mask(:m, :) = .false.; mask(sz(1)-m+1:, :) = .false.
+      mask(:, :m) = .false.; mask(:, sz(2)-m+1:) = .false.
+    end associate
+
+    ! pack it into 1-d array
+    xx = pack(imref, mask)
+    deallocate(imref)
+    allocate(yy, mold = xx)
+
+    do i = 1, nstack
+      yy(:) = pack(buffer(:,:,i), mask)
+      call linfit(xx, yy, a, b)
+      write (stderr, '("NORM frame(",i2,") y = ",f5.3,"x + ",f7.1)') i, a, b
+      buffer(:,:,i) = (buffer(:,:,i) - b) / a
+    end do
+  end subroutine
 
   !----------------------------------------------------------------------------!
 

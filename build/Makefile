@@ -5,8 +5,7 @@
 #-----------------------------------------------------------------------------#
 
 FC := gfortran
-ARCHFLAGS ?= -march=native
-FFLAGS := -O3 -funsafe-math-optimizations $(ARCHFLAGS) -fopenmp
+FFLAGS := -O2 $(ARCHFLAGS) -fopenmp
 # below are Fortran language flags
 FFLAGS_EXTRA := -fimplicit-none -ffree-line-length-none -std=f2018 \
 				  -pedantic -Wall -Wno-unused-dummy-argument -Warray-temporaries
@@ -50,7 +49,7 @@ PROGRAMS := aqstack aqlrgb
 
 all: $(PROGRAMS)
 debug: $(PROGRAMS)
-debug test_%: FFLAGS := -g -fcheck=all -D_DEBUG
+debug test_%: FFLAGS := -Og -g -fcheck=all -D_DEBUG
 
 install: all
 	install -d $(DESTDIR)$(prefix)/bin

@@ -3,8 +3,6 @@ module hotpixels
   use globals
   implicit none
 
-  character(len = *), parameter :: cosme_fn = 'cosme.txt'
-
 contains
 
   !----------------------------------------------------------------------------!
@@ -67,43 +65,39 @@ contains
 
   !----------------------------------------------------------------------------!
 
-  subroutine write_hot(hot_mask)
+  subroutine write_hot(un, hot_mask)
+    integer, intent(in) :: un
     logical, contiguous :: hot_mask(:,:)
     integer :: i, j
 
-    open (33, file = cosme_fn, action = 'write')
-    write (33, *) size(hot_mask, 1), size(hot_mask, 2)
+    write (un, *) size(hot_mask, 1), size(hot_mask, 2)
 
     do j = 1, size(hot_mask, 2)
       do i = 1, size(hot_mask, 1)
-        if (hot_mask(i,j)) write (33, *) i, j
+        if (hot_mask(i,j)) write (un, *) i, j
       end do
     end do
-
-    close(33)
   end subroutine
 
   !----------------------------------------------------------------------------!
 
-  subroutine read_hot(hot_mask)
+  subroutine read_hot(un, hot_mask)
+    integer, intent(in) :: un
     logical, contiguous :: hot_mask(:,:)
     integer :: i, j, ios
 
     hot_mask(:,:) = .false.
 
-    open (33, file = cosme_fn, action = 'read')
-    read (33, *) i, j
+    read (un, *) i, j
     if (size(hot_mask, 1) /= i .or. size(hot_mask, 2) /= j) error stop
 
     do
-      read (33, *, iostat = ios) i, j
+      read (un, *, iostat = ios) i, j
       if (ios /= 0) exit
       if (i < 1 .or. i > size(hot_mask, 1) .or. j < 1 .or. j > size(hot_mask, 2)) &
       &   error stop
       hot_mask(i, j) = .true.
     end do
-
-    close(33)
 
 #   ifdef _DEBUG
     print '("read_hot n = ", i0)', count(hot_mask)

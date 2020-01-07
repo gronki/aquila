@@ -58,7 +58,7 @@ program aqstack
 
   cfg_resampling = cfg_resampling .and. cfg_align_frames
   if (cfg_resampling) write (stderr, '(a12,": ",f6.2)') 'resampling', resample_factor
-  
+
   !----------------------------------------------------------------------------!
 
   actual_job: block
@@ -345,22 +345,14 @@ program aqstack
         print perf_fmt, 'stack', t2 - t1
 
         write_extra_info_hdr: block
-          real :: exp_avg, temp_avg
 
           call frame_out % hdr % add_int('NSTACK', nstack)
           call frame_out % hdr % add_str('STCKMTD', method)
-          if (strategy /= '') & 
-            call frame_out % hdr % add_str('FRAMETYP', strategy)
+          if (strategy /= '') call frame_out % hdr % add_str('FRAMETYP', strategy)
+          
+          call propagate_average_value_real(frames(1:nstack), 'EXPTIME', frame_out)
+          call propagate_average_value_real(frames(1:nstack), 'CCD-TEMP', frame_out)
 
-          exp_avg = average_safe(frames(1:nstack) % exptime)
-          if (ieee_is_normal(exp_avg)) then
-            call frame_out % hdr % add_float('EXPTIME', exp_avg)
-          end if
-
-          temp_avg = average_safe(frames(1:nstack) % ccdtemp)
-          if (ieee_is_normal(temp_avg)) then
-            call frame_out % hdr % add_float('CCD-TEMP', temp_avg)
-          end if
         end block write_extra_info_hdr
 
         if ((strategy == 'bias' .or. strategy == 'dark') .and. nstack > 1) then
@@ -386,6 +378,24 @@ program aqstack
   !----------------------------------------------------------------------------!
 
 contains
+
+  !----------------------------------------------------------------------------!
+
+  subroutine propagate_average_value_real(frames, kw, frame_out)
+    class(image_frame_t), intent(in) :: frames(:)
+    class(image_frame_t), intent(inout) :: frame_out
+    character(len = *) :: kw
+    logical :: m(size(frames))
+    real :: av
+    integer :: i, errno
+
+    m(:) = [ (frames(i) % hdr % has_key(kw), i = 1, size(frames)) ]
+    if (count(m) > 0) then
+      av = sum([ (merge(frames(i) % hdr % get_float(kw, errno), 0.0, m(i)), &
+      &     i = 1, size(frames)) ]) / count(m)
+      call frame_out % hdr % add_float(kw, av)
+    end if
+  end subroutine
 
   !----------------------------------------------------------------------------!
 
@@ -521,7 +531,7 @@ contains
           method = 'sigclip'
           cfg_find_hot = .true.
           cycle scan_cli
-          
+
         case ("flat")
           strategy = "flat"
           cycle scan_cli

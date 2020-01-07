@@ -263,8 +263,8 @@ module fitsheader_m
   !----------------------------------------------------------------------------!
 
   type fhentry
-    character(len = 12) :: key = ''
-    character(len = 80) :: value = ''
+    character(len = 8) :: key = ''
+    character(len = 70) :: value = ''
     class(fhentry), pointer :: next => null()
   end type
 
@@ -282,7 +282,7 @@ module fitsheader_m
 
     procedure :: write_to_file, write_to_unit
     generic :: dump => write_to_file, write_to_unit
-        
+
     procedure, private :: fhdict_repr
     generic :: write(formatted) => fhdict_repr
     procedure, pass(self), private :: has_key_op
@@ -462,9 +462,9 @@ contains
     class(fhdict), intent(in) :: self
     integer :: nrec
     class(fhentry), pointer :: cur
-    
+
     nrec = 0
-    
+
     cur => self % list
     do while (associated(cur))
       nrec = nrec + 1
@@ -502,6 +502,7 @@ contains
 
   subroutine finalize(self)
     type(fhdict), intent(inout) :: self
+    ! print '(a, 1x, dt)', 'kaboom', self
     call self % erase()
   end subroutine
 
@@ -511,7 +512,6 @@ contains
     cur => self % list
     do while (associated(cur))
       nxt => cur % next
-      ! write (0, *) 'fhdict: finalizing ', trim(cur % key)
       deallocate(cur)
       cur => nxt
     end do
@@ -534,7 +534,7 @@ contains
       if (ikey > nkeys) exit next_kw
       call ftgkyn(un, ikey, key, val, comment, status)
       if (status /= 0) exit next_kw
-      if (any(key == excludes)) cycle next_kw
+      if (key == 'COMMENT' .or. key == 'END') cycle next_kw
       call self % add_raw(key, val)
     end do next_kw
   end subroutine
@@ -554,7 +554,7 @@ contains
       if (present(errno)) then
         errno = status; return
       else
-        error stop
+        error stop "reading header from file"
       end if
     end if
 
@@ -568,7 +568,7 @@ contains
       if (present(errno)) then
         errno = status; return
       else
-        error stop
+        error stop "reading header from file"
       end if
     end if
 
@@ -576,7 +576,7 @@ contains
   end subroutine
 
   !----------------------------------------------------------------------------!
-  
+
   subroutine write_to_unit(self, un, errno)
     class(fhdict), intent(inout) :: self
     integer, intent(out), optional :: errno
@@ -589,7 +589,11 @@ contains
 
     status = 0
 
-    do while (associated(cur))
+    iter_keys: do while (associated(cur))
+      if (any(cur % key == excludes)) then
+        cur => cur % next
+        cycle
+      end if
       write (buf, '(a8, "= ", a70)') cur % key, cur % value
       call ftprec(un, buf, status)
       if (status /= 0) then
@@ -597,7 +601,7 @@ contains
         errno = status; exit
       end if
       cur => cur % next
-    end do
+    end do iter_keys
   end subroutine
 
   subroutine write_to_file(self, fn, errno)
@@ -612,7 +616,7 @@ contains
     call ftdkopn(un, fn, 1, bsize, status)
 
     if (status /= 0) then
-      if (.not.present(errno)) error stop 'opening FITS to write header'
+      if (.not.present(errno)) error stop "writing FITS header to file"
       errno = status; return
     end if
 
@@ -623,7 +627,7 @@ contains
     call ftfiou(un, status)
 
     if (status /= 0) then
-      if (.not.present(errno)) error stop
+      if (.not.present(errno)) error stop "writing FITS header to file"
       errno = status; return
     end if
 
@@ -632,7 +636,7 @@ contains
 
   !------------------------------------------------------------------------------!
 
-end module  
+end module
 
 
 !------------------------------------------------------------------------------!
@@ -806,6 +810,21 @@ contains
       error stop "this filename is incorrect"
     else
       fn_out = fn(1:idot-1) // trim(suff) // fn(idot:)
+    end if
+  end function
+
+  !----------------------------------------------------------------------------!
+
+  function replace_extn(fn, suff) result(fn_out)
+    character(len = *), intent(in) :: fn, suff
+    character(len = :), allocatable :: fn_out
+    integer :: idot
+
+    idot = index(fn, '.', back = .True.)
+    if (idot == 0) then
+      fn_out = trim(fn) // suff
+    else
+      fn_out = fn(1:idot) // suff
     end if
   end function
 

@@ -418,6 +418,7 @@ contains
     character(len = 128) :: buf
 
     call self % get_raw(k, buf, errno)
+    v = ''
     if (present(errno)) then
       if (errno /= 0) return
       read (buf, *, iostat = errno) v
@@ -433,6 +434,7 @@ contains
     character(len = 128) :: buf
 
     call self % get_raw(k, buf, errno)
+    v = 0.0
     if (present(errno)) then
       if (errno /= 0) return
       read (buf, *, iostat = errno) v
@@ -448,6 +450,7 @@ contains
     character(len = 128) :: buf
 
     call self % get_raw(k, buf, errno)
+    v = 0
     if (present(errno)) then
       if (errno /= 0) return
       read (buf, *, iostat = errno) v

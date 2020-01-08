@@ -21,6 +21,7 @@ program aqstack
   logical :: cfg_align_frames = .false.
   logical :: cfg_process_only = .false.
   logical :: cfg_normalize = .false.
+  logical :: cfg_find_hot = .false., cfg_correct_hot = .false.
   logical :: cfg_resampling = .false.
   logical :: cfg_temperature_filter = .false.
   real(fp) :: resample_factor = 1.5, cfg_temperature_point = 0
@@ -213,14 +214,14 @@ program aqstack
           read_ref_frame: block
             type(image_frame_t) :: imref
             call imref % read_fits(ref_fn)
-            call findstar_local(imref % data(:,:), lst0)
+            call register_stars(imref % data(:,:), lst0)
             deallocate(imref % data)
           end block read_ref_frame
           istart = 1
         else
           findstar_initial: block
             type(transform_xyr_t) :: ity
-            call findstar_local(buffer(:,:,1), lst0)
+            call register_stars(buffer(:,:,1), lst0)
             istart = 2
             if (cfg_resampling) then
               ! scale the first frame
@@ -235,7 +236,7 @@ program aqstack
           allocate(tx, source = tx0)
 
           ! find the transform between frames
-          call findstar_local(buffer(:,:,i), lst)
+          call register_stars(buffer(:,:,i), lst)
           call tx % align(lst0, lst)
 
 #         ifdef _DEBUG
@@ -458,7 +459,7 @@ contains
 
   !----------------------------------------------------------------------------!
 
-  subroutine findstar_local(im, lst)
+  subroutine register_stars(im, lst)
     use convolutions, only: convol_fix
     use kernels, only: mexhakrn_alloc
     use findstar, only: aqfindstar

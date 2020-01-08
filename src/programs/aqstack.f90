@@ -358,8 +358,8 @@ contains
   subroutine stack_buffer(method, buffer, buffer_out)
     use statistics, only: quickselect, sigclip2
 
-    real(fp), contiguous, intent(in) :: buffer(:,:,:)
-    real(fp), contiguous, intent(out) :: buffer_out(:,:)
+    real(fp), intent(in) :: buffer(:,:,:)
+    real(fp), intent(out) :: buffer_out(:,:)
     character(len = *), intent(in) :: method
     integer :: i, j, nstack
     real(fp) :: a(size(buffer, 3))
@@ -414,7 +414,7 @@ contains
 
   function estimate_differential_noise(buffer) result(rms)
     use iso_fortran_env, only: int64
-    real(fp), intent(in), contiguous :: buffer(:,:,:)
+    real(fp), intent(in) :: buffer(:,:,:)
     real(fp) :: rms
     integer :: i, n
     integer(int64) :: nxny
@@ -436,7 +436,7 @@ contains
     use statistics, only: linfit
     real(fp) :: a, b
     real(fp), allocatable :: imref(:,:), xx(:), yy(:)
-    real(fp), intent(inout), contiguous :: buffer(:,:,:)
+    real(fp), intent(inout) :: buffer(:,:,:)
     logical, allocatable :: mask(:,:)
     integer :: i, sz(3), nstack
 
@@ -484,6 +484,7 @@ contains
     krn = mexhakrn_alloc(2.3_fp)
 
     allocate(im2(size(im,1), size(im,2)))
+    
     call convol_fix(im, krn, im2, 'r')
     call aqfindstar(im2, lst, limit = 256)
   end subroutine

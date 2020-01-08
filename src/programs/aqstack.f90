@@ -309,39 +309,12 @@ program aqstack
       end block save_processed
     else
       actual_stack: block
-        use statistics
         type(image_frame_t) :: frame_out
-        real(fp) :: a(nstack)
-        integer :: i,j
 
         allocate(frame_out % data(size(buffer, 1), size(buffer, 2)))
 
         call cpu_time(t1)
-
-        select case (method)
-        case ('average')
-          frame_out % data(:,:) = sum(buffer(:,:,1:nstack), 3) / nstack
-        case ('median')
-          !$omp parallel do private(i, j, a)
-          do j = 1, size(buffer,2)
-            do i = 1, size(buffer,1)
-              a(:) = buffer(i,j,1:nstack)
-              frame_out % data(i,j) = quickselect(a, (nstack + 1) / 2)
-            end do
-          end do
-          !$omp end parallel do
-        case ('sigclip')
-          !$omp parallel do private(i, j)
-          do j = 1, size(buffer,2)
-            do i = 1, size(buffer,1)
-              call sigclip2(buffer(i,j,1:nstack), frame_out % data(i,j))
-            end do
-          end do
-          !$omp end parallel do
-        case default
-          error stop "this averaging method is not supported"
-        end select
-
+        call stack_buffer(method, buffer(:, :, 1:nstack), frame_out % data)
         call cpu_time(t2)
         print perf_fmt, 'stack', t2 - t1
 
@@ -350,7 +323,7 @@ program aqstack
           call frame_out % hdr % add_int('NSTACK', nstack)
           call frame_out % hdr % add_str('STCKMTD', method)
           if (strategy /= '') call frame_out % hdr % add_str('FRAMETYP', strategy)
-          
+
           call propagate_average_value_real(frames(1:nstack), 'EXPTIME', frame_out)
           call propagate_average_value_real(frames(1:nstack), 'CCD-TEMP', frame_out)
 
@@ -379,6 +352,45 @@ program aqstack
   !----------------------------------------------------------------------------!
 
 contains
+
+  !----------------------------------------------------------------------------!
+
+  subroutine stack_buffer(method, buffer, buffer_out)
+    use statistics, only: quickselect, sigclip2
+
+    real(fp), contiguous, intent(in) :: buffer(:,:,:)
+    real(fp), contiguous, intent(out) :: buffer_out(:,:)
+    character(len = *), intent(in) :: method
+    integer :: i, j, nstack
+    real(fp) :: a(size(buffer, 3))
+
+    nstack = size(buffer, 3)
+
+    select case (method)
+    case ('m', 'median')
+      !$omp parallel do private(i, j, a)
+      do j = 1, size(buffer, 2)
+        do i = 1, size(buffer, 1)
+          a(:) = buffer(i, j, 1:nstack)
+          ! forall (k = 1:nstack) a(k) = frames(k) % data(i, j)
+          buffer_out(i, j) = quickselect(a(:), (nstack + 1) / 2)
+        end do
+      end do
+      !$omp end parallel do
+    case ('s', 'sigclip')
+      !$omp parallel do private(i, j, a)
+      do j = 1, size(buffer, 2)
+        do i = 1, size(buffer, 1)
+          ! forall (k = 1:nstack) a(k) = frames(k) % data(i, j)
+          ! call sigclip2(a(:), frame_out % data(i, j))
+          call sigclip2(buffer(i, j, 1:nstack), buffer_out(i, j))
+        end do
+      end do
+      !$omp end parallel do
+    case default
+      buffer_out(:, :) = sum(buffer(:, :, 1:nstack), 3) / nstack
+    end select
+  end subroutine
 
   !----------------------------------------------------------------------------!
 

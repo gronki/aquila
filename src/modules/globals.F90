@@ -7,7 +7,7 @@ module globals
   integer, parameter :: fp = real64
 
   character(len = *), parameter :: hlp_fmt = '(a22, 2x, a)', hlp_fmtc = '(24x, a)'
-  character(len = *), parameter :: version = '191222'
+  character(len = *), parameter :: version = '200110'
 
   character(len = *), parameter :: perf_fmt = '("PERF", a10, 1x, "=", f7.3)'
 

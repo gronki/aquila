@@ -45,7 +45,6 @@ test_deconvolution: convolution.o framehandling.o globals.o kernels.o test_decon
 test_example: globals.o test_example.o
 test_findstar: convolution.o findstar.o globals.o kernels.o test_findstar.o
 test_framehandling: framehandling.o globals.o test_framehandling.o
-test_hash_2: test_hash_2.o
 test_hdr: test_hdr.o
 test_hotpixel: framehandling.o globals.o hotpixel.o statistics.o test_hotpixel.o
 test_kernels: globals.o kernels.o test_kernels.o

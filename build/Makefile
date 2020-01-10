@@ -44,12 +44,13 @@ prefix := $(shell if test -w "/usr/local"; then echo "/usr/local"; \
 
 VPATH := ../src/modules:../src/programs:../src/test
 PROGRAMS := aqstack aqlrgb
+TESTS := $(patsubst ../src/test/test_%, test_%, $(basename $(wildcard ../src/test/test_*.[fF]90)))
 
 #-----------------------------------------------------------------------------#
 
 all: $(PROGRAMS)
 debug: $(PROGRAMS)
-debug test_%: FFLAGS := -Og -g -fcheck=all -D_DEBUG
+debug $(TESTS): FFLAGS := -Og -g -fcheck=all -D_DEBUG
 
 install: all
 	install -d $(DESTDIR)$(prefix)/bin
@@ -65,7 +66,7 @@ include deps.inc
 $(PROGRAMS): LDFLAGS += -fwhole-program
 $(PROGRAMS):
 	$(FC) $(FFLAGS) $(LDFLAGS) $^ $(LDLIBS) -o $@
-test_%:
+$(TESTS):
 	$(FC) $(FFLAGS) $(LDFLAGS) $^ $(LDLIBS) -o $@
 
 clean:

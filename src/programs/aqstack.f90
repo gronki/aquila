@@ -45,15 +45,6 @@ program aqstack
   nframes = merge(size(input_fn), 0, allocated(input_fn))
   if (nframes == 0) error stop "no input files!"
 
-  if (output_fn == "") then
-    if (strategy /= "") then
-      output_fn = trim(strategy) // ".fits"
-    else
-      output_fn = "out.fits"
-    end if
-  end if
-  if (output_suff == "") output_suff = "_R"
-
   if (cfg_temperature_filter) &
   &     write (stderr, '("temperature filter: ",f5.1,"C")') cfg_temperature_point
 
@@ -185,7 +176,7 @@ program aqstack
     end if
 
     if (cfg_process_only) then
-      write (stderr, '("' // cf('processing ",i0," frames, filename suffix: ",a,"','1') // '")') nstack, trim(output_suff)
+      write (stderr, '("' // cf('processing ",i0," frames','1') // '")') nstack
     else
       write (stderr, '("' // cf('stacking ",i0," frames using ",a,"','1') // '")') nstack, trim(method)
     end if
@@ -299,9 +290,12 @@ program aqstack
       save_processed: block
         integer :: i
         character(len = 256) :: newfn
-        if ( nstack == 1 ) then
+        if (nstack == 1 .and. output_fn /= "") then
+          print '(a,a)', 'writing output file: ', trim(output_fn)
           call frames(1) % write_fits(output_fn)
         else
+          if (output_suff == "") output_suff = "_R"
+          print '(a,i0,a,a)', 'writing ', nstack, ' processed files with suffix: ', trim(output_suff)
           do i = 1, nstack
             call frames(i) % write_fits(add_suffix(frames(i) % fn, output_suff))
           end do
@@ -341,7 +335,17 @@ program aqstack
           end block estimate_noise
         end if
 
-        call frame_out % write_fits(output_fn)
+        write_stack: block
+          if (output_fn == "") then
+            if (strategy /= "") then
+              output_fn = trim(strategy) // ".fits"
+            else
+              output_fn = "out.fits"
+            end if
+          end if
+          print '(a,a)', 'writing output file: ', trim(output_fn)
+          call frame_out % write_fits(output_fn)
+        end block write_stack
 
         deallocate(frame_out % data)
       end block actual_stack
@@ -484,7 +488,7 @@ contains
     krn = mexhakrn_alloc(2.3_fp)
 
     allocate(im2(size(im,1), size(im,2)))
-    
+
     call convol_fix(im, krn, im2, 'r')
     call aqfindstar(im2, lst, limit = 256)
   end subroutine

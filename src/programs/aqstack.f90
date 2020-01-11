@@ -305,7 +305,7 @@ program aqstack
       actual_stack: block
         type(image_frame_t) :: frame_out
 
-        allocate(frame_out % data(size(buffer, 1), size(buffer, 2)))
+        call frame_out % alloc_shape(size(buffer, 1), size(buffer, 2))
 
         call cpu_time(t1)
         call stack_buffer(method, buffer(:, :, 1:nstack), frame_out % data)
@@ -347,7 +347,6 @@ program aqstack
           call frame_out % write_fits(output_fn)
         end block write_stack
 
-        deallocate(frame_out % data)
       end block actual_stack
     end if
 

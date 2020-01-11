@@ -15,11 +15,11 @@ module frame_m
     real(fp), pointer, contiguous :: data(:,:) => null()
     logical, private :: auto_allocated = .false.
   contains
-    procedure :: read_fits, write_fits, alloc_zeros
+    procedure :: read_fits, write_fits
+    procedure :: alloc_shape => alloc_shape_xy, alloc_shape_ref
     procedure, private :: read_image_data
     procedure :: assign_2d, assign_frame, assign_const_f, assign_const_i, repr
-    generic :: assignment(=) => assign_2d, assign_frame, &
-    &   assign_const_f, assign_const_i
+    generic :: assignment(=) => assign_2d, assign_frame, assign_const_f, assign_const_i
     generic :: write(formatted) => repr
     final :: finalize
   end type
@@ -34,8 +34,6 @@ contains
     if (.not. associated(ref % data)) error stop
     call assign_2d(fr, ref % data)
   end subroutine
-
-  !----------------------------------------------------------------------------!
 
   subroutine assign_2d(fr, im)
     class(frame_t), intent(inout) :: fr
@@ -206,31 +204,36 @@ contains
     character(*), intent(inout) :: iomsg
 
     if (.not. associated(self % data)) then
-      write (u, '(a)', iostat = iostat, iomsg = iomsg) '<unallocated>'
+      write (u, '(a)', iostat = iostat, iomsg = iomsg) 'frame_t(unallocated)'
     else
-      write (u, '("<frame ", i0, "x", i0, ", ", i0, " bit>")', &
-        iostat = iostat, iomsg = iomsg) shape(self % data), &
-        storage_size(self % data)
+      write (u, '("frame_t(", i0, ",", i0, ")")', &
+        iostat = iostat, iomsg = iomsg) shape(self % data)
     end if
   end subroutine
 
   !----------------------------------------------------------------------------!
 
-  subroutine alloc_zeros(self, ref)
+  subroutine alloc_shape_ref(self, ref)
     class(frame_t), intent(inout) :: self
     class(frame_t), intent(in) :: ref
 
     if (.not. associated(ref % data)) error stop
+    call self % alloc_shape(size(ref % data, 1), size(ref % data, 2))
+  end subroutine
 
-    if (self % auto_allocated) then
-      if (associated(self % data)) then
+  subroutine alloc_shape_xy(self, nx, ny)
+    class(frame_t), intent(inout) :: self
+    integer, intent(in) :: nx, ny
+
+    if (associated(self % data)) then
+      if (self % auto_allocated) then
         deallocate(self % data)
+      else
+        error stop 'frame cannot be re-allocated'
       end if
-    else
-      if (associated(self % data)) error stop
     end if
 
-    allocate(self % data(size(ref % data, 1), size(ref % data, 2)))
+    allocate(self % data(nx, ny))
     self % auto_allocated = .true.
   end subroutine
 
@@ -239,7 +242,9 @@ contains
   subroutine finalize(self)
     type(frame_t) :: self
     if (self % auto_allocated .and. associated(self % data)) then
-      ! print '("' // cf('finalizing','91') // '", 1x, dt)', self
+#     if _DEBUG
+      print '("finalizing", 1x, dt)', self
+#     endif
       deallocate(self % data)
     end if
   end subroutine

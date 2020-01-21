@@ -24,7 +24,8 @@ contains
   end subroutine
 
   pure function cf(s, f)
-    character(len = *), intent(in) :: s, f
+    character(len = *), intent(in) :: s
+    character(len = *), intent(in), optional :: f
     character(len = :), allocatable :: cf
 #   ifdef _WIN32
 #   define _NOCOLOR
@@ -32,7 +33,11 @@ contains
 #   ifdef _NOCOLOR
     cf = trim(s)
 #   else
-    cf = achar(27) // '[' // trim(f) // 'm' // trim(s) // achar(27) // '[0m'
+    if ( present(f) ) then
+      cf = achar(27) // '[' // trim(f) // 'm' // trim(s) // achar(27) // '[0m'
+    else
+      cf = achar(27) // '[' // '1'     // 'm' // trim(s) // achar(27) // '[0m'
+    end if
 #   endif
   end function
 

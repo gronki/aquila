@@ -12,7 +12,7 @@ module kernels
 
   real(fp), parameter :: fwhm_over_sigma = sqrt(8 * log(2.0_fp))
 
-  integer, parameter, private :: nkrnsub = 64
+  integer, parameter, private :: nkrnsub = 16
 
 contains
 
@@ -86,9 +86,9 @@ contains
     real(fp), allocatable :: k(:,:)
     integer :: n
 
-    n = nint(8.0 * fwhm / fwhm_over_sigma)
+    n = nint(9.0 * fwhm / fwhm_over_sigma)
     if (mod(n,2) == 0) n = n + 1
-    if (n < 3) n = 3
+    n = max(n, 3)
 
     allocate(k(n,n))
     call mexhakrn(fwhm / fwhm_over_sigma, k)
@@ -140,9 +140,9 @@ contains
     real(fp), allocatable :: k(:,:)
     integer :: n
 
-    n = nint(6.0 * fwhm / fwhm_over_sigma)
-    if (mod(n,2) == 0) n = n + 1
-    if (n < 3) n = 3
+    n = nint(7.0 * fwhm / fwhm_over_sigma)
+    if (mod(n, 2) == 0) n = n + 1
+    n = max(n, 3)
 
     allocate(k(n,n))
     call gausskrn(fwhm / fwhm_over_sigma, k)

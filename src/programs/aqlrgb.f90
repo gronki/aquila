@@ -7,7 +7,7 @@ program aqlrgb
 
   implicit none
   character(len = 256) :: outfn = "lrgb.fits"
-  character(len = 8) :: transform = ""
+  character(len = 16) :: curve = "", sharpen = ''
   logical :: is_lrgb = .false.
   character(len = 256), allocatable :: fnames(:)
   real(fp), allocatable, target :: cube(:,:,:)
@@ -16,7 +16,7 @@ program aqlrgb
   logical :: cfg_save_cube = .true.
   logical :: cfg_background = .false.
   logical :: cfg_transf_lum = .false.
-  real(fp) :: smooth_fwhm = 2.35
+  real(fp) :: smooth_fwhm = 2.35, curve_param = 3.
   integer :: nx, ny, nc
 
   call greeting('aq' // cf('l','1') // cf('r','1;91') // cf('g','1;92') // cf('b','1;94'))
@@ -28,57 +28,99 @@ program aqlrgb
   parse_cli: block
     integer :: i, errno
     character(len = 256) :: arg, buf
-    logical :: skip = .false.
+    integer :: skip
+
+    skip = 0
 
     do i = 1, command_argument_count()
-      if (skip) then
-        skip = .false.; cycle
+
+      if (skip > 0) then
+        skip = skip - 1; cycle
       end if
+
       call get_command_argument(i, arg)
+
       select case (arg)
+
       case ('-o', '-output')
         call get_command_argument(i + 1, buf)
         if (buf == "" .or. buf(1:1) == '-') error stop "file name expected"
         outfn = buf
-        skip = .true.
+        skip = 1
+
       case ('-smooth')
         cfg_color_smooth = .true.
         call get_command_argument(i + 1, buf)
-        if (buf /= "" .and. buf(1:1) /= '-') then
-          read (buf, *, iostat = errno) smooth_fwhm
-          if (errno == 0) skip = .true.
-        end if
+        read (buf, *, iostat = errno) smooth_fwhm
+        if (errno == 0) skip = 1
+
       case ('-wb', '-equalize')
         cfg_equalize = .true.
-      case ('-asinh')
-        transform = 'asinh'
-      case ('-asinh2')
-        transform = 'asinh'
-        cfg_transf_lum = .true.
+
       case ('-lin')
-        transform = ''
+        curve = ''
+
+      case ('-asinh')
+        curve = 'asinh'
+        cfg_background = .true.
+        call get_command_argument(i + 1, buf)
+        read (buf, *, iostat = errno) curve_param
+        if (errno == 0) skip = 1
+
+      case ('-asinh2')
+        curve = 'asinh'
+        cfg_transf_lum = .true.
+        cfg_background = .true.
+        call get_command_argument(i + 1, buf)
+        read (buf, *, iostat = errno) curve_param
+        if (errno == 0) skip = 1
+
       case ('-sqrt')
-        transform = 'sqrt'
+        curve = 'sqrt'
+        cfg_background = .true.
+        call get_command_argument(i + 1, buf)
+        read (buf, *, iostat = errno) curve_param
+        if (errno == 0) skip = 1
+
       case ('-sqrt2')
-        transform = 'sqrt'
+        curve = 'sqrt'
         cfg_transf_lum = .true.
+        cfg_background = .true.
+        call get_command_argument(i + 1, buf)
+        read (buf, *, iostat = errno) curve_param
+        if (errno == 0) skip = 1
+
       case ('-log')
-        transform = 'log'
+        curve = 'log'
+        cfg_background = .true.
+        call get_command_argument(i + 1, buf)
+        read (buf, *, iostat = errno) curve_param
+        if (errno == 0) skip = 1
+
       case ('-log2')
-        transform = 'log'
+        curve = 'log'
         cfg_transf_lum = .true.
+        cfg_background = .true.
+        call get_command_argument(i + 1, buf)
+        read (buf, *, iostat = errno) curve_param
+        if (errno == 0) skip = 1
+
       case ('-split')
         cfg_save_cube = .false.
+
       case ('-bg', '-background')
         cfg_background = .true.
+
       case ('-best')
-        transform = 'asinh'
+        curve = 'asinh'
         cfg_background = .true.
         cfg_equalize = .true.
+        sharpen = 'deconv'
         cfg_color_smooth = .true.
-        smooth_fwhm = 3
+
       case ("-h", "-help")
         call print_help(); stop
+
       case default
         if (arg(1:1) == '-') error stop "unknown option: " // trim(arg)
         if (allocated(fnames)) then
@@ -113,13 +155,15 @@ program aqlrgb
 
     if (cfg_equalize .or. cfg_background) then
       perform_equalize: block
-        use statistics, only: outliers, sigstd
+        use statistics, only: outliers, avsd
         use ieee_arithmetic, only: ieee_is_normal
         logical, dimension(:,:), allocatable :: mask, maskbg
         real(fp), dimension(:,:), allocatable :: L
         integer :: i, j, sz(3)
         integer, parameter :: margin = 64
-        real(fp) :: coeff, av, sd, bg(3)
+        real(fp) :: coeff, av, sd, bg_off
+        real(fp), dimension(3) :: bg, sg
+        real(fp), parameter :: a = 2.0, b = 0.5
 
         sz = shape(cube)
 
@@ -132,35 +176,39 @@ program aqlrgb
 
         L = Lum(frame_r % data, frame_g % data, frame_b % data)
 
-        call outliers(L, 2.5_fp, 16, maskbg)
-        call sigstd(L, av, sd, maskbg)
+        call outliers(L, maskbg, 3._fp, 32, av, sd)
         ! maskbg = mask .and. (L < av + 2 * sd)
-        mask = mask .and. (L > av + 4 * sd)
+        mask = mask .and. (L > av + 3 * sd)
         ! cube(:,:,4) = thrfun((L - av) / sd - 4)
 
         deallocate(L)
 
         do i = 1, 3
-          call sigstd(cube(:,:,i), av, sd, maskbg)
-          bg(i) = av - sd
+          call avsd(cube(:,:,i), maskbg, av, sg(i))
+          bg(i) = av - a * sg(i)
         end do
+
+        bg_off = sum(bg) / size(bg) * (1 - b)
 
         write (0, '("stars ", f4.1, "% surface, background ", f4.1, "%")') &
         &     100 * real(count(mask)) / size(mask),     &
         &     100 * real(count(maskbg)) / size(maskbg)
 
-        write (0, '("' // cf('background', '93') // ' R,G,B = ", 3f6.1)') bg
+        write (0, '(a10, " R,G,B = ", 3f6.1)') 'background', bg
+        write (0, '(a10, " R,G,B = ", 3f6.1)') 'sigma', sg
 
         if ( cfg_background ) then
-          write (0, '("bkg R-G = ", f8.1)') bg(1) - bg(2)
-          frame_r % data = frame_r % data - (bg(1) - bg(2))
-          write (0, '("bkg B-G = ", f8.1)') bg(3) - bg(2)
-          frame_b % data = frame_b % data - (bg(3) - bg(2))
+          frame_r % data = frame_r % data - (bg(1) - bg_off)
+          frame_g % data = frame_g % data - (bg(2) - bg_off)
+          frame_b % data = frame_b % data - (bg(3) - bg_off)
+
           do i = 1, 3
-            call sigstd(cube(:,:,i), av, sd, maskbg)
-            bg(i) = av - sd
+            call avsd(cube(:,:,i), maskbg, av, sg(i))
+            bg(i) = av - a * sg(i)
           end do
-          write (0, '("' // cf('background', '93') // ' R,G,B = ", 3f6.1)') bg
+
+          write (0, '(a10, " R,G,B = ", 3f6.1)') 'background', bg
+          write (0, '(a10, " R,G,B = ", 3f6.1)') 'sigma', sg
         end if
 
         if (cfg_equalize) then
@@ -202,66 +250,120 @@ program aqlrgb
       end block perform_color_smooth
     end if
 
-    if (associated(frame_l % data)) then
-      do_lrgb: associate (corr => (frame_l % data) / Lum(frame_r % data, frame_g % data, frame_b % data))
-        frame_r % data(:,:) = corr * frame_r % data(:,:)
-        frame_g % data(:,:) = corr * frame_g % data(:,:)
-        frame_b % data(:,:) = corr * frame_b % data(:,:)
-      end associate do_lrgb
+    if ( sharpen /= '' ) then
+      do_unsharp_lum: block
+        use kernels, only: mexhakrn_alloc, gausskrn_alloc, print_kernel
+        use convolutions, only: convol_fix
+        use deconvolutions, only: deconvol_lr
+
+        real(fp), allocatable :: krn(:,:), lum2(:,:)
+        real(fp) :: sharpen_strngth, sharpen_fwhm
+        integer :: i
+
+        sharpen_fwhm = 1.3
+        sharpen_strngth = 0.67
+
+        if (.not. associated(frame_l % data)) then
+          frame_l = Lum(frame_r % data, frame_g % data, frame_b % data)
+        end if
+        allocate(lum2, mold = frame_l % data)
+
+        select case (sharpen)
+        case ('wavelet')
+          krn = mexhakrn_alloc(sharpen_fwhm)
+          call convol_fix(frame_l % data, krn, lum2, 'r')
+          frame_l % data(:,:) = sharpen_strngth * lum2 + (1 - sharpen_strngth) * (frame_l % data)
+        case ('deconv')
+          krn = gausskrn_alloc(sharpen_fwhm)
+          call deconvol_lr(frame_l % data, krn, sharpen_strngth, 64, lum2)
+          frame_l % data(:,:) = lum2
+        case ('unshrp')
+          krn = gausskrn_alloc(sharpen_fwhm)
+          call convol_fix(frame_l % data, krn, lum2, 'r')
+          lum2(:,:) = frame_L % data - lum2 / sum(krn)
+          frame_l % data(:,:) = sharpen_strngth * lum2 + (1 - sharpen_strngth) * (frame_l % data)
+        case default
+          error stop 'wrong sharpen mode'
+        end select
+
+#       if _DEBUG
+        call print_kernel(krn)
+#       endif
+
+      end block do_unsharp_lum
     end if
 
-    if (transform /= '') then
-      do_transform: block
+    if (associated(frame_l % data)) then
+      do_lrgb: block
+        real(fp), allocatable :: x(:,:)
+        x = (frame_l % data) / Lum(frame_r % data, frame_g % data, frame_b % data)
+        frame_r % data(:,:) = x * frame_r % data(:,:)
+        frame_g % data(:,:) = x * frame_g % data(:,:)
+        frame_b % data(:,:) = x * frame_b % data(:,:)
+      end block do_lrgb
+    end if
+
+    ! at this point the luminance stops being relevant (For now)
+
+    if (curve /= '') then
+      do_curve: block
+        use statistics, only: avsd, outliers
+
         integer :: i
-        write (0, '("performing ",a," transform on the image: ",a)') &
-            trim(merge('luminance', 'color    ', cfg_transf_lum)), transform
+        real(fp), allocatable :: x(:,:), y(:,:)
+        real(fp) :: xfl, av, sd
+
+        write (0, '("performing ",a," curve transform on the image: ",a)') &
+            trim(merge('luminance', 'color    ', cfg_transf_lum)), curve
+
+        if (associated(frame_l % data)) then
+          x = frame_l % data
+        else
+          x = Lum(frame_r % data, frame_g % data, frame_b % data)
+        end if
+
+        call outliers(x, 3._fp, 32, av, sd)
+        xfl = av - 5.0 * sd
+        print *, 'av', av, 'sd', sd, 'xfl', xfl
+
         if ( cfg_transf_lum ) then
-          transform_lum: block
-            real(fp), allocatable :: x(:,:), y(:,:)
-            if (associated(frame_l % data)) then
-              x = frame_l % data
-            else
-              x = Lum(frame_r % data, frame_g % data, frame_b % data)
-            end if
+          curve_lum: block
             allocate(y, mold = x)
-            call apply_transform(transform, x, y)
+            call apply_curve(curve, x, (av - sd) / curve_param, xfl, y)
             x = y / x
             deallocate(y)
             do i = 1, 3
               cube(:,:,i) = cube(:,:,i) * x
             end do
-          end block transform_lum
+          end block curve_lum
         else
-          call apply_transform(transform, cube(:,:,1:3), cube(:,:,1:3))
+          do i = 1, 3
+            call apply_curve(curve, cube(:,:,i), (av - sd) / curve_param, xfl, cube(:,:,i))
+          end do
         end if
-      end block do_transform
+      end block do_curve
     end if
 
     if (cfg_save_cube) then
       if (endswith(outfn, '.png')) then
         block
           use png
+
           real(fp) :: vmin, vmax, av, sd
           real(fp), allocatable :: l(:,:)
+
           l = Lum(frame_r % data(64:nx-64,64:ny-64), &
           &   frame_g % data(64:nx-64,64:ny-64),     &
           &   frame_b % data(64:nx-64,64:ny-64))
           av = sum(l) / size(l)
           sd = sqrt(sum((l - av)**2) / (size(l) - 1))
           deallocate(l)
-          select case(transform)
-          case('')
-            vmin = av - 0.4 * sd
-            vmax = av + 6 * sd
-          case('sqrt')
-            vmin = av - 0.8 * sd
-            vmax = av + 12 * sd
-          case default
-            vmin = av - 1.2 * sd
-            vmax = av + 15 * sd
-          end select
+
+          vmin = av - 1.5 * sd
+          vmax = av + 9.5 * sd
+
           call write_png(outfn, (cube(:,:,1:3) - vmin) / (vmax - vmin))
-          call write_fits_3d(trim(outfn) // '.fits', cube(:,:,1:3))
+          call write_fits_3d(replace_extn(outfn, 'fits'), cube(:,:,1:3))
         end block
       else
         call write_fits_3d(outfn, cube(:,:,1:3))
@@ -278,24 +380,27 @@ contains
 
   elemental real(fp) function Lum(R,G,B) result(L)
     real(fp), intent(in) :: R, G, B
-    real(fp), parameter :: wr = 1.0, wg = 1.5, wb = 0.7
+    real(fp), parameter :: wr = 0.9, wg = 1.0, wb = 0.7
     L = (wr * R + wg * G + wb * B) / (wr + wg + wb)
   end function
 
-  elemental subroutine apply_transform(tt, x, y)
+  elemental subroutine apply_curve(tt, x, a, b, y)
     character(len = *), intent(in) :: tt
-    real(fp), intent(in) :: x
+    real(fp), intent(in) :: x, a, b
     real(fp), intent(out) :: y
-    real(fp), parameter :: a = 300
+    real(fp) :: x1
+
+    x1 = merge(x, b, x >= b)
+
     select case (tt)
     case ('sqrt')
-      y = sqrt(1 + 2 * x / a) - 1
+      y = sqrt(1 + 2 * (x1 - b) / a) - 1
     case ('asinh')
-      y = asinh(x / a)
+      y = asinh((x1 - b) / a)
     case ('log')
-      y = log(1 + x / a) - 1
+      y = log(1 + (x1 - b) / a)
     case default
-      error stop 'transform?'
+      error stop 'curve?'
     end select
   end subroutine
 

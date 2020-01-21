@@ -2,7 +2,9 @@ module statistics
 
   use globals
   use ieee_arithmetic, only: ieee_is_normal
+  use, intrinsic :: iso_fortran_env, only: int64
   implicit none
+
   private :: average_safe_1d, average_safe_2d, average_safe_3d
   private :: average_fast_1d, average_fast_2d, average_fast_3d
 
@@ -17,6 +19,10 @@ module statistics
   interface avsd
     module procedure :: avsd_1d_m, avsd_1d
     module procedure :: avsd_2d_m, avsd_2d
+  end interface
+
+  interface outliers
+    module procedure :: outliers_2d_mask, outliers_2d
   end interface
 
 contains
@@ -112,46 +118,38 @@ contains
 
   !----------------------------------------------------------------------------!
 
-  pure subroutine sigstd(im, mean, stdev, mask)
-    use iso_fortran_env, only: int64
-    real(fp), intent(in) :: im(:,:)
-    real(fp), intent(out) :: mean, stdev
-    logical, intent(in), optional :: mask(:,:)
-    integer(int64) :: nn
-
-    if ( present(mask) ) then
-      nn    = count(mask)
-      mean  = sum(im, mask) / nn
-      stdev = sqrt(sum((im - mean)**2, mask) / (nn - 1))
-    else
-      nn    = size(im)
-      mean  = sum(im) / nn
-      stdev = sqrt(sum((im - mean)**2) / (nn - 1))
-    end if
-  end subroutine
-
-  !----------------------------------------------------------------------------!
-
-  pure subroutine outliers(im, sigma, niter, msk)
+  pure subroutine outliers_2d_mask(im, msk, kap, niter, av, sd)
     use ieee_arithmetic, only: ieee_is_normal
     use iso_fortran_env, only: int64
 
-    real(fp), intent(in) :: im(:,:), sigma
+    real(fp), intent(in) :: im(:,:), kap
     integer, intent(in) :: niter
     logical, intent(inout) :: msk(:,:)
-    real(fp) :: mean, stdev
+    real(fp), intent(out) :: av, sd
     integer :: i
-    integer(int64) :: nn
+    integer(int64) :: nn, cn
 
     do i = 1, niter
-      call sigstd(im, mean, stdev, msk)
+      call avsd(im, msk, av, sd)
       nn = count(msk)
-      msk = msk .and. (im >= mean - sigma * stdev) &
-                .and. (im <= mean + sigma * stdev)
+      msk = msk .and. (im >= av - kap * sd) &
+                .and. (im <= av + kap * sd)
 
-      if ( count(msk) == nn ) exit
+      cn = count(msk)
+      if ( cn == nn ) exit
+      if ( cn == 0 ) error stop 'all data rejected'
     end do
+  end subroutine
 
+  pure subroutine outliers_2d(im, kap, niter, av, sd)
+    real(fp), intent(in) :: im(:,:), kap
+    integer, intent(in) :: niter
+    real(fp), intent(out) :: av, sd
+    logical, allocatable :: msk(:,:)
+
+    allocate(msk(size(im, 1), size(im, 2))); msk(:,:) = .true.
+    call outliers_2d_mask(im, msk, kap, niter, av, sd)
+    deallocate(msk)
   end subroutine
 
   !----------------------------------------------------------------------------!
@@ -259,47 +257,49 @@ contains
     real(fp), intent(in) :: x(:)
     logical, intent(in) :: msk(:)
     real(fp), intent(out) :: av, sd
-    associate (n => count(msk))
-      av = sum(x, msk) / n
-      sd = sqrt(sum((x - av)**2, msk) / (n - 1))
-    end associate
+    integer(int64) :: n
+
+    n = count(msk)
+    av = sum(x, msk) / n
+    sd = sqrt(sum((x - av)**2, msk) / (n - 1))
   end subroutine
 
   pure subroutine avsd_1d(x, av, sd)
     real(fp), intent(in) :: x(:)
     real(fp), intent(out) :: av, sd
-    associate (n => size(x))
-      av = sum(x) / n
-      sd = sqrt(sum((x - av)**2) / (n - 1))
-    end associate
+    integer(int64) :: n
+
+    n = size(x)
+    av = sum(x) / n
+    sd = sqrt(sum((x - av)**2) / (n - 1))
   end subroutine
 
   pure subroutine avsd_2d_m(x, msk, av, sd)
     real(fp), intent(in) :: x(:,:)
     logical, intent(in) :: msk(:,:)
     real(fp), intent(out) :: av, sd
-    associate (n => count(msk))
-      av = sum(x, msk) / n
-      sd = sqrt(sum((x - av)**2, msk) / (n - 1))
-    end associate
+    integer(int64) :: n
+
+    n = count(msk)
+    av = sum(x, msk) / n
+    sd = sqrt(sum((x - av)**2, msk) / (n - 1))
   end subroutine
 
   pure subroutine avsd_2d(x, av, sd)
     real(fp), intent(in) :: x(:,:)
     real(fp), intent(out) :: av, sd
-    associate (n => size(x))
-      av = sum(x) / n
-      sd = sqrt(sum((x - av)**2) / (n - 1))
-    end associate
+    integer(int64) :: n
+
+    n = size(x)
+    av = sum(x) / n
+    sd = sqrt(sum((x - av)**2) / (n - 1))
   end subroutine
 
   !----------------------------------------------------------------------------!
 
-  pure subroutine sigclip2(x, xm)
-    real(fp), intent(in) :: x(:)
-    real(fp), intent(out) :: xm
-    real(fp) :: av, sd
-    real(fp), parameter :: kap = 3.0
+  pure function sigclip2(x, kap) result(xm)
+    real(fp), intent(in) :: x(:), kap
+    real(fp) :: xm, av, sd
     logical :: msk(size(x))
     integer :: i, imax
 
@@ -313,7 +313,7 @@ contains
       if (abs(x(imax) - av) <= kap * sd) exit reject
       xm = av
     end do reject
-  end subroutine
+  end function
 
   !----------------------------------------------------------------------------!
 

@@ -5,9 +5,10 @@
 #-----------------------------------------------------------------------------#
 
 FC := gfortran
-FFLAGS := -O2 $(ARCHFLAGS) -fopenmp
+ARCHFLAGS ?= -march=native
+FFLAGS := -O3 -funsafe-math-optimizations $(ARCHFLAGS) -fopenmp
 # below are Fortran language flags
-FFLAGS_EXTRA := -fimplicit-none -ffree-line-length-none -std=f2018 \
+FFLAGS_EXTRA := -cpp -fimplicit-none -ffree-line-length-none -std=f2018 \
 				  -pedantic -Wall -Wno-unused-dummy-argument -Warray-temporaries
 
 #-----------------------------------------------------------------------------#

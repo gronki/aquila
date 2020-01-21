@@ -101,16 +101,15 @@ module deconvolutions
   use globals, only: fp
   implicit none
 
-  logical :: cfg_verbose_deconvolution = .false.
-
 contains
 
-  subroutine deconvol_lr(im1, psf, maxiter, im2)
+  subroutine deconvol_lr(im1, psf, strength, maxiter, im2)
     use convolutions, only: convol, convol_fix
     use ieee_arithmetic, only: ieee_is_normal
 
     real(fp), dimension(:,:), intent(in), contiguous :: im1, psf
     real(fp), dimension(:,:), intent(out), contiguous :: im2
+    real(fp), intent(in) :: strength
     integer, intent(in) :: maxiter
     real(fp), dimension(:,:), allocatable :: buf1, buf2, psf_inv
     real(fp) :: err1, err01, err2, err02
@@ -124,21 +123,21 @@ contains
 
     im2(:,:) = im1
 
-    if (cfg_verbose_deconvolution) then
+#   if _DEBUG
       write (0, '("+", 78("-"), "+")')
       write (0, '(a)') 'error 1: measures difference between original and deconvolved'
       write (0, '(a)') 'error 2: measures how much the image is altered in the iteration'
       write (0, '(a5, 4a12)') 'i', 'err1', 'd_err1', 'err2', 'd_err2'
-    end if
+#   endif
 
     deconv_loop: do i = 1, maxiter
       ! actual deconvolution
       call convol_fix(im2, psf, buf1, 'e')
       where (buf1 /= 0) buf1 = im1 / buf1
       call convol_fix(buf1, psf_inv, buf2, 'e')
-      im2(:,:) = im2 * buf2
+      im2(:,:) = im2 * buf2 * strength + im1 * (1 - strength)
 
-      if (cfg_verbose_deconvolution) then
+#     if _DEBUG
         ! the rest is just error estimation
         err1 = sqrt(sum((buf1 - 1)**2) / size(im1))
         err2 = sqrt(sum((buf2 - 1)**2) / size(im1))
@@ -149,10 +148,12 @@ contains
 
         err01 = err1
         err02 = err2
-      end if
+#     endif
     end do deconv_loop
 
-    if (cfg_verbose_deconvolution) write (0, '("+", 78("-"), "+")')
+#   if _DEBUG
+    write (0, '("+", 78("-"), "+")')
+#   endif
 
     deallocate(buf1, buf2, psf_inv)
   end subroutine

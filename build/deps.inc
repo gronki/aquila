@@ -1,6 +1,6 @@
 aqconvol.o: convolution.o framehandling.o globals.o kernels.o
 aqlrgb.o: convolution.o framehandling.o globals.o kernels.o png.o statistics.o
-aqstack.o: convolution.o findstar.o framehandling.o globals.o kernels.o new_align.o statistics.o
+aqstack.o: findstar.o framehandling.o globals.o new_align.o stacking.o statistics.o
 convolution.o: globals.o
 convolution.o: globals.o
 findstar.o: globals.o
@@ -13,6 +13,7 @@ kernels.o: globals.o
 legacy_align.o: findstar.o globals.o
 new_align.o: findstar.o globals.o
 png.o: globals.o
+stacking.o: convolution.o findstar.o globals.o kernels.o new_align.o statistics.o
 statistics.o: globals.o
 template.o: globals.o
 test_addsuffix.o: framehandling.o
@@ -34,7 +35,7 @@ transforms.o: globals.o
 
 aqconvol: aqconvol.o convolution.o framehandling.o globals.o kernels.o
 aqlrgb: aqlrgb.o convolution.o framehandling.o globals.o kernels.o png.o statistics.o
-aqstack: aqstack.o convolution.o findstar.o framehandling.o globals.o kernels.o new_align.o statistics.o
+aqstack: aqstack.o convolution.o findstar.o framehandling.o globals.o kernels.o new_align.o stacking.o statistics.o
 template: globals.o template.o
 test_addsuffix: framehandling.o globals.o test_addsuffix.o
 test_align: globals.o test_align.o transforms.o

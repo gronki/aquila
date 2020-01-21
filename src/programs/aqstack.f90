@@ -5,6 +5,7 @@ program aqstack
   use globals
   use framehandling
   use statistics
+  use stacking
   use findstar, only: extended_source
   use iso_fortran_env, only: real64, stderr => error_unit
 
@@ -230,19 +231,6 @@ program aqstack
           call register_stars(buffer(:,:,i), lst)
           call tx % align(lst0, lst)
 
-#         ifdef _DEBUG
-          !$omp critical
-          block
-            character(len = 256) :: fn1
-            integer :: jj
-            write (fn1, '("stars.",i0.3,".txt")') i
-            open (11, file = fn1, action = 'write')
-            write (11, '(2f15.4)') (lst(jj) % x, lst(jj) % y, jj = 1, size(lst))
-            close (11)
-          end block
-          !$omp end critical
-#         endif
-
           write (stderr, '("ALIGN frame(",i2,") found ",i4," stars")') i, size(lst)
           write (stderr, '(" solution(",i2,") =", *(f8.2))') i, tx % vec(1 : tx % npar())
 
@@ -281,7 +269,7 @@ program aqstack
 
     if (cfg_normalize) then
       call cpu_time(t1)
-      call normalize_offset_gain(buffer(:, :, 1:nstack))
+      call normalize_offset_gain(buffer(:, :, 1:nstack), margin)
       call cpu_time(t2)
       print perf_fmt, 'norm', t2 - t1
     end if
@@ -302,52 +290,7 @@ program aqstack
         end if
       end block save_processed
     else
-      actual_stack: block
-        type(image_frame_t) :: frame_out
-
-        call frame_out % alloc_shape(size(buffer, 1), size(buffer, 2))
-
-        call cpu_time(t1)
-        call stack_buffer(method, buffer(:, :, 1:nstack), frame_out % data)
-        call cpu_time(t2)
-        print perf_fmt, 'stack', t2 - t1
-
-        write_extra_info_hdr: block
-
-          call frame_out % hdr % add_int('NSTACK', nstack)
-          call frame_out % hdr % add_str('STCKMTD', method)
-          if (strategy /= '') call frame_out % hdr % add_str('FRAMETYP', strategy)
-
-          call propagate_average_value_real(frames(1:nstack), 'EXPTIME', frame_out)
-          call propagate_average_value_real(frames(1:nstack), 'CCD-TEMP', frame_out)
-
-        end block write_extra_info_hdr
-
-        if ((strategy == 'bias' .or. strategy == 'dark') .and. nstack > 1) then
-          estimate_noise: block
-            real(fp) :: rms
-
-            rms = estimate_differential_noise(buffer)
-
-            write (*, '("RMS = ", f10.2)') rms
-            call frame_out % hdr % add_float('RMS', real(rms))
-            call frame_out % hdr % add_float('STACKRMS', real(rms / sqrt(1.0_fp * nstack)))
-          end block estimate_noise
-        end if
-
-        write_stack: block
-          if (output_fn == "") then
-            if (strategy /= "") then
-              output_fn = trim(strategy) // ".fits"
-            else
-              output_fn = "out.fits"
-            end if
-          end if
-          print '(a,a)', 'writing output file: ', trim(output_fn)
-          call frame_out % write_fits(output_fn)
-        end block write_stack
-
-      end block actual_stack
+      call stack_and_write(strategy, method, frames(1:nstack), buffer(:, :, 1:nstack), output_fn)
     end if
 
   end block actual_job
@@ -355,166 +298,6 @@ program aqstack
   !----------------------------------------------------------------------------!
 
 contains
-
-  !----------------------------------------------------------------------------!
-
-  subroutine stack_buffer(method, buffer, buffer_out)
-    use statistics, only: quickselect, sigclip2
-
-    real(fp), intent(in) :: buffer(:,:,:)
-    real(fp), intent(out) :: buffer_out(:,:)
-    character(len = *), intent(in) :: method
-    integer :: i, j, nstack
-    real(fp) :: a(size(buffer, 3))
-
-    nstack = size(buffer, 3)
-
-    select case (method)
-    case ('m', 'median')
-      !$omp parallel do private(i, j, a)
-      do j = 1, size(buffer, 2)
-        do i = 1, size(buffer, 1)
-          a(:) = buffer(i, j, 1:nstack)
-          ! forall (k = 1:nstack) a(k) = frames(k) % data(i, j)
-          buffer_out(i, j) = quickselect(a(:), (nstack + 1) / 2)
-        end do
-      end do
-      !$omp end parallel do
-    case ('s', 'sigclip')
-      !$omp parallel do private(i, j, a)
-      do j = 1, size(buffer, 2)
-        do i = 1, size(buffer, 1)
-          ! forall (k = 1:nstack) a(k) = frames(k) % data(i, j)
-          ! call sigclip2(a(:), frame_out % data(i, j))
-          call sigclip2(buffer(i, j, 1:nstack), buffer_out(i, j))
-        end do
-      end do
-      !$omp end parallel do
-    case default
-      buffer_out(:, :) = sum(buffer(:, :, 1:nstack), 3) / nstack
-    end select
-  end subroutine
-
-  !----------------------------------------------------------------------------!
-
-  subroutine propagate_average_value_real(frames, kw, frame_out)
-    class(image_frame_t), intent(in) :: frames(:)
-    class(image_frame_t), intent(inout) :: frame_out
-    character(len = *) :: kw
-    logical :: m(size(frames))
-    real :: av
-    integer :: i, errno
-
-    m(:) = [ (frames(i) % hdr % has_key(kw), i = 1, size(frames)) ]
-    if (count(m) > 0) then
-      av = sum([ (merge(frames(i) % hdr % get_float(kw, errno), 0.0, m(i)), &
-      &     i = 1, size(frames)) ]) / count(m)
-      call frame_out % hdr % add_float(kw, av)
-    end if
-  end subroutine
-
-  !----------------------------------------------------------------------------!
-
-  function estimate_differential_noise(buffer) result(rms)
-    use iso_fortran_env, only: int64
-    real(fp), intent(in) :: buffer(:,:,:)
-    real(fp) :: rms
-    integer :: i, n
-    integer(int64) :: nxny
-
-    nxny = size(buffer, 1) * size(buffer, 2)
-    n = size(buffer, 3)
-
-    rms = 0
-    do i = 1, n - 1
-      rms = rms + sum((buffer(:,:,i) - buffer(:,:,i+1))**2) / (2 * nxny)
-    end do
-
-    rms = sqrt(rms / (n - 1))
-  end function
-
-  !----------------------------------------------------------------------------!
-
-  subroutine normalize_offset_gain(buffer)
-    use statistics, only: linfit
-    real(fp) :: a, b
-    real(fp), allocatable :: imref(:,:), xx(:), yy(:)
-    real(fp), intent(inout) :: buffer(:,:,:)
-    logical, allocatable :: mask(:,:)
-    integer :: i, sz(3), nstack
-
-    sz = shape(buffer)
-    nstack = sz(3)
-
-    ! create mean frame to normalize to
-    imref = sum(buffer, 3) / nstack
-
-    ! create mask which excludes edges and the brigtenst pixels
-    allocate(mask(sz(1), sz(2)))
-    associate (m => margin)
-      associate (imc => imref(1+m : sz(1)-m, 1+m : sz(2)-m))
-        mask = imref < (minval(imc) + maxval(imc)) / 2
-      end associate
-      mask(:m, :) = .false.; mask(sz(1)-m+1:, :) = .false.
-      mask(:, :m) = .false.; mask(:, sz(2)-m+1:) = .false.
-    end associate
-
-    ! pack it into 1-d array
-    xx = pack(imref, mask)
-    deallocate(imref)
-    allocate(yy, mold = xx)
-
-    do i = 1, nstack
-      yy(:) = pack(buffer(:,:,i), mask)
-      call linfit(xx, yy, a, b)
-      write (stderr, '("NORM frame(",i2,") y = ",f5.3,"x + ",f7.1)') i, a, b
-      buffer(:,:,i) = (buffer(:,:,i) - b) / a
-    end do
-  end subroutine
-
-  !----------------------------------------------------------------------------!
-
-  subroutine register_stars(im, lst)
-    use convolutions, only: convol_fix
-    use kernels, only: mexhakrn_alloc
-    use findstar, only: aqfindstar
-
-    real(fp), intent(in), contiguous :: im(:,:)
-    type(extended_source), intent(out), allocatable :: lst(:)
-    real(fp), allocatable :: im2(:,:), krn(:,:)
-    integer :: nstars
-
-    krn = mexhakrn_alloc(2.3_fp)
-
-    allocate(im2(size(im,1), size(im,2)))
-
-    call convol_fix(im, krn, im2, 'r')
-    call aqfindstar(im2, lst, limit = 256)
-  end subroutine
-
-  !----------------------------------------------------------------------------!
-
-  function check_corners(tx, nx, ny) result(margin)
-    use new_align, only: transform_t
-
-    class(transform_t), intent(in) :: tx
-    integer, intent(in) :: nx, ny
-    real(fp) :: rx, ry, sx, sy
-    integer :: margin
-
-    rx = 0.5_fp * (nx - 1)
-    ry = 0.5_fp * (ny - 1)
-
-    margin = 0
-    call tx % apply(-rx, -ry, sx, sy)
-    margin = max(margin, ceiling(abs(-rx - sx)), ceiling(abs(-ry - sy)))
-    call tx % apply( rx, -ry, sx, sy)
-    margin = max(margin, ceiling(abs( rx - sx)), ceiling(abs(-ry - sy)))
-    call tx % apply( rx,  ry, sx, sy)
-    margin = max(margin, ceiling(abs( rx - sx)), ceiling(abs( ry - sy)))
-    call tx % apply(-rx,  ry, sx, sy)
-    margin = max(margin, ceiling(abs(-rx - sx)), ceiling(abs( ry - sy)))
-  end function
 
   !----------------------------------------------------------------------------!
   ! parse the command line args

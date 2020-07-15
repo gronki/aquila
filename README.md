@@ -11,7 +11,11 @@ Currently, the package consists of following programs:
 1. ``aqstack`` for stacking and reduction of monochromatic CCD images
 2. ``aqlrgb`` for compositing images from many filters into one color picture
 
-## aqstack
+## Usage
+
+Use option ``-h`` or ``-help`` to get the information below.
+
+### aqstack
 
 ```
 usage: aqstack [STRATEGY] [OPTIONS] FILE1 [FILE2 ...] -o OUTPUT
@@ -33,7 +37,7 @@ STRATEGY can be: bias, dark, flat, process, align, final
         -flat FILENAME  remove this master flat
 ```
 
-## aqlrgb
+### aqlrgb
 
 ```
 prepares the aligned images for RGB processing
@@ -55,3 +59,20 @@ R, G, B are color frames and L is optional luminance
                         (boosts star colors but can kill some details)
                -h[elp]  prints help
 ```
+
+## Changelog
+
+- 200716: now temperature filter is before loading images, which saves memory
+
+## Planned Features
+
+- optimal temperature filtering
+- hotpixel correction
+- dark subtraction and optimization
+- color images
+- large image handling
+- use 32 bits for image storage
+- more non-linear distortions
+- proper drizzling
+- better control over colors
+- LRGB and edit commands

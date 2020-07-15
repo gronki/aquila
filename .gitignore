@@ -1,1 +1,7 @@
 /sketches
+/.vscode
+/gtk
+/doc
+*.mod
+*.smod
+*.o

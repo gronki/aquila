@@ -65,19 +65,19 @@ program aqstack
 
     read_calibration_frames: block
       if (bias_fn /= "") then
-        if (strategy == "bias") error stop "why subtract bias from bias?"
+        if (strategy == "bias") write(*, '(a)') cf("Achtung!", "1") // " why subtract bias from bias?"
         call frame_bias % read_fits(bias_fn)
         write (stderr, '(a12,": ",a)') 'bias', trim(bias_fn)
       end if
 
       if (dark_fn /= "") then
-        if (strategy == "dark") error stop "why subtract dark from dark?"
+        if (strategy == "dark") write(*, '(a)') cf("Achtung!", "1") // " why subtract dark from dark?"
         call frame_dark % read_fits(dark_fn)
         write (stderr, '(a12,": ",a)') 'dark', trim(dark_fn)
       end if
 
       if (flat_fn /= "") then
-        if (strategy == "flat") error stop "why subtract flat from flat?"
+        if (strategy == "flat") write(*, '(a)') cf("Achtung!", "1") // " why subtract flat from flat?"
         call frame_flat % read_fits(flat_fn)
         associate (n1 => size(frame_flat % data, 1), n2 => size(frame_flat % data, 2))
           associate (calibarea => frame_flat % data(33:n1-32, 33:n2-32))
@@ -89,9 +89,41 @@ program aqstack
       end if
     end block read_calibration_frames
 
+    if (cfg_temperature_filter) then
+      block
+        use fitsheader_m, only: fhdict
+        type(fhdict) :: hdr
+        integer :: errno
+        logical :: pass(nframes)
+        character(len=*), parameter :: fmt = '(a32, 2x, "T=", f6.1, "C", 4x, a)'
+        
+        pass(:) = .false.
+
+        do i = 1, nframes
+          call hdr % erase
+          call hdr % load(input_fn(i), errno)
+          if (errno /= 0) error stop
+          if ('CCD-TEMP' .in. hdr) then
+            associate (ccdtemp => hdr % get_float('CCD-TEMP'))
+              if (abs(ccdtemp - cfg_temperature_point) < 0.5) then
+                pass(i) = .true.
+                write(*, fmt) trim(input_fn(i)), ccdtemp, 'OK'
+              else
+                write(*, fmt) trim(input_fn(i)), ccdtemp, ''
+              end if
+            end associate
+          end if
+        end do
+
+        input_fn = pack(input_fn, pass)
+        write(*, '("temperature filter:", 2X, i0, " out of ", i0, " frames left")') size(input_fn), nframes
+        nframes = size(input_fn)
+      end block
+    end if
+
     nstack = 0
     allocate(frames(nframes))
-    print '(a27, a9, a7, a9, a8)', 'FILENAME', 'AVG', 'STD', 'EXPOS', 'TEMP'
+    print '(a27, a9, a7, a9)', 'FILENAME', 'AVG', 'STD', 'EXPOS'
 
     read_frames_loop: do i = 1, nframes
 
@@ -118,7 +150,7 @@ program aqstack
 
         if (errno /= 0) then
           write (stderr, '("problem opening file: ", a)') trim(input_fn(i))
-          cycle read_frames_loop
+          error stop
         end if
 
         if (associated(frame_bias % data)) then
@@ -132,31 +164,11 @@ program aqstack
         ! print some frame statistics for quick check
         frame_stats: block
           real(fp) :: avg, std
-          character(len = 192) :: buf
 
           call avsd(cur_buffer, avg, std)
 
-          if ('CCD-TEMP' .in. cur_frame % hdr) then
-            associate (ccdtemp => cur_frame % hdr % get_float('CCD-TEMP'))
-              write (buf, '(a27, f9.1, f7.1, f9.2, f8.2)') trim(input_fn(i)), avg, std, &
-              &     cur_frame % exptime, ccdtemp
-              if (cfg_temperature_filter) then
-                if (abs(cfg_temperature_point - ccdtemp) > 0.5) then
-                  write (*, '("' // cf('",a,"','31') // '")') trim(buf)
-                  cycle read_frames_loop
-                end if
-              end if
-              write (*, '(a)') trim(buf)
-            end associate
-          else
-            write (buf, '(a27, f9.1, f7.1, f9.2, a8)') trim(input_fn(i)), &
-            &     avg, std, cur_frame % exptime, '--'
-            if (cfg_temperature_filter) then
-              write (*, '("' // cf('",a,"','31') // '")') trim(buf)
-              cycle read_frames_loop
-            end if
-            write (*, '(a)') trim(buf)
-          end if
+          write (*, '(a27, f9.1, f7.1, f9.2)') trim(input_fn(i)), &
+          &     avg, std, cur_frame % hdr % get_float('EXPTIME')
         end block frame_stats
 
       end associate

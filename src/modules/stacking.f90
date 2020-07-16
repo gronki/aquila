@@ -27,7 +27,7 @@ contains
 
   !----------------------------------------------------------------------------!
 
-  function check_corners(tx, nx, ny) result(margin)
+  pure function check_corners(tx, nx, ny) result(margin)
     use new_align, only: transform_t
 
     class(transform_t), intent(in) :: tx
@@ -40,15 +40,14 @@ contains
 
     margin = 0
     call tx % apply(-rx, -ry, sx, sy)
-    margin = max(margin, ceiling(abs(-rx - sx)), ceiling(abs(-ry - sy)))
+    margin = max(margin, ceiling(abs(abs(rx) - abs(sx))), ceiling(abs(abs(ry) - abs(sy))))
     call tx % apply( rx, -ry, sx, sy)
-    margin = max(margin, ceiling(abs( rx - sx)), ceiling(abs(-ry - sy)))
+    margin = max(margin, ceiling(abs(abs(rx) - abs(sx))), ceiling(abs(abs(ry) - abs(sy))))
     call tx % apply( rx,  ry, sx, sy)
-    margin = max(margin, ceiling(abs( rx - sx)), ceiling(abs( ry - sy)))
+    margin = max(margin, ceiling(abs(abs(rx) - abs(sx))), ceiling(abs(abs(ry) - abs(sy))))
     call tx % apply(-rx,  ry, sx, sy)
-    margin = max(margin, ceiling(abs(-rx - sx)), ceiling(abs( ry - sy)))
+    margin = max(margin, ceiling(abs(abs(rx) - abs(sx))), ceiling(abs(abs(ry) - abs(sy))))
   end function
-
 
   !----------------------------------------------------------------------------!
 
@@ -215,19 +214,23 @@ contains
 
   !----------------------------------------------------------------------------!
 
-  function estimate_differential_noise(buffer) result(rms)
+  pure function estimate_differential_noise(buffer) result(rms)
     use iso_fortran_env, only: int64
     real(fp), intent(in) :: buffer(:,:,:)
-    real(fp) :: rms
+    real(fp) :: rms, av(size(buffer, 3))
     integer :: i, n
     integer(int64) :: nxny
 
     nxny = size(buffer, 1, kind = int64) * size(buffer, 2, kind = int64)
     n = size(buffer, 3)
 
+    do concurrent (i = 1:n)
+      av(i) = sum(buffer(:,:,i)) / nxny
+    end do
+
     rms = 0
     do i = 1, n - 1
-      rms = rms + sum((buffer(:,:,i) - buffer(:,:,i+1))**2) / (2 * nxny)
+      rms = rms + sum((buffer(:,:,i) - av(i) - buffer(:,:,i+1) + av(i+1))**2) / (2 * nxny)
     end do
 
     rms = sqrt(rms / (n - 1))

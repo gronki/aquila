@@ -76,3 +76,4 @@ R, G, B are color frames and L is optional luminance
 - proper drizzling
 - better control over colors
 - LRGB and edit commands
+- auto-flip

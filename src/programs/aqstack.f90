@@ -26,7 +26,7 @@ program aqstack
   logical :: cfg_resampling = .false.
   logical :: cfg_temperature_filter = .false.
   real(fp) :: resample_factor = 1.5, cfg_temperature_point = 0, cfg_temperature_tolerance = 0.5
-  integer :: margin = 32, margins(2,2) = 0
+  integer :: margin = 10, margins(2,2) = 0
   real(real64) :: t1, t2
 
   integer :: nframes
@@ -92,10 +92,9 @@ program aqstack
         type(fhdict) :: hdr
         integer :: errno
         logical :: pass(nframes)
-        character(len=*), parameter :: fmt = '(a32, 2x, "T=", f6.1, "C", 4x, a)'
 
         print *
-        print '(a, f0.1, a, f0.1)', "temperature filter: ", cfg_temperature_point, &
+        print '(a, f5.1, a, f3.1, a)', "temperature filter: ", cfg_temperature_point, &
         &   "C +/- ", abs(cfg_temperature_tolerance), "C"
         
         pass(:) = .false.
@@ -108,9 +107,8 @@ program aqstack
             associate (ccdtemp => hdr % get_float('CCD-TEMP'))
               if (abs(ccdtemp - cfg_temperature_point) < abs(cfg_temperature_tolerance)) then
                 pass(i) = .true.
-                print fmt, trim(input_fn(i)), ccdtemp, 'OK'
               else
-                print fmt, trim(input_fn(i)), ccdtemp, ''
+                print '("rejected", 2x, a32, 2x, "T=", f6.1, "C")', trim(input_fn(i)), ccdtemp
               end if
             end associate
           end if
@@ -126,7 +124,7 @@ program aqstack
     allocate(frames(nframes))
     
     print *
-    print '(a27, a9, a7, a9)', 'FILENAME', 'AVG', 'STD', 'EXPOS'
+    print '(a32, a9, a7, a9)', 'FILENAME', 'AVG', 'STD', 'EXPOS'
 
     read_frames_loop: do i = 1, nframes
 
@@ -170,7 +168,7 @@ program aqstack
 
           call avsd(cur_buffer, avg, std)
 
-          print '(a27, f9.1, f7.1, f9.2)', trim(input_fn(i)), &
+          print '(a32, f9.1, f7.1, f9.2)', trim(input_fn(i)), &
           &     avg, std, cur_frame % hdr % get_float('EXPTIME')
         end block frame_stats
 
@@ -252,8 +250,6 @@ program aqstack
           print '(" solution(",i2,") =", *(f8.2))', i, tx % vec(1 : tx % npar())
 
           !$omp critical
-          margin = max(margin, ceiling(abs(tx % vec(1) * 1.1)) + 1, &
-            ceiling(abs(tx % vec(2) * 1.1)) + 1)
           margin = max(margin, check_corners(tx, nx, ny))
           !$omp end critical
 

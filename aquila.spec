@@ -1,5 +1,5 @@
 Name:           aquila
-Version:        200716
+Version:        200716b
 Release:        1%{?dist}
 Summary:        aquila
 

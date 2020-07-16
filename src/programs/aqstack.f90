@@ -25,7 +25,7 @@ program aqstack
   logical :: cfg_find_hot = .false., cfg_correct_hot = .false.
   logical :: cfg_resampling = .false.
   logical :: cfg_temperature_filter = .false.
-  real(fp) :: resample_factor = 1.5, cfg_temperature_point = 0
+  real(fp) :: resample_factor = 1.5, cfg_temperature_point = 0, cfg_temperature_tolerance = 0.5
   integer :: margin = 32, margins(2,2) = 0
   real(real64) :: t1, t2
 
@@ -105,7 +105,7 @@ program aqstack
           if (errno /= 0) error stop
           if ('CCD-TEMP' .in. hdr) then
             associate (ccdtemp => hdr % get_float('CCD-TEMP'))
-              if (abs(ccdtemp - cfg_temperature_point) < 0.5) then
+              if (abs(ccdtemp - cfg_temperature_point) < abs(cfg_temperature_tolerance)) then
                 pass(i) = .true.
                 write(*, fmt) trim(input_fn(i)), ccdtemp, 'OK'
               else
@@ -406,11 +406,21 @@ contains
       case ("-temperature", "-T")
         call get_command_argument(i + 1, buf)
         read (buf, *, iostat = errno) cfg_temperature_point
+
         if (errno == 0) then
           cfg_temperature_filter = .true.
           skip = 1
         else
           error stop "command line: temperature point in celsius (float) expected"
+        end if
+
+        call get_command_argument(i + 2, buf)
+        read (buf, *, iostat = errno) cfg_temperature_tolerance
+
+        if (errno == 0) then
+          skip = 2
+        else
+          cfg_temperature_tolerance = 0.5
         end if
 
       case ("-o", "-output")
@@ -496,12 +506,13 @@ contains
     write (*, hlp_fmt) '-align', 'align frames'
     write (*, hlp_fmt) '-ref FILENAME', 'align to this frame rather than first frame'
     write (*, hlp_fmt) '-resample [FACTOR]', 'resample before stacking (only with -align)'
-    write (*, hlp_fmtc) 'default resampling factor = 1.5x'
-    write (*, hlp_fmt) '-norm[alize]', 'normalize to average before stacking'
+    write (*, hlp_fmtc) 'FACTOR is scale to be applied (default: 1.5)'
+    write (*, hlp_fmt) '-norm/-normalize', 'normalize to average before stacking'
     write (*, hlp_fmt) '-nostack', 'process but do not stack images'
     write (*, hlp_fmt) '-suffix/-S FILENAME', 'suffix that will be added to file names'
     write (*, hlp_fmtc) 'when using -nostack (default: R)'
-    write (*, hlp_fmt) '-temperature/-T TEMP', 'stack only frames with given CCD temperature'
+    write (*, hlp_fmt) '-temperature/-T TEMP [TOLER]', 'stack only frames with given CCD temperature'
+    write (*, hlp_fmtc) 'TOLER gives allowed deviation in temperature (default: 0.5)'
     write (*, hlp_fmt) '-bias FILENAME', 'subtract this master bias'
     write (*, hlp_fmt) '-flat FILENAME', 'remove this master flat'
   end subroutine print_help

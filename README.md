@@ -26,13 +26,13 @@ STRATEGY can be: bias, dark, flat, process, align, final
               -sigclip  stack by 3-sigma clipped average
                 -align  align frames
          -ref FILENAME  align to this frame rather than first frame
-             -resample  resample before stacking (only with -align)
-        -factor FACTOR  resampling factor (default: 1.5)
+    -resample [FACTOR]  resample before stacking (only with -align)
+                        default resampling factor = 1.5x
           -norm[alize]  normalize to average before stacking
               -nostack  process but do not stack images
    -suffix/-S FILENAME  suffix that will be added to file names
                         when using -nostack (default: R)
--temperature/-T [TEMP]  stack only frames with given CCD temperature
+  -temperature/-T TEMP  stack only frames with given CCD temperature
         -bias FILENAME  subtract this master bias
         -flat FILENAME  remove this master flat
 ```

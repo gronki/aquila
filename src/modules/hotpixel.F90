@@ -11,7 +11,7 @@ contains
   pure &
 # endif
   subroutine find_hot(im, hot_mask)
-    use statistics, only: outliers, sigstd
+    use statistics, only: outliers, avsd
 
     real(fp), contiguous, intent(in) :: im(:,:)
     logical, contiguous, intent(out) :: hot_mask(:,:)
@@ -19,8 +19,7 @@ contains
     integer :: i
 
     hot_mask(:,:) = .true.
-    call outliers(im, 3.0_fp, 5, hot_mask)
-    call sigstd(im, av, sd, hot_mask)
+    call outliers(im, hot_mask, 3.0_fp, 5, av, sd)
 
 #   ifdef _DEBUG
     write (11, '("#", a5, a8)') 'kap', 'nhot'
@@ -38,7 +37,7 @@ contains
   !----------------------------------------------------------------------------!
 
   pure subroutine fix_hot(im, hot_mask)
-    use statistics, only: quickselect
+    ! use statistics, only: quickselect
     real(fp), contiguous, intent(inout) :: im(:,:)
     logical, contiguous, intent(in) :: hot_mask(:,:)
     integer :: i, j, n

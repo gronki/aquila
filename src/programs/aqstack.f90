@@ -6,6 +6,7 @@ program aqstack
   use framehandling
   use statistics
   use stacking
+  use hotpixels
   use findstar, only: extended_source
   use iso_fortran_env, only: real64, stderr => error_unit
 
@@ -16,7 +17,7 @@ program aqstack
   ! allowed values: average, median, sigclip
   character(len = 32) :: method = "average", strategy = ""
   character(len = 256) :: output_fn = "", ref_fn = "", &
-        bias_fn = "", dark_fn = "", flat_fn = ""
+        bias_fn = "", dark_fn = "", flat_fn = "", fix_fn = ""
   character(len = 64) :: output_suff = ""
   character(len = 256), allocatable :: input_fn(:)
   logical :: cfg_align_frames = .false.
@@ -56,7 +57,8 @@ program aqstack
     type(image_frame_t), dimension(:), allocatable :: frames
     real(fp), allocatable, target :: buffer(:,:,:)
     type(image_frame_t) :: frame_bias, frame_dark, frame_flat
-    integer :: i, nstack, errno
+    logical, allocatable :: fix_mask(:,:)
+    integer :: i, errno
     integer :: nx, ny
 
 
@@ -84,6 +86,7 @@ program aqstack
         end associate
         print '(a12,": ",a)', 'flat', trim(flat_fn)
       end if
+
     end block read_calibration_frames
 
     if (cfg_temperature_filter) then
@@ -120,7 +123,8 @@ program aqstack
       end block
     end if
 
-    nstack = 0
+    if (nframes == 0) error stop "no frames to stack"
+
     allocate(frames(nframes))
     
     print *
@@ -130,7 +134,7 @@ program aqstack
 
       errno = 0
 
-      if (nstack == 0 .and. .not. allocated(buffer)) then
+      if (i == 1) then
         call read_fits_naxes(input_fn(i), nx, ny, errno)
 
         if (errno /= 0) then
@@ -139,11 +143,16 @@ program aqstack
         end if
 
         allocate(buffer(nx, ny, nframes))
+
+        if (fix_fn /= "") then
+          open(77, file=fix_fn, action='read')
+          allocate(fix_mask(nx, ny))
+          call read_hot(77, fix_mask)
+          close(77)
+        end if
       end if
 
-      associate (cur_frame => frames(nstack + 1), cur_buffer => buffer(:, :, nstack + 1))
-
-        ! TODO: filter by temperature
+      associate (cur_frame => frames(i), cur_buffer => buffer(:,:,i))
 
         cur_frame % data => cur_buffer
         call cur_frame % hdr % erase()
@@ -162,6 +171,10 @@ program aqstack
           cur_buffer(:,:) = cur_buffer(:,:) / frame_flat % data(:,:)
         end if
 
+        if (allocated(fix_mask)) then
+          call fix_hot(cur_buffer, fix_mask)
+        end if
+
         ! print some frame statistics for quick check
         frame_stats: block
           real(fp) :: avg, std
@@ -174,16 +187,11 @@ program aqstack
 
       end associate
 
-      nstack = nstack + 1
     end do read_frames_loop
 
-    if (nstack == 0) then
-      error stop "no frames to stack"
-    end if
-
-    if (method == 'sigclip' .and. nstack < 4) then
+    if (method == 'sigclip' .and. nframes < 4) then
       method = 'average'
-      if ((strategy == 'bias' .or. strategy == 'dark') .and. nstack == 3) then
+      if ((strategy == 'bias' .or. strategy == 'dark') .and. nframes == 3) then
         method = 'median'
       end if
       print '("warning: too few frames; stacking method changed to ",a)', trim(method)
@@ -192,12 +200,12 @@ program aqstack
     print *
 
     if (cfg_process_only) then
-      print '("' // cf('processing ",i0," frames','1') // '")', nstack
+      print '("' // cf('processing ",i0," frames','1') // '")', nframes
     else
-      print '("' // cf('stacking ",i0," frames using ",a,"','1') // '")', nstack, trim(method)
+      print '("' // cf('stacking ",i0," frames using ",a,"','1') // '")', nframes, trim(method)
     end if
 
-    if (cfg_align_frames .and. (nstack > 1 .or. ref_fn /= "")) then
+    if (cfg_align_frames .and. (nframes > 1 .or. ref_fn /= "")) then
       print '(a)', 'ALIGN STARTED'
       align_frames: block
         use new_align
@@ -211,7 +219,7 @@ program aqstack
 
         if (cfg_resampling) then
           print '("WARNING ", a)', 'resampling may require a lot of memory'
-          allocate(buffer_resample(nint(resample_factor * nx), nint(resample_factor * ny), nstack))
+          allocate(buffer_resample(nint(resample_factor * nx), nint(resample_factor * ny), nframes))
           buffer_resample(:,:,:) = 0
         else
           allocate(buf_copy(nx, ny))
@@ -239,7 +247,7 @@ program aqstack
 
         call cpu_time(t1)
         !$omp parallel do private(i, lst, buf_copy, tx)
-        do i = istart, nstack
+        do i = istart, nframes
           allocate(tx, source = tx0)
 
           ! find the transform between frames
@@ -273,7 +281,7 @@ program aqstack
         if (cfg_resampling) then
           deallocate(buffer)
           call move_alloc(buffer_resample, buffer)
-          do i = 1, nstack
+          do i = 1, nframes
             frames(i) % data => buffer(:,:,i)
           end do
         end if
@@ -282,7 +290,7 @@ program aqstack
 
     if (cfg_normalize) then
       call cpu_time(t1)
-      call normalize_offset_gain(buffer(:, :, 1:nstack), margin)
+      call normalize_offset_gain(buffer(:, :, 1:nframes), margin)
       call cpu_time(t2)
       print perf_fmt, 'norm', t2 - t1
     end if
@@ -294,19 +302,19 @@ program aqstack
       integer :: i
       character(len = 256) :: newfn
 
-        if (nstack == 1 .and. output_fn /= "") then
+        if (nframes == 1 .and. output_fn /= "") then
           print '(a,a)', 'writing output file: ', trim(output_fn)
           call frames(1) % write_fits(output_fn)
         else
           if (output_suff == "") output_suff = "_R"
-          print '(a,i0,a,a)', 'writing ', nstack, ' processed files with suffix: ', trim(output_suff)
-          do i = 1, nstack
+          print '(a,i0,a,a)', 'writing ', nframes, ' processed files with suffix: ', trim(output_suff)
+          do i = 1, nframes
             call frames(i) % write_fits(add_suffix(frames(i) % fn, output_suff))
           end do
         end if
       end block save_processed
     else
-      call stack_and_write(strategy, method, frames(1:nstack), buffer(:, :, 1:nstack), output_fn)
+      call stack_and_write(strategy, method, frames(1:nframes), buffer(:, :, 1:nframes), output_fn)
     end if
 
   end block actual_job
@@ -457,6 +465,14 @@ contains
           flat_fn = buf; skip = 1
         else
           error stop "command line: flat file name expected"
+        end if
+
+      case ("-hot", "-fix")
+        call get_command_argument(i + 1, buf)
+        if (is_valid_fn_arg(buf)) then
+          fix_fn = buf; skip = 1
+        else
+          error stop "command line: bad pixel file name expected"
         end if
 
       case ("-ref", "-reference")

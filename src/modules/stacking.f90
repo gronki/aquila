@@ -149,6 +149,20 @@ contains
 
       print '(a,a)', 'writing output file: ', trim(output_fn_clean)
       call frame_out % write_fits(output_fn_clean)
+
+      if (strategy == 'dark') then
+        block
+          use hotpixels, only: find_hot, write_hot
+          logical, allocatable :: fix_mask(:,:)
+
+          allocate(fix_mask(size(buffer, 1), size(buffer, 2)))
+          call find_hot(frame_out % data, fix_mask)
+  
+          open(71, file=trim(output_fn_clean) // '.fix', action='write')
+          call write_hot(71, fix_mask)
+          close(71)
+        end block
+      end if
     end block write_stack
 
   end subroutine stack_and_write

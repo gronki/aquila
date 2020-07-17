@@ -51,7 +51,7 @@ TESTS := $(patsubst ../src/test/test_%, test_%, $(basename $(wildcard ../src/tes
 
 all: $(PROGRAMS)
 debug: $(PROGRAMS)
-debug $(TESTS): FFLAGS := -Og -g -fcheck=all -D_DEBUG
+debug $(TESTS): FFLAGS := -g -fcheck=all -D_DEBUG
 
 install: all
 	install -d $(DESTDIR)$(prefix)/bin

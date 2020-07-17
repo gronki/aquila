@@ -62,6 +62,7 @@ R, G, B are color frames and L is optional luminance
 
 ## Changelog
 
+- 200717: hot pixel correction
 - 200716: now temperature filter is before loading images, which saves memory
 
 ## Planned Features

@@ -1,39 +1,41 @@
 # Makefile for aquila
-# (c) 2019 Dominik Gronkiewicz <gronki@gmail.com>
+# (c) 2020 Dominik Gronkiewicz <gronki@gmail.com>
 # on MIT license
 
 #-----------------------------------------------------------------------------#
 
 FC := gfortran
-ARCHFLAGS ?= -march=native
-FFLAGS := -O3 -funsafe-math-optimizations $(ARCHFLAGS) -fopenmp
-# below are Fortran language flags
-FFLAGS_EXTRA := -cpp -fimplicit-none -ffree-line-length-none -std=f2018 \
-				  -pedantic -Wall -Wno-unused-dummy-argument -Warray-temporaries
+# optimization flags (-march=native should be in environment variables)
+FFLAGS += -O3 -funsafe-math-optimizations -flto -fopenmp
+# Fortran language flags (always included)
+FFLAGS_LANG := -fimplicit-none -ffree-line-length-none -std=f2018 -pedantic
+# debugging flags
+FFLAGS_DEBUG := -O0 -g -fcheck=all -D_DEBUG \
+	-Wall -Wno-unused-dummy-argument -Warray-temporaries
 
 #-----------------------------------------------------------------------------#
 
 INCLUDE += -I/usr/include
 
 ifeq ($(shell pkg-config --modversion cfitsio),)
-LDLIBS += -lcfitsio
+	LDLIBS  += -lcfitsio
 else
-LDLIBS += $(shell pkg-config --libs cfitsio)
-INCLUDE += $(shell pkg-config --cflags cfitsio)
+	LDLIBS  := $(LDLIBS)  $(shell pkg-config --libs   cfitsio)
+	INCLUDE := $(INCLUDE) $(shell pkg-config --cflags cfitsio)
 endif
 
 ifeq ($(shell pkg-config --modversion libpng),)
-LDLIBS += -lpng
+	LDLIBS  += -lpng
 else
-LDLIBS += $(shell pkg-config --libs libpng)
-INCLUDE += $(shell pkg-config --cflags libpng)
+	LDLIBS  := $(LDLIBS)  $(shell pkg-config --libs   libpng)
+	INCLUDE := $(INCLUDE) $(shell pkg-config --cflags libpng)
 endif
 
 ifeq ($(shell pkg-config --modversion fftw3),)
-LDLIBS += -lfftw3
+	LDLIBS  += -lfftw3
 else
-LDLIBS += $(shell pkg-config --libs fftw3)
-INCLUDE += $(shell pkg-config --cflags fftw3)
+	LDLIBS  := $(LDLIBS)  $(shell pkg-config --libs   fftw3)
+	INCLUDE := $(INCLUDE) $(shell pkg-config --cflags fftw3)
 endif
 
 #-----------------------------------------------------------------------------#
@@ -51,18 +53,19 @@ TESTS := $(patsubst ../src/test/test_%, test_%, $(basename $(wildcard ../src/tes
 
 all: $(PROGRAMS)
 debug: $(PROGRAMS)
-debug $(TESTS): FFLAGS := -g -fcheck=all -D_DEBUG
+debug $(TESTS): FFLAGS := $(FFLAGS_DEBUG)
 
 install: all
+	@echo "installing in $(DESTDIR)$(prefix)"
 	install -d $(DESTDIR)$(prefix)/bin
 	install $(PROGRAMS) $(DESTDIR)$(prefix)/bin
 
 include deps.inc
 
 %.o: %.f90
-	$(FC) $(INCLUDE) $(FFLAGS) $(FFLAGS_EXTRA) -c $< -o $@
+	$(FC) $(INCLUDE) $(FFLAGS) $(FFLAGS_LANG) -c $< -o $@
 %.o: %.F90
-	$(FC) $(INCLUDE) $(FFLAGS) $(FFLAGS_EXTRA) -c $< -o $@
+	$(FC) $(INCLUDE) $(FFLAGS) $(FFLAGS_LANG) -c $< -o $@
 
 $(PROGRAMS): LDFLAGS += -fwhole-program
 $(PROGRAMS):

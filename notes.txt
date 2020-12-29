@@ -1,0 +1,4 @@
+- nie zapisywanie listy hot pixeli, obliczanie z darka
+- opcje: -hot [sigma], -only-hot [sigma]
+- opcja: -dark-has-bias
+- opcja: -dark-optimize

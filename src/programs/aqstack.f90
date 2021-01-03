@@ -23,7 +23,7 @@ program aqstack
   logical :: cfg_align_frames = .false.
   logical :: cfg_process_only = .false.
   logical :: cfg_normalize = .false.
-  logical :: cfg_find_hot = .false., cfg_correct_hot = .false.
+  logical :: cfg_correct_hot = .true., cfg_correct_hot_only = .true.
   logical :: cfg_resampling = .false.
   logical :: cfg_temperature_filter = .false.
   real(fp) :: resample_factor = 1.5, cfg_temperature_point = 0, cfg_temperature_tolerance = 0.5
@@ -70,9 +70,19 @@ program aqstack
       end if
 
       if (dark_fn /= "") then
-        if (strategy == "dark") print '(a)', cf("Achtung!", "1") // " why subtract dark from dark?"
+        if (strategy == "dark") &
+        &   print '(a)', cf("Achtung!", "1") // " why subtract dark from dark?"
         call frame_dark % read_fits(dark_fn)
         print '(a12,": ",a)', 'dark', trim(dark_fn)
+
+        print *, 'warning: dark was given, but will not be corrected (unimplemented)'
+
+        if (cfg_correct_hot) then
+          allocate(fix_mask(size(frame_dark%data, 1), size(frame_dark%data, 2)))
+          call find_hot(frame_dark%data, fix_mask)
+  
+          print '("found hotpixels:", i5)', count(fix_mask)
+        end if
       end if
 
       if (flat_fn /= "") then
@@ -144,12 +154,6 @@ program aqstack
 
         allocate(buffer(nx, ny, nframes))
 
-        if (fix_fn /= "") then
-          open(77, file=fix_fn, action='read')
-          allocate(fix_mask(nx, ny))
-          call read_hot(77, fix_mask)
-          close(77)
-        end if
       end if
 
       associate (cur_frame => frames(i), cur_buffer => buffer(:,:,i))
@@ -306,7 +310,7 @@ program aqstack
           print '(a,a)', 'writing output file: ', trim(output_fn)
           call frames(1) % write_fits(output_fn)
         else
-          if (output_suff == "") output_suff = "_R"
+          if (output_suff == "") output_suff = "_r"
           print '(a,i0,a,a)', 'writing ', nframes, ' processed files with suffix: ', trim(output_suff)
           do i = 1, nframes
             call frames(i) % write_fits(add_suffix(frames(i) % fn, output_suff))
@@ -353,7 +357,6 @@ contains
         case ("dark")
           strategy = "dark"
           method = 'sigclip'
-          cfg_find_hot = .true.
           cycle scan_cli
 
         case ("flat")
@@ -396,7 +399,7 @@ contains
         if (strategy /= 'bias' .and. strategy /= 'dark') &
         &     cfg_normalize = .true.
 
-      case ("-nostack")
+      case ("-nostack", "-no-stack")
         cfg_process_only = .true.
 
       case ("-align")
@@ -467,12 +470,12 @@ contains
           error stop "command line: flat file name expected"
         end if
 
-      case ("-hot", "-fix")
+      case ("-dark")
         call get_command_argument(i + 1, buf)
         if (is_valid_fn_arg(buf)) then
-          fix_fn = buf; skip = 1
+          dark_fn = buf; skip = 1
         else
-          error stop "command line: bad pixel file name expected"
+          error stop "command line: dark file name expected"
         end if
 
       case ("-ref", "-reference")
@@ -482,6 +485,25 @@ contains
         else
           error stop "command line: reference frame file name expected"
         end if
+
+      case ("-hot")
+        cfg_correct_hot = .true.
+
+        call get_command_argument(i + 1, buf)
+        read (buf, *, iostat = errno) hotpixel_threshold_sigma
+
+        if (errno == 0) then
+          skip = 1
+        else
+          hotpixel_threshold_sigma = 5.0
+        end if
+      case ("-no-hot")
+        cfg_correct_hot = .false.
+
+      case ("-only-hot")
+        cfg_correct_hot_only = .true.
+      case ("-no-only-hot")
+        cfg_correct_hot_only = .false.
 
       case ("-h", "-help")
         call print_help(); stop
@@ -525,16 +547,20 @@ contains
     print hlp_fmt,  '-sigclip', 'stack by 3-sigma clipped average'
     print hlp_fmt,  '-align', 'align frames'
     print hlp_fmt,  '-ref FILENAME', 'align to this frame rather than first frame'
-    print hlp_fmt,  '-resample [FACTOR]', 'resample before stacking (only with -align)'
+    print hlp_fmt,  '-resample [FACTOR=1.5]', 'resample before stacking (only with -align)'
     print hlp_fmtc, 'FACTOR is scale to be applied (default: 1.5)'
-    print hlp_fmt,  '-norm/-normalize', 'normalize to average before stacking'
-    print hlp_fmt,  '-nostack', 'process but do not stack images'
+    print hlp_fmt,  '-norm[alize]', 'normalize to average before stacking'
+    print hlp_fmt,  '-no-stack', 'process but do not stack images'
     print hlp_fmt,  '-suffix/-S FILENAME', 'suffix that will be added to file names'
-    print hlp_fmtc, 'when using -nostack (default: R)'
-    print hlp_fmt,  '-temperature/-T TEMP [TOLER]', 'stack only frames with given CCD temperature'
+    print hlp_fmtc, 'when using -nostack (default: _r)'
+    print hlp_fmt,  '-T TEMP [TOLER=0.5]', 'stack only frames with given CCD temperature'
     print hlp_fmtc, 'TOLER gives allowed deviation in temperature (default: 0.5)'
     print hlp_fmt,  '-bias FILENAME', 'subtract this master bias'
     print hlp_fmt,  '-flat FILENAME', 'remove this master flat'
+    print hlp_fmt,  '-dark FILENAME', 'remove this master dark'
+    print hlp_fmt,  '[-no]-hot [SIGMA=5.0]', 'find hot pixels on dark and correct them'
+    print hlp_fmtc, 'in the image frames (enabled by default if dark is given)'
+    print hlp_fmt,  '[-no]-only-hot', 'do not remove dark, just correct hot pixels'
   end subroutine print_help
 
   !----------------------------------------------------------------------------!

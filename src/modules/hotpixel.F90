@@ -3,6 +3,8 @@ module hotpixels
   use globals
   implicit none
 
+  real(fp) :: hotpixel_threshold_sigma = 5.0_fp
+
 contains
 
   !----------------------------------------------------------------------------!
@@ -19,18 +21,18 @@ contains
     integer :: i
 
     hot_mask(:,:) = .true.
-    call outliers(im, hot_mask, 3.0_fp, 5, av, sd)
+    call outliers(im, hot_mask, 3.0_fp, 4, av, sd)
 
 #   ifdef _DEBUG
-    write (11, '("#", a5, a8)') 'kap', 'nhot'
+    write (*, '("#", a5, a8)') 'kap', 'nhot'
     do i = 0, 12
       sg = i * 1.0_fp
       hot_mask = im > av + sg * sd
-      write (11, '(f6.1, i8)') sg, count(hot_mask)
+      write (*, '(f6.1, i8)') sg, count(hot_mask)
     end do
 #   endif
 
-    sg = 5.0_fp
+    sg = hotpixel_threshold_sigma
     hot_mask = im > av + sg * sd
   end subroutine
 
@@ -60,47 +62,6 @@ contains
         end if
       end do
     end do
-  end subroutine
-
-  !----------------------------------------------------------------------------!
-
-  subroutine write_hot(un, hot_mask)
-    integer, intent(in) :: un
-    logical, contiguous :: hot_mask(:,:)
-    integer :: i, j
-
-    write (un, *) size(hot_mask, 1), size(hot_mask, 2)
-
-    do j = 1, size(hot_mask, 2)
-      do i = 1, size(hot_mask, 1)
-        if (hot_mask(i,j)) write (un, *) i, j
-      end do
-    end do
-  end subroutine
-
-  !----------------------------------------------------------------------------!
-
-  subroutine read_hot(un, hot_mask)
-    integer, intent(in) :: un
-    logical, contiguous :: hot_mask(:,:)
-    integer :: i, j, ios
-
-    hot_mask(:,:) = .false.
-
-    read (un, *) i, j
-    if (size(hot_mask, 1) /= i .or. size(hot_mask, 2) /= j) error stop
-
-    do
-      read (un, *, iostat = ios) i, j
-      if (ios /= 0) exit
-      if (i < 1 .or. i > size(hot_mask, 1) .or. j < 1 .or. j > size(hot_mask, 2)) &
-      &   error stop
-      hot_mask(i, j) = .true.
-    end do
-
-#   ifdef _DEBUG
-    print '("read_hot n = ", i0)', count(hot_mask)
-#   endif
   end subroutine
 
   !----------------------------------------------------------------------------!

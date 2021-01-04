@@ -17,16 +17,18 @@ program aqstack
   ! allowed values: average, median, sigclip
   character(len = 32) :: method = "average", strategy = ""
   character(len = 256) :: output_fn = "", ref_fn = "", &
-        bias_fn = "", dark_fn = "", flat_fn = "", fix_fn = ""
+        bias_fn = "", dark_fn = "", flat_fn = ""
   character(len = 64) :: output_suff = ""
   character(len = 256), allocatable :: input_fn(:)
   logical :: cfg_align_frames = .false.
   logical :: cfg_process_only = .false.
   logical :: cfg_normalize = .false.
-  logical :: cfg_correct_hot = .true., cfg_correct_hot_only = .true.
+  logical :: cfg_correct_hot = .true., cfg_correct_hot_only = .false.
+  logical :: cfg_dark_optimize = .false.
   logical :: cfg_resampling = .false.
   logical :: cfg_temperature_filter = .false.
   real(fp) :: resample_factor = 1.5, cfg_temperature_point = 0, cfg_temperature_tolerance = 0.5
+  real(fp) :: hotpixel_threshold_sigma = 5.0, darkopt_sigma = 0.0
   integer :: margin = 10, margins(2,2) = 0
   real(real64) :: t1, t2
 
@@ -77,9 +79,10 @@ program aqstack
 
         print *, 'warning: dark was given, but will not be corrected (unimplemented)'
 
-        if (cfg_correct_hot) then
+        if (cfg_correct_hot .or. cfg_dark_optimize) then
           allocate(fix_mask(size(frame_dark%data, 1), size(frame_dark%data, 2)))
-          call find_hot(frame_dark%data, fix_mask)
+          call find_hot(frame_dark%data, hotpixel_threshold_sigma, fix_mask)
+          call fix_hot(frame_dark%data, fix_mask)
   
           print '("found hotpixels:", i5)', count(fix_mask)
         end if
@@ -171,10 +174,53 @@ program aqstack
           cur_buffer(:,:) = cur_buffer(:,:) - frame_bias % data(:,:)
         end if
 
+        if (associated(frame_dark % data) .and. .not. cfg_correct_hot_only) then
+          remove_dark: block
+
+            real(fp) :: a, av, sd
+            logical, allocatable :: darkopt_msk(:,:)
+
+            a = 1.0
+
+            ! if exposures are given for dark and frame, scale accordingly
+            if (('EXPTIME' .in. frame_dark % hdr) .and. ('EXPTIME' .in. cur_frame % hdr)) then
+              a = cur_frame % hdr % get_float('EXPTIME') / frame_dark % hdr % get_float('EXPTIME')
+            endif
+
+            if (cfg_dark_optimize) then
+              
+              ! we remove hotpixels before optimization
+              if (allocated(fix_mask)) then
+                call fix_hot(cur_buffer, fix_mask)
+              else
+                error stop 'enable hotpixels please'
+              end if
+              
+              if (darkopt_sigma > 0) then
+                allocate(darkopt_msk(nx, ny))
+                darkopt_msk(:,:) = .true.
+                call outliers(cur_buffer, darkopt_msk, darkopt_sigma, 10, av, sd)
+                print '(f0.1, "% used for dark optimization")', real(count(darkopt_msk)) / (nx * ny) * 100
+                call optimize_dark_frame_fast(cur_buffer, frame_dark%data, a, darkopt_msk)
+              else
+                call optimize_dark_frame_fast(cur_buffer, frame_dark%data, a)
+              end if
+
+              if (a < 0) a = 0
+              
+            end if 
+            
+            write (*, '(a, f10.3)') 'dark scaling=', a
+            cur_buffer(:,:) = cur_buffer(:,:) - a * frame_dark%data(:,:)
+            
+          end block remove_dark
+        end if
+          
         if (associated(frame_flat % data)) then
           cur_buffer(:,:) = cur_buffer(:,:) / frame_flat % data(:,:)
         end if
-
+        
+        ! fix hot pixels second time (post-flatfield)
         if (allocated(fix_mask)) then
           call fix_hot(cur_buffer, fix_mask)
         end if
@@ -491,19 +537,23 @@ contains
 
         call get_command_argument(i + 1, buf)
         read (buf, *, iostat = errno) hotpixel_threshold_sigma
+        if (errno == 0) skip = 1
 
-        if (errno == 0) then
-          skip = 1
-        else
-          hotpixel_threshold_sigma = 5.0
-        end if
       case ("-no-hot")
         cfg_correct_hot = .false.
 
-      case ("-only-hot")
+      case ("-hot-only")
         cfg_correct_hot_only = .true.
-      case ("-no-only-hot")
+      case ("-no-hot-only")
         cfg_correct_hot_only = .false.
+
+      case("-darkopt")
+        cfg_dark_optimize = .true.
+        call get_command_argument(i + 1, buf)
+        read (buf, *, iostat = errno) darkopt_sigma
+        if (errno == 0) skip = 1
+      case("-no-darkopt")
+        cfg_dark_optimize = .false.
 
       case ("-h", "-help")
         call print_help(); stop
@@ -560,7 +610,9 @@ contains
     print hlp_fmt,  '-dark FILENAME', 'remove this master dark'
     print hlp_fmt,  '[-no]-hot [SIGMA=5.0]', 'find hot pixels on dark and correct them'
     print hlp_fmtc, 'in the image frames (enabled by default if dark is given)'
-    print hlp_fmt,  '[-no]-only-hot', 'do not remove dark, just correct hot pixels'
+    print hlp_fmt,  '[-no]-hot-only', 'do not remove dark, just correct hot pixels'
+    print hlp_fmt,  '[-no]-darkopt [SIGMA]', 'optimize dark to minimize correlation'
+    print hlp_fmtc, 'if sigma is given (such as 3.0), only background will be used'
   end subroutine print_help
 
   !----------------------------------------------------------------------------!

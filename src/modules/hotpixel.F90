@@ -3,8 +3,6 @@ module hotpixels
   use globals
   implicit none
 
-  real(fp) :: hotpixel_threshold_sigma = 5.0_fp
-
 contains
 
   !----------------------------------------------------------------------------!
@@ -12,10 +10,11 @@ contains
 # ifndef _DEBUG
   pure &
 # endif
-  subroutine find_hot(im, hot_mask)
+  subroutine find_hot(im, sigma_max, hot_mask)
     use statistics, only: outliers, avsd
 
     real(fp), contiguous, intent(in) :: im(:,:)
+    real(fp), intent(in) :: sigma_max
     logical, contiguous, intent(out) :: hot_mask(:,:)
     real(fp) :: av, sd, sg
     integer :: i
@@ -32,7 +31,7 @@ contains
     end do
 #   endif
 
-    sg = hotpixel_threshold_sigma
+    sg = sigma_max
     hot_mask = im > av + sg * sd
   end subroutine
 
@@ -62,6 +61,26 @@ contains
         end if
       end do
     end do
+  end subroutine
+
+  !----------------------------------------------------------------------------!
+
+  pure subroutine optimize_dark_frame_fast(light, dark, a, msk)
+    use iso_fortran_env, only: int64
+    real(fp), intent(IN) :: light(:,:), dark(:,:)
+    logical, intent(in), optional :: msk(:,:)
+    ! logical, intent(IN) :: is_log
+    real(fp), intent(out) :: a
+    integer(int64) :: n
+    real(fp) :: light_av, dark_av
+
+    n = size(light)
+    if (present(msk)) n = count(msk)
+
+    light_av = sum(light, msk) / n
+    dark_av = sum(dark, msk) / n
+
+    a = sum((light - light_av) * (dark - dark_av), msk) / sum((dark - dark_av)**2, msk)
   end subroutine
 
   !----------------------------------------------------------------------------!

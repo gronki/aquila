@@ -25,6 +25,7 @@ program aqstack
   logical :: cfg_normalize = .false.
   logical :: cfg_correct_hot = .true., cfg_correct_hot_only = .false.
   logical :: cfg_dark_optimize = .false.
+  logical :: cfg_dark_is_dirty = .false.
   logical :: cfg_resampling = .false.
   logical :: cfg_temperature_filter = .false.
   real(fp) :: resample_factor = 1.5, cfg_temperature_point = 0, cfg_temperature_tolerance = 0.5
@@ -77,7 +78,11 @@ program aqstack
         call frame_dark % read_fits(dark_fn)
         print '(a12,": ",a)', 'dark', trim(dark_fn)
 
-        print *, 'warning: dark was given, but will not be corrected (unimplemented)'
+        if (cfg_dark_is_dirty .and. associated(frame_bias % data)) then
+          frame_dark%data = frame_dark%data - frame_bias%data
+          cfg_dark_is_dirty = .false.
+          print '(a)', 'dark was dirty but now is clean'
+        end if
 
         if (cfg_correct_hot .or. cfg_dark_optimize) then
           allocate(fix_mask(size(frame_dark%data, 1), size(frame_dark%data, 2)))
@@ -175,45 +180,50 @@ program aqstack
         end if
 
         if (associated(frame_dark % data) .and. .not. cfg_correct_hot_only) then
-          remove_dark: block
 
-            real(fp) :: a, av, sd
-            logical, allocatable :: darkopt_msk(:,:)
+          ! perform dark scaling for only clean dark (without bias)
+          if (.not. cfg_dark_is_dirty) then
+            dark_scaling: block
+  
+              real(fp) :: a, av, sd
+              logical, allocatable :: darkopt_msk(:,:)
 
-            a = 1.0
-
-            ! if exposures are given for dark and frame, scale accordingly
-            if (('EXPTIME' .in. frame_dark % hdr) .and. ('EXPTIME' .in. cur_frame % hdr)) then
-              a = cur_frame % hdr % get_float('EXPTIME') / frame_dark % hdr % get_float('EXPTIME')
-            endif
-
-            if (cfg_dark_optimize) then
+              a = 1.0
               
-              ! we remove hotpixels before optimization
-              if (allocated(fix_mask)) then
-                call fix_hot(cur_buffer, fix_mask)
-              else
-                error stop 'enable hotpixels please'
-              end if
-              
-              if (darkopt_sigma > 0) then
-                allocate(darkopt_msk(nx, ny))
-                darkopt_msk(:,:) = .true.
-                call outliers(cur_buffer, darkopt_msk, darkopt_sigma, 10, av, sd)
-                print '(f0.1, "% used for dark optimization")', real(count(darkopt_msk)) / (nx * ny) * 100
-                call optimize_dark_frame_fast(cur_buffer, frame_dark%data, a, darkopt_msk)
-              else
-                call optimize_dark_frame_fast(cur_buffer, frame_dark%data, a)
-              end if
+              ! if exposures are given for dark and frame, scale accordingly
+              if (('EXPTIME' .in. frame_dark % hdr) .and. ('EXPTIME' .in. cur_frame % hdr)) then
+                a = cur_frame % hdr % get_float('EXPTIME') / frame_dark % hdr % get_float('EXPTIME')
+              endif
 
-              if (a < 0) a = 0
+              if (cfg_dark_optimize) then
+                
+                ! we remove hotpixels before optimization
+                if (allocated(fix_mask)) then
+                  call fix_hot(cur_buffer, fix_mask)
+                else
+                  error stop 'enable hotpixels please'
+                end if
+                
+                if (darkopt_sigma > 0) then
+                  allocate(darkopt_msk(nx, ny))
+                  darkopt_msk(:,:) = .true.
+                  call outliers(cur_buffer, darkopt_msk, darkopt_sigma, 10, av, sd)
+                  print '(f0.1, "% used for dark optimization")', real(count(darkopt_msk)) / (nx * ny) * 100
+                  call optimize_dark_frame_fast(cur_buffer, frame_dark%data, a, darkopt_msk)
+                else
+                  call optimize_dark_frame_fast(cur_buffer, frame_dark%data, a)
+                end if
+
+                if (a < 0) a = 0
+              end if 
               
-            end if 
-            
-            write (*, '(a, f10.3)') 'dark scaling=', a
-            cur_buffer(:,:) = cur_buffer(:,:) - a * frame_dark%data(:,:)
-            
-          end block remove_dark
+              write (*, '(a, f10.3)') 'dark scaling=', a
+              cur_buffer(:,:) = cur_buffer(:,:) - a * frame_dark%data(:,:)
+            end block dark_scaling
+          else
+            ! dark is dirty = no bias was given. subtract without scaling
+            cur_buffer(:,:) = cur_buffer(:,:) - frame_dark%data(:,:)
+          end if
         end if
           
         if (associated(frame_flat % data)) then
@@ -464,7 +474,7 @@ contains
           resample_factor = 1.5
         end if
 
-      case ("-temperature", "-T")
+      case ("-temp", "-T")
         call get_command_argument(i + 1, buf)
         read (buf, *, iostat = errno) cfg_temperature_point
 
@@ -555,6 +565,11 @@ contains
       case("-no-darkopt")
         cfg_dark_optimize = .false.
 
+      case ("-dirty-dark")
+        cfg_dark_is_dirty = .true.
+      case ("-no-dirty-dark")
+        cfg_dark_is_dirty = .false.
+
       case ("-h", "-help")
         call print_help(); stop
 
@@ -588,31 +603,33 @@ contains
   ! print the help
 
   subroutine print_help
-    use globals, only: hlp_fmt, hlp_fmtc
+    use globals, only: fmthlp
     print '(a)', 'usage: aqstack [STRATEGY] [OPTIONS] FILE1 [FILE2 ...] -o OUTPUT'
     print '(a)', 'STRATEGY can be: bias, dark, flat, process, align, final'
-    print hlp_fmt,  '-o/-output FILENAME', 'specifies the output filename'
-    print hlp_fmt,  '-average', 'stack by average value'
-    print hlp_fmt,  '-median', 'stack by median'
-    print hlp_fmt,  '-sigclip', 'stack by 3-sigma clipped average'
-    print hlp_fmt,  '-align', 'align frames'
-    print hlp_fmt,  '-ref FILENAME', 'align to this frame rather than first frame'
-    print hlp_fmt,  '-resample [FACTOR=1.5]', 'resample before stacking (only with -align)'
-    print hlp_fmtc, 'FACTOR is scale to be applied (default: 1.5)'
-    print hlp_fmt,  '-norm[alize]', 'normalize to average before stacking'
-    print hlp_fmt,  '-no-stack', 'process but do not stack images'
-    print hlp_fmt,  '-suffix/-S FILENAME', 'suffix that will be added to file names'
-    print hlp_fmtc, 'when using -nostack (default: _r)'
-    print hlp_fmt,  '-T TEMP [TOLER=0.5]', 'stack only frames with given CCD temperature'
-    print hlp_fmtc, 'TOLER gives allowed deviation in temperature (default: 0.5)'
-    print hlp_fmt,  '-bias FILENAME', 'subtract this master bias'
-    print hlp_fmt,  '-flat FILENAME', 'remove this master flat'
-    print hlp_fmt,  '-dark FILENAME', 'remove this master dark'
-    print hlp_fmt,  '[-no]-hot [SIGMA=5.0]', 'find hot pixels on dark and correct them'
-    print hlp_fmtc, 'in the image frames (enabled by default if dark is given)'
-    print hlp_fmt,  '[-no]-hot-only', 'do not remove dark, just correct hot pixels'
-    print hlp_fmt,  '[-no]-darkopt [SIGMA]', 'optimize dark to minimize correlation'
-    print hlp_fmtc, 'if sigma is given (such as 3.0), only background will be used'
+    print fmthlp,  '-o/-output FILENAME', 'specifies the output filename'
+    print fmthlp,  '-average', 'stack by average value'
+    print fmthlp,  '-median', 'stack by median'
+    print fmthlp,  '-sigclip', 'stack by 3-sigma clipped average'
+    print fmthlp,  '-align', 'align frames'
+    print fmthlp,  '-ref FILENAME', 'align to this frame rather than first frame'
+    print fmthlp,  '-resample [FACTOR=1.5]', 'resample before stacking (only with -align)', &
+    &     'FACTOR is scale to be applied'
+    print fmthlp,  '-norm[alize]', 'normalize to average before stacking'
+    print fmthlp,  '-no-stack', 'process but do not stack images'
+    print fmthlp,  '-suffix/-S SUFFIX', 'suffix that will be added to file names', &
+    &     'when using -nostack {def.: _r}'
+    print fmthlp,  '-temp/-T TEMP [DT=0.5]', 'stack only frames with given CCD temperature', &
+    &     'DT gives allowed deviation in temperature', 'in Celsius'
+    print fmthlp,  '-bias FILENAME', 'subtract this master bias'
+    print fmthlp,  '-flat FILENAME', 'remove this master flat'
+    print fmthlp,  '-dark FILENAME', 'remove this master dark'
+    print fmthlp,  '[-no]-hot [SIGMA=5.0]', 'find hot pixels on dark and correct them', &
+    &     'in the image frames (if dark is given) {def.: ON}'
+    print fmthlp,  '[-no]-hot-only', 'do not remove dark, just correct hot pixels {def.: OFF}'
+    print fmthlp,  '[-no]-darkopt [SIGMA]', 'optimize dark to minimize correlation', &
+    &     'if sigma is given (such as 3.0), only background', 'will be used {def.: OFF}'
+    print fmthlp,  '[-no]-dirty-dark', 'subtract bias from dark (only if not done before!)', &
+    &     '{def.: OFF}'
   end subroutine print_help
 
   !----------------------------------------------------------------------------!

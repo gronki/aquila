@@ -20,26 +20,32 @@ Use option ``-h`` or ``-help`` to get the information below.
 ```
 usage: aqstack [STRATEGY] [OPTIONS] FILE1 [FILE2 ...] -o OUTPUT
 STRATEGY can be: bias, dark, flat, process, align, final
-       -o/-output FILENAME  specifies the output filename
-                  -average  stack by average value
-                   -median  stack by median
-                  -sigclip  stack by 3-sigma clipped average
-                    -align  align frames
-             -ref FILENAME  align to this frame rather than first frame
-    -resample [FACTOR=1.5]  resample before stacking (only with -align)
-                            FACTOR is scale to be applied (default: 1.5)
-              -norm[alize]  normalize to average before stacking
-                 -no-stack  process but do not stack images
-       -suffix/-S FILENAME  suffix that will be added to file names
-                            when using -nostack (default: _r)
-       -T TEMP [TOLER=0.5]  stack only frames with given CCD temperature
-                            TOLER gives allowed deviation in temperature (default: 0.5)
-            -bias FILENAME  subtract this master bias
-            -flat FILENAME  remove this master flat
-            -dark FILENAME  remove this master dark
-     [-no]-hot [SIGMA=5.0]  find hot pixels on dark and correct them
-                            in the image frames (enabled by default if dark is given)
-            [-no]-only-hot  do not remove dark, just correct hot pixels
+    -o/-output FILENAME  specifies the output filename
+               -average  stack by average value
+                -median  stack by median
+               -sigclip  stack by 3-sigma clipped average
+                 -align  align frames
+          -ref FILENAME  align to this frame rather than first frame
+ -resample [FACTOR=1.5]  resample before stacking (only with -align)
+                         FACTOR is scale to be applied
+           -norm[alize]  normalize to average before stacking
+              -no-stack  process but do not stack images
+      -suffix/-S SUFFIX  suffix that will be added to file names
+                         when using -nostack {def.: _r}
+ -temp/-T TEMP [DT=0.5]  stack only frames with given CCD temperature
+                         DT gives allowed deviation in temperature
+                         in Celsius
+         -bias FILENAME  subtract this master bias
+         -flat FILENAME  remove this master flat
+         -dark FILENAME  remove this master dark
+  [-no]-hot [SIGMA=5.0]  find hot pixels on dark and correct them
+                         in the image frames (if dark is given) {def.: ON}
+         [-no]-hot-only  do not remove dark, just correct hot pixels {def.: OFF}
+  [-no]-darkopt [SIGMA]  optimize dark to minimize correlation
+                         if sigma is given (such as 3.0), only background
+                         will be used {def.: OFF}
+       [-no]-dirty-dark  subtract bias from dark (only if not done before!)
+                         {def.: OFF}
 ```
 
 ### aqlrgb
@@ -67,13 +73,13 @@ R, G, B are color frames and L is optional luminance
 
 ## Changelog
 
+- 210104: dark optimization (simple), cleaning dark from bias
 - 210103: hot pixels are corrected when dark is loaded
 - 200717: hot pixel correction
 - 200716: now temperature filter is before loading images, which saves memory
 
 ## Planned Features
 
-- dark subtraction and optimization
 - color images
 - large image handling
 - use 32 bits for image storage

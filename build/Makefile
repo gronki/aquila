@@ -5,8 +5,10 @@
 #-----------------------------------------------------------------------------#
 
 FC := gfortran
-# optimization flags (-march=native should be in environment variables)
-FFLAGS += -O3 -funsafe-math-optimizations -fopenmp
+# architecture-specific flags
+ARCHFLAGS ?= -march=native
+# optimization flags
+FFLAGS := -O3 -funsafe-math-optimizations $(ARCHFLAGS) -fopenmp
 # Fortran language flags (always included)
 FFLAGS_LANG := -fimplicit-none -ffree-line-length-none -std=f2018 -pedantic
 # debugging flags

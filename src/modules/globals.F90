@@ -7,7 +7,9 @@ module globals
   integer, parameter :: fp = real64
 
   character(len = *), parameter :: hlp_fmt = '(a26, 2x, a)', hlp_fmtc = '(28x, a)'
-  character(len = *), parameter :: version = '210103'
+  character(len = *), parameter :: fmthlp = '(a23, 2x, a, :/, *(25x, a, :/))'
+
+  character(len = *), parameter :: version = '210104'
 
   character(len = *), parameter :: perf_fmt = '("PERF", a10, 1x, "=", f7.3)'
 
@@ -16,11 +18,8 @@ module globals
 contains
 
   subroutine greeting(progname)
-    use iso_fortran_env, only: compiler_options, compiler_version
     character(len = *), intent(in) :: progname
-    write (*, '(a," v.",a)') trim(progname), version
-    write (*, '("built with ",a)') compiler_version()
-    write (*,*)
+    print '(*(a))', trim(progname), ' v.', version, ' (https://github.com/gronki/aquila)'
   end subroutine
 
   pure function cf(s, f)

@@ -1,5 +1,5 @@
 Name:           aquila
-Version:        210103
+Version:        210104
 Release:        1%{?dist}
 Summary:        aquila
 
@@ -18,8 +18,7 @@ command-line utilities for astronomical image processing
 
 %build
 %set_build_flags
-make -C build FFLAGS="$FFLAGS -funsafe-math-optimizations -fopenmp"
-#make -C build FFLAGS="%{build_fflags} -funsafe-math-optimizations -fopenmp"
+make -C build FFLAGS="%{build_fflags} -O3 -funsafe-math-optimizations -fopenmp"
 
 %install
 rm -rf "%{buildroot}"

@@ -3,12 +3,10 @@
 # on MIT license
 
 #-----------------------------------------------------------------------------#
-
+# 1:23 0:57 0:55 0:51 0:46
 FC := gfortran
-# architecture-specific flags
-ARCHFLAGS ?= -march=native
 # optimization flags
-FFLAGS := -O3 -funsafe-math-optimizations $(ARCHFLAGS) -fopenmp
+FFLAGS := -O3 -funsafe-math-optimizations -march=native -fopenmp
 # Fortran language flags (always included)
 FFLAGS_LANG := -fimplicit-none -ffree-line-length-none -std=f2018 -pedantic
 # debugging flags
@@ -62,6 +60,7 @@ install: all
 	install -d $(DESTDIR)$(prefix)/bin
 	install $(PROGRAMS) $(DESTDIR)$(prefix)/bin
 
+# to generate new dependencies run: fortdep2 -p -o deps.inc
 include deps.inc
 
 %.o: %.f90
@@ -69,7 +68,6 @@ include deps.inc
 %.o: %.F90
 	$(FC) $(INCLUDE) $(FFLAGS) $(FFLAGS_LANG) -c $< -o $@
 
-$(PROGRAMS): LDFLAGS += -fwhole-program
 $(PROGRAMS):
 	$(FC) $(FFLAGS) $(LDFLAGS) $^ $(LDLIBS) -o $@
 $(TESTS):

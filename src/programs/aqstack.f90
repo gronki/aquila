@@ -15,7 +15,7 @@ program aqstack
   implicit none
 
   ! allowed values: average, median, sigclip
-  character(len = 32) :: method = "average", strategy = ""
+  character(len = 32) :: method = "average", strategy = "", align_method = "polygon"
   character(len = 256) :: output_fn = "", ref_fn = "", &
         bias_fn = "", dark_fn = "", flat_fn = ""
   character(len = 64) :: output_suff = ""
@@ -185,14 +185,16 @@ program aqstack
           if (.not. cfg_dark_is_dirty) then
             dark_scaling: block
   
-              real(fp) :: a, av, sd
+              real(fp) :: a, av, sd, amax
               logical, allocatable :: darkopt_msk(:,:)
 
               a = 1.0
+              amax = 10.0
               
               ! if exposures are given for dark and frame, scale accordingly
               if (('EXPTIME' .in. frame_dark % hdr) .and. ('EXPTIME' .in. cur_frame % hdr)) then
                 a = cur_frame % hdr % get_float('EXPTIME') / frame_dark % hdr % get_float('EXPTIME')
+                amax = 2 * a
               endif
 
               if (cfg_dark_optimize) then
@@ -215,6 +217,7 @@ program aqstack
                 end if
 
                 if (a < 0) a = 0
+                if (a > amax) a = amax
               end if 
               
               write (*, '(a, f10.3)') 'dark scaling=', a
@@ -229,6 +232,8 @@ program aqstack
         if (associated(frame_flat % data)) then
           cur_buffer(:,:) = cur_buffer(:,:) / frame_flat % data(:,:)
         end if
+
+        where (.not. ieee_is_normal(cur_buffer)) cur_buffer = 0
         
         ! fix hot pixels second time (post-flatfield)
         if (allocated(fix_mask)) then
@@ -266,16 +271,18 @@ program aqstack
     end if
 
     if (cfg_align_frames .and. (nframes > 1 .or. ref_fn /= "")) then
-      print '(a)', 'ALIGN STARTED'
+      print '(a,a,a)', 'ALIGN (', trim(align_method) ,') STARTED'
       align_frames: block
         use new_align
+        use polygon_matching, only: find_transform_polygons
         real(fp), allocatable :: buf_copy(:,:), buffer_resample(:,:,:)
         type(extended_source), dimension(:), allocatable :: lst0, lst
         integer :: i, istart
-        class(transform_t), allocatable :: tx, tx0
+        class(transform_xyr_t), allocatable :: tx
+        real(fp) :: r0
 
-        allocate(transform_xyr_t :: tx0)
-        tx0 % r0 = 0.33 * sqrt(real(nx)**2 + real(ny)**2)
+        ! r0 is roughly half of frame's dimension
+        r0 = sqrt(real(nx, kind=fp)**2 + real(ny, kind=fp)**2) / sqrt(8.0_fp)
 
         if (cfg_resampling) then
           print '("WARNING ", a)', 'resampling may require a lot of memory'
@@ -308,19 +315,44 @@ program aqstack
         call cpu_time(t1)
         !$omp parallel do private(i, lst, buf_copy, tx)
         do i = istart, nframes
-          allocate(tx, source = tx0)
-
-          ! find the transform between frames
+          allocate(transform_xyr_t :: tx)
+          tx % r0 = r0
+          
+          ! register the stars
           call register_stars(buffer(:,:,i), lst)
-          call tx % align(lst0, lst)
+          
+          select case (align_method)
 
-          print '("ALIGN frame(",i2,") found ",i4," stars")', i, size(lst)
+          case ('polygon')
+            call tx % align_polygon(lst0, lst, 48, 15)
+            
+          case ('gravity')
+            ! find an initial estimate for a transform
+            call tx % align_polygon(lst0, lst, 36, 8)
+            ! fine-tune the transform between frames
+            call tx % align(lst0, lst, 2.0_fp)
+
+          case ('gravity_only')
+            associate (a => 0.25 * (2 * r0))
+              if (a > 15) then
+                call tx % align(lst0, lst, a)
+              end if
+            end associate
+
+            call tx % align(lst0, lst, 10.0_fp)
+            call tx % align(lst0, lst, 2.0_fp)
+            
+          case default
+            error stop 'align method unknown'
+          end select
+          
+          print '("ALIGN ",a," frame(",i2,") found ",i4," stars")', trim(align_method), i, size(lst)
           print '(" solution(",i2,") =", *(f8.2))', i, tx % vec(1 : tx % npar())
-
+          
           !$omp critical
           margin = max(margin, check_corners(tx, nx, ny))
           !$omp end critical
-
+          
           ! when not resampling, we have only one copy of data, so we copy
           ! each frame to a temporary buffer before projection
           if (.not. cfg_resampling) then
@@ -461,6 +493,12 @@ contains
       case ("-align")
         cfg_align_frames = .true.
 
+        call get_command_argument(i+1, buf)
+        if (buf == 'polygon' .or. buf == 'gravity' .or. buf == 'gravity_only') then
+          align_method = buf
+          skip = 1
+        end if
+
       case ("-norm", "-normalize")
         cfg_normalize = .true.
 
@@ -562,6 +600,7 @@ contains
         call get_command_argument(i + 1, buf)
         read (buf, *, iostat = errno) darkopt_sigma
         if (errno == 0) skip = 1
+        if (errno /= 0) darkopt_sigma = 5
       case("-no-darkopt")
         cfg_dark_optimize = .false.
 
@@ -610,7 +649,9 @@ contains
     print fmthlp,  '-average', 'stack by average value'
     print fmthlp,  '-median', 'stack by median'
     print fmthlp,  '-sigclip', 'stack by 3-sigma clipped average'
-    print fmthlp,  '-align', 'align frames'
+    print fmthlp,  '-align [METHOD]', 'align frames (isometric). METHOD can be:', &
+    &     'polygon: triangle matching {def.}', 'gravity_only: use gravity align method', &
+    &     'gravity: use polygon matching and fine-tune using gravity'
     print fmthlp,  '-ref FILENAME', 'align to this frame rather than first frame'
     print fmthlp,  '-resample [FACTOR=1.5]', 'resample before stacking (only with -align)', &
     &     'FACTOR is scale to be applied'
@@ -625,9 +666,10 @@ contains
     print fmthlp,  '-dark FILENAME', 'remove this master dark'
     print fmthlp,  '[-no]-hot [SIGMA=5.0]', 'find hot pixels on dark and correct them', &
     &     'in the image frames (if dark is given) {def.: ON}'
-    print fmthlp,  '[-no]-hot-only', 'do not remove dark, just correct hot pixels {def.: OFF}'
-    print fmthlp,  '[-no]-darkopt [SIGMA]', 'optimize dark to minimize correlation', &
-    &     'if sigma is given (such as 3.0), only background', 'will be used {def.: OFF}'
+    print fmthlp,  '[-no]-hot-only', 'do not remove dark, just correct hot pixels', '{def.: OFF}'
+    print fmthlp,  '[-no]-darkopt [SIGMA=5.0]', 'optimize dark to minimize correlation', &
+    &     'if sigma is nonzero, only background will be used.', &
+    &     'SIGMA=0 forces to use all pixels {def.: OFF}'
     print fmthlp,  '[-no]-dirty-dark', 'subtract bias from dark (only if not done before!)', &
     &     '{def.: OFF}'
   end subroutine print_help

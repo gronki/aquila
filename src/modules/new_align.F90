@@ -69,6 +69,7 @@ module new_align
     procedure :: pder   => xyr_pder
     ! procedure :: vec    => xyr_vec
     ! procedure :: setvec => xyr_setvec
+    procedure :: align_polygon
   end type
 
   !------------------------------------------------------------------------------------!
@@ -128,23 +129,27 @@ contains
   !   t % x = v(1); t % y = v(2); t % r = v(3)
   ! end subroutine
 
+  subroutine align_polygon(t, xy1, xy2, nstars, nmatches)
+    use polygon_matching, only: find_transform_polygons
+    class(transform_xyr_t), intent(inout) :: t
+    class(source), intent(in) :: xy1(:), xy2(:)
+    integer, intent(in) :: nstars, nmatches
+    real(fp) :: init_dx, init_dy, init_r
+
+    call find_transform_polygons(xy1, xy2, nstars, nmatches, init_dx, init_dy, init_r)
+    t%vec(1:3) = [init_dx, init_dy, init_r * t%r0]
+  end subroutine
+
   !------------------------------------------------------------------------------------!
 
-  subroutine align2(xy, xy0, v0)
-    class(source), intent(in) :: xy(:)
-    class(source), intent(in) :: xy0(:)
+  subroutine align2(xy, xy0, v0, k0)
+    class(source), intent(in) :: xy(:), xy0(:)
     class(transform_t), intent(inout) :: v0
     type(source) :: xy1(size(xy))
     integer :: ii, nmax
     real(fp) :: k0, y0, lam
     real(fp) :: y0_dv(transform_vec_size), y0n_dv(transform_vec_size)
     ! maximum dF/dx at x = k0 / sqrt(2)
-    real(fp), parameter :: k0min = 1.4, k0decr = 0.75
-
-    k0 = 0.5 * (v0 % r0) / sqrt(real(size(xy0)))
-    nmax = ceiling(log(k0min / k0) / log(k0decr))
-    nmax = max(nmax, 3)
-    k0 = k0min / k0decr**(nmax - 1)
 
 #   ifdef _DEBUG
     write (0, '("k0 =", g10.4)') k0
@@ -152,7 +157,7 @@ contains
     &     'ii', 'k0', 'lam', 'vec(1)', 'vec(2)', '...'
 #   endif
 
-    loop_star_sharpness: do ii = 1, nmax
+    loop_star_sharpness: do ii = 1, 10
 
       ! compute the gradient
       call comp_ydv(v0, y0, y0_dv)
@@ -175,7 +180,7 @@ contains
         exit loop_star_sharpness
       end if
 
-      k0 = k0 * k0decr
+      ! k0 = k0 * k0decr
 
       ! write (0,*) '---------------------------------'
     end do loop_star_sharpness
@@ -189,33 +194,41 @@ contains
       real(fp) :: dx
       real(fp) :: y, y_dv(transform_vec_size), y_dx
       class(transform_t), allocatable :: v
+      integer, parameter :: u = 8
 
       v = v0
       dx = dx_0
 
-      ! write (0, '(2A3,A20  ,2 A14  )') 'ii', 'i', 'x', 'y', 'y_dx'
+#     ifdef _DEBUG
+        ! write (0, '(2A3,A15  , a16, a12 , a20 )') 'ii', 'i', 'x', 'y', 'y_dx', 'vec(n) ...'
+#     endif
 
       loop_scales: do ii = 1, 7
-        scan_interval: do i = 1, 10
+        scan_interval: do i = 1, u
           x = x + dx
 
           v % vec = v0 % vec + y0n_dv * x
           call comp_ydv(v, y, y_dv)
           y_dx = sum(y_dv * y0n_dv)
 
-          ! write (0, '(2I3,F20.8,2Es14.6)') ii, i, x, y, y_dx
+#         ifdef _DEBUG
+            ! write (0, '(2I3,F15.8,es16.8,es12.4,*(f10.3))') ii, i, x, y, y_dx, v%vec(1:v%npar())
+#         endif
 
           if (y_dx < 0) then
-            ! write (0, *) '             < < <'
+#           ifdef _DEBUG
+              ! write (0, *) '             < < <'
+#           endif
             x = x - dx
-            dx = dx / 10
+            dx = dx / u
             exit scan_interval
           end if
         end do scan_interval
       end do loop_scales
 
-      ! write (0, *) '  ================='
-
+#     ifdef _DEBUG
+        ! write (0, *) '  ================='
+#     endif
 
     end subroutine
 
@@ -238,7 +251,7 @@ contains
         do i0 = 1, size(xy0)
           aa = sqrt((xy1(i) % x - xy0(i0) % x)**2 &
           &   + (xy1(i) % y - xy0(i0) % y)**2 + k0**2)
-          bb = (xy0(i0) % flux * xy(i) % flux)**0.33_fp * k0
+          bb = (xy0(i0) % flux * xy(i) % flux)**0.25_fp * k0
           y = y + bb / aa
           y_dx1 = - (xy1(i) % x - xy0(i0) % x) * bb / aa**3
           y_dy1 = - (xy1(i) % y - xy0(i0) % y) * bb / aa**3

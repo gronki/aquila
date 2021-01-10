@@ -1,6 +1,6 @@
 aqconvol.o: convolution.o framehandling.o globals.o kernels.o
 aqlrgb.o: convolution.o framehandling.o globals.o kernels.o png.o statistics.o
-aqstack.o: findstar.o framehandling.o globals.o hotpixel.o new_align.o stacking.o statistics.o
+aqstack.o: findstar.o framehandling.o globals.o hotpixel.o new_align.o polygon_matching.o stacking.o statistics.o
 convolution.o: globals.o
 convolution.o: globals.o
 fftw.o: fftw3.f03
@@ -12,9 +12,10 @@ framehandling.o: globals.o
 hotpixel.o: globals.o statistics.o
 kernels.o: globals.o
 legacy_align.o: findstar.o globals.o
-new_align.o: findstar.o globals.o
+new_align.o: findstar.o globals.o polygon_matching.o
 png.o: globals.o
-stacking.o: convolution.o findstar.o framehandling.o globals.o hotpixel.o kernels.o new_align.o statistics.o
+polygon_matching.o: findstar.o globals.o statistics.o
+stacking.o: convolution.o findstar.o framehandling.o globals.o kernels.o new_align.o statistics.o
 statistics.o: globals.o
 template.o: globals.o
 test_addsuffix.o: framehandling.o
@@ -29,6 +30,7 @@ test_framehandling.o: framehandling.o globals.o
 test_hotpixel.o: framehandling.o globals.o hotpixel.o
 test_kernels.o: globals.o kernels.o
 test_legacy_align.o: convolution.o findstar.o globals.o kernels.o legacy_align.o
+test_match_triangles.o: findstar.o framehandling.o globals.o polygon_matching.o stacking.o
 test_png.o: globals.o png.o
 test_transforms.o: globals.o transforms.o
 transforms.o: globals.o
@@ -36,12 +38,12 @@ transforms.o: globals.o
 
 aqconvol: aqconvol.o convolution.o framehandling.o globals.o kernels.o
 aqlrgb: aqlrgb.o convolution.o framehandling.o globals.o kernels.o png.o statistics.o
-aqstack: aqstack.o convolution.o findstar.o framehandling.o globals.o hotpixel.o kernels.o new_align.o stacking.o statistics.o
+aqstack: aqstack.o convolution.o findstar.o framehandling.o globals.o hotpixel.o kernels.o new_align.o polygon_matching.o stacking.o statistics.o
 template: globals.o template.o
 test_addsuffix: framehandling.o globals.o test_addsuffix.o
 test_align: globals.o test_align.o transforms.o
-test_align_2: findstar.o globals.o legacy_align.o new_align.o test_align_2.o
-test_autorot: fftw.o findstar.o globals.o new_align.o test_autorot.o
+test_align_2: findstar.o globals.o legacy_align.o new_align.o polygon_matching.o statistics.o test_align_2.o
+test_autorot: fftw.o findstar.o globals.o new_align.o polygon_matching.o statistics.o test_autorot.o
 test_background: convolution.o globals.o kernels.o statistics.o test_background.o
 test_deconvolution: convolution.o framehandling.o globals.o kernels.o test_deconvolution.o
 test_example: globals.o test_example.o
@@ -51,5 +53,6 @@ test_hdr: test_hdr.o
 test_hotpixel: framehandling.o globals.o hotpixel.o statistics.o test_hotpixel.o
 test_kernels: globals.o kernels.o test_kernels.o
 test_legacy_align: convolution.o findstar.o globals.o kernels.o legacy_align.o test_legacy_align.o
+test_match_triangles: convolution.o findstar.o framehandling.o globals.o kernels.o new_align.o polygon_matching.o stacking.o statistics.o test_match_triangles.o
 test_png: globals.o png.o test_png.o
 test_transforms: globals.o test_transforms.o transforms.o

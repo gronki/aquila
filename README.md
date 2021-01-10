@@ -73,6 +73,7 @@ R, G, B are color frames and L is optional luminance
 
 ## Changelog
 
+- 210109: auto-flip, polygon align
 - 210104: dark optimization (simple), cleaning dark from bias
 - 210103: hot pixels are corrected when dark is loaded
 - 200717: hot pixel correction
@@ -87,4 +88,3 @@ R, G, B are color frames and L is optional luminance
 - proper drizzling
 - better control over colors
 - LRGB and edit commands
-- auto-flip

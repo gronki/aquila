@@ -6,10 +6,10 @@ module globals
 
   integer, parameter :: fp = real64
 
-  character(len = *), parameter :: hlp_fmt = '(a26, 2x, a)', hlp_fmtc = '(28x, a)'
-  character(len = *), parameter :: fmthlp = '(a23, 2x, a, :/, *(25x, a, :/))'
+  character(len = *), parameter :: hlp_fmt = '(a25, 2x, a)', hlp_fmtc = '(27x, a)'
+  character(len = *), parameter :: fmthlp = '(a25, 2x, a, :/, *(27x, a, :/))'
 
-  character(len = *), parameter :: version = '210104'
+  character(len = *), parameter :: version = '210109'
 
   character(len = *), parameter :: perf_fmt = '("PERF", a10, 1x, "=", f7.3)'
 

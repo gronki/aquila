@@ -651,8 +651,8 @@ contains
     print fmthlp,  '-median', 'stack by median'
     print fmthlp,  '-sigclip', 'stack by 3-sigma clipped average'
     print fmthlp,  '-align [METHOD]', 'align frames (isometric). METHOD can be:', &
-    &     'polygon: triangle matching {def.}', 'gravity_only: use gravity align method', &
-    &     'gravity: use polygon matching and fine-tune using gravity'
+    &     'polygon: quadrangle matching {def.}', 'gravity_only: use gravity align method', &
+    &     'gravity: use polygon matching and fine-tune', 'using gravity'
     print fmthlp,  '-ref FILENAME', 'align to this frame rather than first frame'
     print fmthlp,  '-resample [FACTOR=1.5]', 'resample before stacking (only with -align)', &
     &     'FACTOR is scale to be applied'

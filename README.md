@@ -20,32 +20,37 @@ Use option ``-h`` or ``-help`` to get the information below.
 ```
 usage: aqstack [STRATEGY] [OPTIONS] FILE1 [FILE2 ...] -o OUTPUT
 STRATEGY can be: bias, dark, flat, process, align, final
-    -o/-output FILENAME  specifies the output filename
-               -average  stack by average value
-                -median  stack by median
-               -sigclip  stack by 3-sigma clipped average
-                 -align  align frames
-          -ref FILENAME  align to this frame rather than first frame
- -resample [FACTOR=1.5]  resample before stacking (only with -align)
-                         FACTOR is scale to be applied
-           -norm[alize]  normalize to average before stacking
-              -no-stack  process but do not stack images
-      -suffix/-S SUFFIX  suffix that will be added to file names
-                         when using -nostack {def.: _r}
- -temp/-T TEMP [DT=0.5]  stack only frames with given CCD temperature
-                         DT gives allowed deviation in temperature
-                         in Celsius
-         -bias FILENAME  subtract this master bias
-         -flat FILENAME  remove this master flat
-         -dark FILENAME  remove this master dark
-  [-no]-hot [SIGMA=5.0]  find hot pixels on dark and correct them
-                         in the image frames (if dark is given) {def.: ON}
-         [-no]-hot-only  do not remove dark, just correct hot pixels {def.: OFF}
-  [-no]-darkopt [SIGMA]  optimize dark to minimize correlation
-                         if sigma is given (such as 3.0), only background
-                         will be used {def.: OFF}
-       [-no]-dirty-dark  subtract bias from dark (only if not done before!)
-                         {def.: OFF}
+      -o/-output FILENAME  specifies the output filename
+                 -average  stack by average value
+                  -median  stack by median
+                 -sigclip  stack by 3-sigma clipped average
+          -align [METHOD]  align frames (isometric). METHOD can be:
+                           polygon: quadrangle matching {def.}
+                           gravity_only: use gravity align method
+                           gravity: use polygon matching and fine-tune
+                           using gravity
+            -ref FILENAME  align to this frame rather than first frame
+   -resample [FACTOR=1.5]  resample before stacking (only with -align)
+                           FACTOR is scale to be applied
+             -norm[alize]  normalize to average before stacking
+                -no-stack  process but do not stack images
+        -suffix/-S SUFFIX  suffix that will be added to file names
+                           when using -nostack {def.: _r}
+   -temp/-T TEMP [DT=0.5]  stack only frames with given CCD temperature
+                           DT gives allowed deviation in temperature
+                           in Celsius
+           -bias FILENAME  subtract this master bias
+           -flat FILENAME  remove this master flat
+           -dark FILENAME  remove this master dark
+    [-no]-hot [SIGMA=5.0]  find hot pixels on dark and correct them
+                           in the image frames (if dark is given) {def.: ON}
+           [-no]-hot-only  do not remove dark, just correct hot pixels
+                           {def.: OFF}
+[-no]-darkopt [SIGMA=5.0]  optimize dark to minimize correlation
+                           if sigma is nonzero, only background will be used.
+                           SIGMA=0 forces to use all pixels {def.: OFF}
+         [-no]-dirty-dark  subtract bias from dark (only if not done before!)
+                           {def.: OFF}
 ```
 
 ### aqlrgb

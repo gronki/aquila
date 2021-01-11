@@ -147,6 +147,8 @@ contains
         output_fn_clean = output_fn
       end if
 
+      call frame_out % hdr % add('AQLVER', version)
+
       print '(a,a)', 'writing output file: ', trim(output_fn_clean)
       call frame_out % write_fits(output_fn_clean)
 

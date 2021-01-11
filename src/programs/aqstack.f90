@@ -324,11 +324,11 @@ program aqstack
           select case (align_method)
 
           case ('polygon')
-            call tx % align_polygon(lst0, lst, 48, 15)
+            call tx % align_polygon(lst0, lst, 30, 12)
             
           case ('gravity')
             ! find an initial estimate for a transform
-            call tx % align_polygon(lst0, lst, 36, 8)
+            call tx % align_polygon(lst0, lst, 24, 8)
             ! fine-tune the transform between frames
             call tx % align(lst0, lst, 2.0_fp)
 
@@ -401,6 +401,7 @@ program aqstack
           if (output_suff == "") output_suff = "_r"
           print '(a,i0,a,a)', 'writing ', nframes, ' processed files with suffix: ', trim(output_suff)
           do i = 1, nframes
+            call frames(i) % hdr % add('AQLVER', version)
             call frames(i) % write_fits(add_suffix(frames(i) % fn, output_suff))
           end do
         end if

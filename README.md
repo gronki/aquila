@@ -73,6 +73,7 @@ R, G, B are color frames and L is optional luminance
 
 ## Changelog
 
+- 210111: removed flux ratios, changed triangles to quadrangles
 - 210109: auto-flip, polygon align
 - 210104: dark optimization (simple), cleaning dark from bias
 - 210103: hot pixels are corrected when dark is loaded

@@ -125,7 +125,7 @@ program aqstack
           call hdr % load(input_fn(i), errno)
           if (errno /= 0) error stop
           if ('CCD-TEMP' .in. hdr) then
-            associate (ccdtemp => hdr % get_float('CCD-TEMP'))
+            associate (ccdtemp => hdr % get_real('CCD-TEMP'))
               if (abs(ccdtemp - cfg_temperature_point) < abs(cfg_temperature_tolerance)) then
                 pass(i) = .true.
               else
@@ -193,7 +193,7 @@ program aqstack
               
               ! if exposures are given for dark and frame, scale accordingly
               if (('EXPTIME' .in. frame_dark % hdr) .and. ('EXPTIME' .in. cur_frame % hdr)) then
-                a = cur_frame % hdr % get_float('EXPTIME') / frame_dark % hdr % get_float('EXPTIME')
+                a = cur_frame % hdr % get_real('EXPTIME') / frame_dark % hdr % get_real('EXPTIME')
                 amax = 2 * a
               endif
 
@@ -247,7 +247,7 @@ program aqstack
           call avsd(cur_buffer, avg, std)
 
           print '(a32, f9.1, f7.1, f9.2)', trim(input_fn(i)), &
-          &     avg, std, cur_frame % hdr % get_float('EXPTIME')
+          &     avg, std, cur_frame % hdr % get_real('EXPTIME')
         end block frame_stats
 
       end associate

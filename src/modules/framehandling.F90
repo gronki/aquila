@@ -15,70 +15,83 @@ module frame_m
     real(fp), pointer, contiguous :: data(:,:) => null()
     logical, private :: auto_allocated = .false.
   contains
-    procedure :: read_fits, write_fits
-    procedure :: alloc_shape => alloc_shape_xy, alloc_shape_ref
+    procedure :: read_fits, write_fits, check_shape
     procedure, private :: read_image_data
-    procedure :: assign_2d, assign_frame, assign_const_f, assign_const_i, repr
-    generic :: assignment(=) => assign_2d, assign_frame, assign_const_f, assign_const_i
+    procedure :: assign_data, assign_frame
+    generic :: copy => assign_data, assign_frame
+    procedure, private :: repr
     generic :: write(formatted) => repr
-    final :: finalize
+    procedure :: frame_destroy
+    generic :: destroy => frame_destroy
   end type
+
+  interface frame_t
+    module procedure :: frame_t_ctor
+    module procedure :: frame_t_copy_ctor
+  end interface
 
 contains
 
   !----------------------------------------------------------------------------!
 
-  subroutine assign_frame(fr, ref)
-    class(frame_t), intent(inout) :: fr
+  pure function frame_t_copy_ctor(ref) result(fr)
+    type(frame_t):: fr
     class(frame_t), intent(in) :: ref
-    if (.not. associated(ref % data)) error stop
-    call assign_2d(fr, ref % data)
-  end subroutine
 
-  subroutine assign_2d(fr, im)
-    class(frame_t), intent(inout) :: fr
-    real(fp), dimension(:,:), intent(in) :: im
-    ! if the buffer is there, try to use it
-    if (associated(fr % data)) then
-      ! if sizes don't match, we need to reasllocate it
-      if (any(shape(fr % data) /= shape(im))) then
-        ! for manual buffers we don't touch them
-        if (.not. fr % auto_allocated) then
-          error stop "this frame buffer was manually assigned"
-        end if
-        ! auto buffers can be resized
-        deallocate(fr % data)
-        allocate(fr % data(size(im, 1), size(im, 2)))
+    call fr % copy(ref)
+  end function
+
+  !----------------------------------------------------------------------------!
+
+  function frame_t_ctor(file, buf) result(fr)
+    type(frame_t):: fr
+    character(len=*), intent(in), optional :: file
+    real(fp), target, intent(in), optional :: buf(:,:)
+
+    if (present(buf)) fr % data => buf
+    if (present(file)) call fr % read_fits(file)
+  end function
+
+  !----------------------------------------------------------------------------!
+
+  pure subroutine check_shape(self, nx, ny)
+    class(frame_t), intent(inout) :: self
+    integer, intent(in) :: nx, ny
+
+    if (associated(self % data)) then
+      if (size(self%data, 1) == nx .and. size(self%data, 2) == ny) then
+        return
       end if
-    else
-      ! buffer was not allocated
-      allocate(fr % data(size(im, 1), size(im, 2)))
-      fr % auto_allocated = .true.
+
+      if (self%auto_allocated) then
+        deallocate(self%data)
+      else
+        error stop 'check_shape: frame size does not match'
+      end if
     end if
-    ! at this point we have the matching buffer so we can do the copy
-    fr % data(:,:) = im(:,:)
+
+    self%auto_allocated = .true.
+    allocate(self%data(nx, ny))
   end subroutine
 
   !----------------------------------------------------------------------------!
 
-  subroutine assign_const_f(fr, c)
+  elemental subroutine assign_frame(fr, ref)
     class(frame_t), intent(inout) :: fr
-    real(fp), intent(in) :: c
-    if (associated(fr % data)) then
-      fr % data(:,:) = c
-    else
-      error stop
-    end if
+    type(frame_t), intent(in) :: ref
+
+    if (.not. associated(ref % data)) error stop
+    call fr % assign_data(ref % data)
   end subroutine
 
-  subroutine assign_const_i(fr, c)
+  !----------------------------------------------------------------------------!
+
+  pure subroutine assign_data(fr, im)
     class(frame_t), intent(inout) :: fr
-    integer, intent(in) :: c
-    if (associated(fr % data)) then
-      fr % data(:,:) = c
-    else
-      error stop
-    end if
+    real(fp), dimension(:,:), intent(in) :: im
+
+    call fr % check_shape(size(im, 1), size(im, 2))
+    fr % data(:,:) = im(:,:)
   end subroutine
 
   !----------------------------------------------------------------------------!
@@ -93,14 +106,7 @@ contains
 
     ! get image dimensions
     call ftgisz(un, 2, sz, ftiostat)
-    if ( .not. associated(self % data) ) then
-      allocate(self % data(sz(1), sz(2)))
-      self % auto_allocated = .true.
-    else
-      if (any(shape(self % data) /= sz)) then
-        error stop "image size does not match the buffer!"
-      end if
-    end if
+    call self % check_shape(sz(1), sz(2))
 
     ! read image data
     select case (storage_size(self % data))
@@ -112,6 +118,8 @@ contains
       error stop
     end select
   end subroutine
+
+  !----------------------------------------------------------------------------!
 
   subroutine read_fits(self, fn, errno)
     class(frame_t), intent(inout) :: self
@@ -204,48 +212,20 @@ contains
     character(*), intent(inout) :: iomsg
 
     if (.not. associated(self % data)) then
-      write (u, '(a)', iostat = iostat, iomsg = iomsg) 'frame_t(unallocated)'
+      write (u, '(a)', iostat=iostat, iomsg=iomsg) 'frame_t(unallocated)'
     else
       write (u, '("frame_t(", i0, ",", i0, ")")', &
-        iostat = iostat, iomsg = iomsg) shape(self % data)
+        iostat=iostat, iomsg=iomsg) shape(self % data)
     end if
   end subroutine
 
   !----------------------------------------------------------------------------!
 
-  subroutine alloc_shape_ref(self, ref)
+  elemental impure subroutine frame_destroy(self)
     class(frame_t), intent(inout) :: self
-    class(frame_t), intent(in) :: ref
-
-    if (.not. associated(ref % data)) error stop
-    call self % alloc_shape(size(ref % data, 1), size(ref % data, 2))
-  end subroutine
-
-  subroutine alloc_shape_xy(self, nx, ny)
-    class(frame_t), intent(inout) :: self
-    integer, intent(in) :: nx, ny
-
-    if (associated(self % data)) then
-      if (self % auto_allocated) then
-        deallocate(self % data)
-      else
-        error stop 'frame cannot be re-allocated'
-      end if
-    end if
-
-    allocate(self % data(nx, ny))
-    self % auto_allocated = .true.
-  end subroutine
-
-  !----------------------------------------------------------------------------!
-
-  subroutine finalize(self)
-    type(frame_t) :: self
     if (self % auto_allocated .and. associated(self % data)) then
-#     if _DEBUG
-      print '("finalizing", 1x, dt)', self
-#     endif
       deallocate(self % data)
+      self%auto_allocated = .false.
     end if
   end subroutine
 
@@ -267,18 +247,24 @@ module fitsheader_m
 
   !----------------------------------------------------------------------------!
 
+  integer, parameter :: len_key = 8, len_val = 70
+
   type fhentry
-    character(len = 8) :: key = ''
-    character(len = 70) :: value = ''
-    class(fhentry), pointer :: next => null()
+    character(len=len_key) :: key = ''
+    character(len=len_val) :: value = ''
   end type
 
   type, public :: fhdict
-    type(fhentry), pointer :: list => null()
+    type(fhentry), allocatable, private :: list(:)
+    integer, private :: n_entries = 0
   contains
-    procedure :: add_str, add_float, add_int
-    generic :: add => add_str, add_float, add_int
-    procedure :: get_str, get_float, get_int
+    procedure :: add_str, add_real, add_int
+    generic :: add => add_str, add_real, add_int
+
+    procedure       :: get_str_ex, get_int_ex, get_real_ex
+    generic :: get  => get_str_ex, get_int_ex, get_real_ex
+    procedure       :: get_str   , get_int   , get_real   
+
     procedure :: has_key, erase, nrecords
     procedure, private :: add_raw, get_raw
 
@@ -288,37 +274,45 @@ module fitsheader_m
     procedure :: write_to_file, write_to_unit
     generic :: dump => write_to_file, write_to_unit
 
+    ! procedure, private :: clone_from
+    ! generic :: assignment(=) => clone_from
+
     procedure, private :: fhdict_repr
     generic :: write(formatted) => fhdict_repr
     procedure, pass(self), private :: has_key_op
     generic :: operator(.in.) => has_key_op
-    final :: finalize
+    ! final :: finalize
   end type
 
   character(len = 12), parameter :: excludes(*) = [character(12) :: 'END', 'COMMENT', &
     'SIMPLE', 'BITPIX', 'NAXIS', 'NAXIS1', 'NAXIS2', 'NAXIS3', 'EXTEND', 'BSCALE', 'BZERO']
 
+  integer, parameter :: n_chunk = 8
+
 contains
 
   !----------------------------------------------------------------------------!
 
-  logical function has_key(self, k) result(has)
+  elemental function has_key(self, k) result(has)
     class(fhdict), intent(in) :: self
     character(len = *), intent(in) :: k
-    type(fhentry), pointer :: cur
+    integer :: i
+    logical :: has
 
     has = .false.
 
-    cur => self % list
-    do while (associated(cur))
-      if (cur % key == k) then
-        has = .true.; return
+    do i = 1, self%n_entries
+      if (self%list(i)%key == k) then
+        has = .true.
+        return
       end if
-      cur => cur % next
     end do
+
   end function
 
-  logical function has_key_op(k, self) result(has)
+  !------------------------------------------------------------------------------!
+
+  elemental logical function has_key_op(k, self) result(has)
     class(fhdict), intent(in) :: self
     character(len = *), intent(in) :: k
     has = self % has_key(k)
@@ -326,83 +320,83 @@ contains
 
   !----------------------------------------------------------------------------!
 
-  subroutine add_raw(self, k, v)
+  pure subroutine add_raw(self, k, v)
     class(fhdict), intent(inout) :: self
     character(len = *), intent(in) :: k, v
-    type(fhentry), pointer :: newentry, cur
+    integer :: i_add
 
     if (k == '') error stop
 
-    if ( associated(self % list) ) then
-      cur => self % list
-      find_tail: do
-        if (cur % key == k) then
-          cur % value = v; exit
-        end if
-        if (.not. associated(cur % next)) then
-          allocate(newentry)
-          newentry % key = k
-          newentry % value = v
-          cur % next => newentry; exit
-        end if
-        cur => cur % next
-      end do find_tail
+    if (allocated(self % list)) then
+      if (self%n_entries >= size(self%list)) then
+        block
+          type(fhentry), allocatable :: list_new(:)
+          allocate(list_new(size(self%list) + n_chunk))
+          list_new(1:self%n_entries) = self%list(1:self%n_entries)
+          call move_alloc(from=list_new, to=self%list)
+        end block
+      end if
     else
-      allocate(newentry)
-      newentry % key = k
-      newentry % value = v
-      self % list => newentry
+      allocate(self%list(n_chunk))
+      self%n_entries = 0
     end if
+
+    self%n_entries = self%n_entries + 1
+    self%list(self%n_entries)%key = k
+    self%list(self%n_entries)%value = v
   end subroutine
 
   !----------------------------------------------------------------------------!
 
-  subroutine add_int(self, k, v)
+  pure subroutine add_int(self, k, v)
     class(fhdict), intent(inout) :: self
     character(len = *), intent(in) :: k
     integer, intent(in) :: v
-    character(len = 80) :: buf
+    character(len=len_val) :: buf
 
     write (buf, *) v
     call self % add_raw(k, buf)
   end subroutine
 
-  subroutine add_float(self, k, v)
+  !------------------------------------------------------------------------------!
+
+  pure subroutine add_real(self, k, v)
     class(fhdict), intent(inout) :: self
     character(len = *), intent(in) :: k
     real, intent(in) :: v
-    character(len = 80) :: buf
+    character(len=len_val) :: buf
 
     write (buf, *) v
     call self % add_raw(k, buf)
   end subroutine
 
-  subroutine add_str(self, k, v)
+  !------------------------------------------------------------------------------!
+
+  pure subroutine add_str(self, k, v)
     class(fhdict), intent(inout) :: self
     character(len = *), intent(in) :: k
     character(len = *), intent(in) :: v
-    character(len = 80) :: buf
+    character(len=len_val) :: buf
 
     call self % add_raw(k, "'" // trim(v) // "'")
   end subroutine
 
   !----------------------------------------------------------------------------!
 
-  subroutine get_raw(self, k, buf, errno)
+  elemental subroutine get_raw(self, k, buf, errno)
     class(fhdict), intent(in) :: self
     character(len = *), intent(in) :: k
     character(len = *), intent(inout) :: buf
-    integer, intent(inout), optional :: errno
-    type(fhentry), pointer :: cur
+    integer, intent(out), optional :: errno
+    integer :: i
 
-    cur => self % list
-    do while (associated(cur))
-      if (cur % key == k) then
-        buf = cur % value
-        if (present(errno)) errno = 0
+    if (present(errno)) errno = 0
+
+    do i = 1, self%n_entries
+      if (self%list(i)%key == k) then
+        buf = self%list(i)%value
         return
       end if
-      cur => cur % next
     end do
 
     ! not found
@@ -415,69 +409,149 @@ contains
 
   !----------------------------------------------------------------------------!
 
-  function get_str(self, k, errno) result(v)
+  elemental subroutine get_str_ex(self, k, v, errno) 
     class(fhdict), intent(in) :: self
-    character(len = *), intent(in) :: k
-    character(len = 80) :: v
-    integer, intent(inout), optional :: errno
-    character(len = 128) :: buf
+    character(len=*), intent(in) :: k
+    character(len=*), intent(out) :: v
+    integer, intent(out), optional :: errno
+    character(len=len_val) :: buf
+    integer :: err
 
-    call self % get_raw(k, buf, errno)
-    v = ''
+    err = 0
+
+    try: block
+    
+      call self % get_raw(k, buf, err)
+      if (err /= 0) exit try
+
+      read (buf, *, iostat=err) v
+      if (err /= 0) exit try
+
+    end block try
+
     if (present(errno)) then
-      if (errno /= 0) return
-      read (buf, *, iostat = errno) v
-    else
-      read (buf, *) v
+      errno = err
+    else if (err /= 0) then
+      error stop
     end if
-  end function
 
-  real function get_float(self, k, errno) result(v)
+  end subroutine
+
+  elemental function get_str(self, k, defv) result(v)
     class(fhdict), intent(in) :: self
     character(len = *), intent(in) :: k
-    integer, intent(inout), optional :: errno
-    character(len = 128) :: buf
+    character(len=len_val) :: v
+    character(len=*), intent(in), optional :: defv
+    integer :: err
 
-    call self % get_raw(k, buf, errno)
-    v = 0.0
-    if (present(errno)) then
-      if (errno /= 0) return
-      read (buf, *, iostat = errno) v
+    call self % get_str_ex(k, v, err)
+    if (err == 0) return
+    if (present(defv)) then
+      v = defv
     else
-      read (buf, *) v
-    end if
-  end function
-
-  integer function get_int(self, k, errno) result(v)
-    class(fhdict), intent(in) :: self
-    character(len = *), intent(in) :: k
-    integer, intent(inout), optional :: errno
-    character(len = 128) :: buf
-
-    call self % get_raw(k, buf, errno)
-    v = 0
-    if (present(errno)) then
-      if (errno /= 0) return
-      read (buf, *, iostat = errno) v
-    else
-      read (buf, *) v
+      error stop 'value of ' // trim(k) // ' not retrieved but no default provided'
     end if
   end function
 
   !----------------------------------------------------------------------------!
 
-  function nrecords(self) result(nrec)
+  elemental subroutine get_int_ex(self, k, v, errno) 
+    class(fhdict), intent(in) :: self
+    character(len=*), intent(in) :: k
+    integer, intent(out) :: v
+    integer, intent(out), optional :: errno
+    character(len=len_val) :: buf
+    integer :: err
+
+    err = 0
+
+    try: block
+    
+      call self % get_raw(k, buf, err)
+      if (err /= 0) exit try
+
+      read (buf, *, iostat=err) v
+      if (err /= 0) exit try
+
+    end block try
+
+    if (present(errno)) then
+      errno = err
+    else if (err /= 0) then
+      error stop
+    end if
+
+  end subroutine
+
+  elemental function get_int(self, k, defv) result(v)
+    class(fhdict), intent(in) :: self
+    character(len = *), intent(in) :: k
+    integer :: v
+    integer, intent(in), optional :: defv
+    integer :: err
+
+    call self % get_int_ex(k, v, err)
+    if (err == 0) return
+    if (present(defv)) then
+      v = defv
+    else
+      error stop 'value of ' // trim(k) // ' not retrieved but no default provided'
+    end if
+  end function
+
+  !----------------------------------------------------------------------------!
+
+  elemental subroutine get_real_ex(self, k, v, errno) 
+    class(fhdict), intent(in) :: self
+    character(len=*), intent(in) :: k
+    real, intent(out) :: v
+    integer, intent(out), optional :: errno
+    character(len=len_val) :: buf
+    integer :: err
+
+    err = 0
+
+    try: block
+
+      call self % get_raw(k, buf, err)
+      if (err /= 0) exit try
+
+      read (buf, *, iostat=err) v
+      if (err /= 0) exit try
+
+    end block try
+
+    if (present(errno)) then
+      errno = err
+    else if (err /= 0) then
+      error stop
+    end if
+
+  end subroutine
+
+  elemental function get_real(self, k, defv) result(v)
+    class(fhdict), intent(in) :: self
+    character(len = *), intent(in) :: k
+    real :: v
+    real, intent(in), optional :: defv
+    integer :: err
+
+    call self % get_real_ex(k, v, err)
+    if (err == 0) return
+    if (present(defv)) then
+      v = defv
+    else
+      error stop 'value of ' // trim(k) // ' not retrieved but no default provided'
+    end if
+  end function
+
+  !----------------------------------------------------------------------------!
+
+  elemental function nrecords(self) result(nrec)
     class(fhdict), intent(in) :: self
     integer :: nrec
-    class(fhentry), pointer :: cur
 
-    nrec = 0
-
-    cur => self % list
-    do while (associated(cur))
-      nrec = nrec + 1
-      cur => cur % next
-    end do
+    nrec = self%n_entries
   end function
 
   !----------------------------------------------------------------------------!
@@ -490,40 +564,34 @@ contains
     integer, intent(out)        :: iostat
     character(*), intent(inout) :: iomsg
     integer :: i
-    type(fhentry), pointer :: cur
 
-    if (associated(self % list)) then
-      cur => self % list
+    if (allocated(self % list)) then
       write (u, '(a)', iostat = iostat, iomsg = iomsg) '[ '
-      do while (associated(cur))
+      do i = 1, self%n_entries
         write (u, '(a, " => ", a, a)', iostat = iostat, iomsg = iomsg) &
-        &   trim(cur % key), trim(cur % value), &
-        &   merge(', ', ' ]', associated(cur % next))
-        cur => cur % next
+        &   trim(self%list(i)%key), trim(self%list(i)%value), &
+        &   merge(', ', ' ]', i < self%n_entries)
       end do
     else
       write (u, '(a)', iostat = iostat, iomsg = iomsg) '<empty fhdict>'
     end if
   end subroutine
 
-  !----------------------------------------------------------------------------!
+  ! !----------------------------------------------------------------------------!
 
-  subroutine finalize(self)
-    type(fhdict), intent(inout) :: self
-    ! print '(a, 1x, dt)', 'kaboom', self
-    call self % erase()
-  end subroutine
+  ! elemental impure subroutine finalize(self)
+  !   type(fhdict), intent(inout) :: self
+  !   print '(a, 1x, dt)', 'kaboom', self
+  !   call self % erase
+  ! end subroutine
 
-  subroutine erase(self)
+  !------------------------------------------------------------------------------!
+
+  elemental subroutine erase(self)
     class(fhdict), intent(inout) :: self
-    class(fhentry), pointer :: cur, nxt
-    cur => self % list
-    do while (associated(cur))
-      nxt => cur % next
-      deallocate(cur)
-      cur => nxt
-    end do
-    self % list => null()
+    
+    if (allocated(self%list)) deallocate(self%list)
+    self%n_entries = 0
   end subroutine
 
   !----------------------------------------------------------------------------!
@@ -532,7 +600,9 @@ contains
     class(fhdict), intent(inout) :: self
     integer, intent(in) :: un
     integer :: status
-    character(len = 128) :: fn, key, val, comment
+    character(len = 256) :: fn, comment
+    character(len=len_key) :: key
+    character(len=len_val) :: val
     integer :: nkeys, ikey
 
     status = 0
@@ -546,6 +616,8 @@ contains
       call self % add_raw(key, val)
     end do next_kw
   end subroutine
+
+  !------------------------------------------------------------------------------!
 
   subroutine read_from_file(self, fn, errno)
     class(fhdict), intent(inout) :: self
@@ -566,7 +638,7 @@ contains
       end if
     end if
 
-    call self % erase()
+    call self % erase
     call self % read_from_unit(un)
 
     call ftclos(un, status)
@@ -589,28 +661,26 @@ contains
     class(fhdict), intent(inout) :: self
     integer, intent(out), optional :: errno
     integer, intent(in) :: un
-    integer :: status
-    class(fhentry), pointer :: cur
+    integer :: status, i
     character(len = 128) :: buf
 
-    cur => self % list
 
     status = 0
 
-    iter_keys: do while (associated(cur))
-      if (any(cur % key == excludes)) then
-        cur => cur % next
-        cycle
-      end if
-      write (buf, '(a8, "= ", a70)') cur % key, cur % value
-      call ftprec(un, buf, status)
-      if (status /= 0) then
-        if (.not. present(errno)) error stop 'writing FITS keyword'
-        errno = status; exit
-      end if
-      cur => cur % next
+    iter_keys: do i = 1, self%n_entries
+      associate (cur => self%list(i))
+        if (any(cur % key == excludes)) cycle
+        write (buf, '(a8, "= ", a70)') cur % key, cur % value
+        call ftprec(un, buf, status)
+        if (status /= 0) then
+          if (.not. present(errno)) error stop 'writing FITS keyword'
+          errno = status; exit
+        end if
+      end associate
     end do iter_keys
   end subroutine
+
+  !------------------------------------------------------------------------------!
 
   subroutine write_to_file(self, fn, errno)
     class(fhdict), intent(inout) :: self
@@ -672,14 +742,16 @@ module image_frame_m
     procedure :: read_fits, write_fits
     ! procedure :: image_repr
     ! generic :: write(formatted) => image_repr
+    ! procedure :: assign_image_frame
+    ! generic :: assignment(=) => assign_image_frame
   end type image_frame_t
 
   !----------------------------------------------------------------------------!
 
-  ! interface image_frame_t
-  !   module procedure :: image_frame_ctor_fromfile
-  !   module procedure :: image_frame_ctor_zeros
-  ! end interface image_frame_t
+  interface image_frame_t
+  !   module procedure :: image_frame_t_copy_ctor
+    module procedure :: image_frame_t_ctor
+  end interface image_frame_t
 
   !----------------------------------------------------------------------------!
 
@@ -701,13 +773,15 @@ contains
       call self % hdr % load(fn, errno)
 
       if ('EXPTIME' .in. self % hdr) &
-        self % exptime = self % hdr % get_float('EXPTIME')
+        self % exptime = self % hdr % get_real('EXPTIME')
       if ('CCD-TEMP' .in. self % hdr) &
-        self % ccdtemp = self % hdr % get_float('CCD-TEMP')
+        self % ccdtemp = self % hdr % get_real('CCD-TEMP')
       if ('FRAME' .in. self % hdr) &
         self % frametyp = self % hdr % get_str('FRAME')
     end if
   end subroutine
+
+  !----------------------------------------------------------------------------!
 
   subroutine write_fits(self, fn, errno)
     class(image_frame_t) :: self
@@ -716,26 +790,45 @@ contains
 
     call self % frame_t % write_fits(fn, errno)
     call self % hdr % dump(fn, errno)
-    end subroutine
+  end subroutine
 
-! !----------------------------------------------------------------------------!
-!
-! function image_frame_ctor_fromfile(fn) result(self)
-!   type(image_frame_t) :: self
-!   character(len = *) :: fn
-!   call self % read_fits(fn)
-! end function
-!
-! !----------------------------------------------------------------------------!
-!
-! function image_frame_ctor_zeros(nx, ny) result(self)
-!   type(image_frame_t) :: self
-!   integer :: nx, ny
-!   allocate(self % data(nx, ny))
-!   self % data(:,:) = 0
-! end function
+  !----------------------------------------------------------------------------!
 
-!----------------------------------------------------------------------------!
+  ! pure function image_frame_t_copy_ctor(ref) result(fr)
+  !   type(image_frame_t):: fr
+  !   class(image_frame_t), intent(in) :: ref
+
+  !   call fr % assign_frame(ref)
+  ! end function
+
+  !----------------------------------------------------------------------------!
+
+  function image_frame_t_ctor(file, buf) result(fr)
+    type(image_frame_t):: fr
+    character(len=*), intent(in), optional :: file
+    real(fp), target, intent(in), optional :: buf(:,:)
+
+    if (present(buf)) fr % data => buf
+    if (present(file)) call fr % read_fits(file)
+  end function
+
+  !----------------------------------------------------------------------------!
+
+!   elemental impure subroutine assign_image_frame(fr, ref)
+!     class(image_frame_t), intent(inout) :: fr
+!     type(image_frame_t), intent(in) :: ref
+
+! #   if _DEBUG
+!     print '("image assignment ", dt, " = ", dt)', fr, ref
+! #   endif
+
+!     fr % frame_t = ref % frame_t
+!     fr % hdr = ref % hdr
+!     fr % fn = ref % fn
+
+!   end subroutine
+
+  !----------------------------------------------------------------------------!
 
 end module
 
@@ -838,7 +931,7 @@ contains
 
   !----------------------------------------------------------------------------!
 
-  pure logical function endswith(buf, suff)
+  elemental logical function endswith(buf, suff)
     character(len = *), intent(in) :: buf, suff
     integer :: n
     if (len_trim(buf) >= len_trim(suff)) then

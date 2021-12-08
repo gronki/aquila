@@ -147,7 +147,7 @@ contains
         if (j <= i) cycle
 
         dv(:) = 2 * (t1(i)%v - t2(j)%v) / (abs(t1(i)%v) + abs(t2(j)%v))
-        vs =  sqrt(sum(dv**2) / size(dv))
+        vs = norm2(dv)
 
         if ((nmatches_cur < nmatches) .or. (vs < vs_worst)) then
           if (nmatches_cur < nmatches) then

@@ -66,11 +66,11 @@ program test_framehandling
     print *, d
     a = d % get_str('key')
     print *, 'key is ', a
-    print *, 'EXPTIME = ', d % get_float('EXPTIME')
+    print *, 'EXPTIME = ', d % get_real('EXPTIME')
     print *, 'opt = ', d % get_int('opt')
     print *, 'negexp = ', d % get_int('negexp', errno)
     print *, 'errno = ', errno, errno /= 0
-    print *, 'negexp = ', d % get_float('negexp', errno)
+    print *, 'negexp = ', d % get_real('negexp', errno)
     print *, 'errno = ', errno, errno == 0
     print *, 'negexp .in. d', 'negexp' .in. d
     print *, 'd % has_key(negexp)', d % has_key('negexp')
@@ -83,7 +83,7 @@ program test_framehandling
     call f1 % read_fits('veil-1.fits')
     print *, 'shape(f1 % data) = ', shape(f1 % data)
     print *, f1 % hdr
-    print *, 'EXPTIME = ', f1 % hdr % get_float('EXPTIME')
+    print *, 'EXPTIME = ', f1 % hdr % get_real('EXPTIME')
   end block
 
 

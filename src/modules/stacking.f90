@@ -106,7 +106,7 @@ contains
 
     nstack = size(buffer, 3)
 
-    call frame_out % alloc_shape(size(buffer, 1), size(buffer, 2))
+    call frame_out % check_shape(size(buffer, 1), size(buffer, 2))
 
     call cpu_time(t1)
     call stack_buffer(method, buffer(:, :, 1:nstack), frame_out % data)
@@ -131,8 +131,8 @@ contains
         rms = estimate_differential_noise(buffer)
 
         write (*, '("RMS = ", f10.2)') rms
-        call frame_out % hdr % add_float('RMS', real(rms))
-        call frame_out % hdr % add_float('STACKRMS', real(rms / sqrt(1.0_fp * nstack)))
+        call frame_out % hdr % add_real('RMS', real(rms))
+        call frame_out % hdr % add_real('STACKRMS', real(rms / sqrt(1.0_fp * nstack)))
       end block estimate_noise
     end if
 
@@ -153,6 +153,8 @@ contains
       call frame_out % write_fits(output_fn_clean)
 
     end block write_stack
+
+    call frame_out % destroy
 
   end subroutine stack_and_write
 
@@ -209,9 +211,9 @@ contains
 
     m(:) = [ (frames(i) % hdr % has_key(kw), i = 1, size(frames)) ]
     if (count(m) > 0) then
-      av = sum([ (merge(frames(i) % hdr % get_float(kw, errno), 0.0, m(i)), &
+      av = sum([ (merge(frames(i) % hdr % get_real(kw, 0.0), 0.0, m(i)), &
       &     i = 1, size(frames)) ]) / count(m)
-      call frame_out % hdr % add_float(kw, av)
+      call frame_out % hdr % add_real(kw, av)
     end if
   end subroutine
 

@@ -14,10 +14,12 @@ program aqlrgb
   logical :: cfg_equalize = .false.
   logical :: cfg_color_smooth = .false.
   logical :: cfg_save_cube = .true.
-  logical :: cfg_background = .false.
+        integer :: margin = 64
+        logical :: cfg_background = .false.
   logical :: cfg_transf_lum = .false.
-  real(fp) :: smooth_fwhm = 2.35, curve_param = 3.
-  integer :: nx, ny, nc
+  real(fp) :: smooth_fwhm = 2.0, curve_param = 3.
+        real(fp) :: sharpen_strngth = 0.5, sharpen_fwhm = 1.3
+        integer :: nx, ny, nc
 
   call greeting('aq' // cf('l','1') // cf('r','1;91') // cf('g','1;92') // cf('b','1;94'))
 
@@ -57,7 +59,7 @@ program aqlrgb
       case ('-wb', '-equalize')
         cfg_equalize = .true.
 
-      case ('-lin')
+      case ('-lin', '-linear')
         curve = ''
 
       case ('-asinh')
@@ -118,6 +120,36 @@ program aqlrgb
         sharpen = 'deconv'
         cfg_color_smooth = .true.
 
+      case ('-deconv', '-unsharp', '-wavelet')
+        sharpen = arg(2:)
+
+        select case (sharpen)
+        case ('deconv')
+          sharpen_strngth = 0.8
+        case ('unsharp')
+          sharpen_strngth = 0.4
+        case ('wavelet')
+          sharpen_strngth = 0.1
+        end select
+
+        call get_command_argument(i + 1, buf)
+        read (buf, *, iostat = errno) sharpen_fwhm
+        if (errno == 0) skip = 1
+
+        if (sharpen_fwhm < 0.1 .or. sharpen_fwhm > 200) error stop 'sharpen_fwhm'
+
+        call get_command_argument(i + 2, buf)
+        read (buf, *, iostat = errno) sharpen_strngth
+        if (errno == 0) skip = 2
+
+        if (sharpen_strngth <= 0 .or. sharpen_strngth > 1) error stop 'sharpen_strngth'
+
+
+      case ('-margin')
+        call get_command_argument(i + 1, buf)
+        read (buf, *, iostat = errno) margin
+        if (errno == 0) skip = 1
+
       case ("-h", "-help")
         call print_help(); stop
 
@@ -141,9 +173,12 @@ program aqlrgb
     type(image_frame_t) :: frame_r, frame_g, frame_b, frame_l
 
     call read_fits_naxes(fnames(1), nx, ny)
-    allocate(cube(nx, ny, 4))
+    allocate(cube(nx, ny, merge(4, 3, is_lrgb)))
 
-    if (is_lrgb) call frame_l % read_fits(fnames(1))
+    if (is_lrgb) then
+      frame_l % data => cube(:,:,4)
+      call frame_l % read_fits(fnames(1))
+    end if
 
     frame_r % data => cube(:,:,1)
     call frame_r % read_fits(fnames(merge(2, 1, is_lrgb)))
@@ -151,7 +186,8 @@ program aqlrgb
     call frame_g % read_fits(fnames(merge(3, 2, is_lrgb)))
     frame_b % data => cube(:,:,3)
     call frame_b % read_fits(fnames(merge(4, 3, is_lrgb)))
-    cube(:,:,4) = 1
+
+    where (.not. ieee_is_normal(cube)) cube = 0
 
     if (cfg_equalize .or. cfg_background) then
       perform_equalize: block
@@ -160,9 +196,8 @@ program aqlrgb
         logical, dimension(:,:), allocatable :: mask, maskbg
         real(fp), dimension(:,:), allocatable :: L
         integer :: i, j, sz(3)
-        integer, parameter :: margin = 64
         real(fp) :: coeff, av, sd, bg_off
-        real(fp), dimension(3) :: bg, sg
+        real(fp), dimension(size(cube, 3)) :: bg, sg
         real(fp), parameter :: a = 2.0, b = 0.5
 
         sz = shape(cube)
@@ -183,32 +218,34 @@ program aqlrgb
 
         deallocate(L)
 
-        do i = 1, 3
+        do i = 1, size(cube, 3)
           call avsd(cube(:,:,i), maskbg, av, sg(i))
           bg(i) = av - a * sg(i)
         end do
 
         bg_off = sum(bg) / size(bg) * (1 - b)
 
-        write (0, '("stars ", f4.1, "% surface, background ", f4.1, "%")') &
+        write(*, '("stars ", f4.1, "% surface, background ", f4.1, "%")') &
         &     100 * real(count(mask)) / size(mask),     &
         &     100 * real(count(maskbg)) / size(maskbg)
 
-        write (0, '(a10, " R,G,B = ", 3f6.1)') 'background', bg
-        write (0, '(a10, " R,G,B = ", 3f6.1)') 'sigma', sg
+        write(*, '(a10, " = ", *(f6.1))') 'background', bg
+        write(*, '(a10, " = ", *(f6.1))') 'sigma', sg
 
         if ( cfg_background ) then
           frame_r % data = frame_r % data - (bg(1) - bg_off)
           frame_g % data = frame_g % data - (bg(2) - bg_off)
           frame_b % data = frame_b % data - (bg(3) - bg_off)
 
-          do i = 1, 3
+          do i = 1, size(cube, 3)
+            ! cube(:,:,i) = cube(:,:,i) - (bg(i) - bg_off)
             call avsd(cube(:,:,i), maskbg, av, sg(i))
             bg(i) = av - a * sg(i)
           end do
 
-          write (0, '(a10, " R,G,B = ", 3f6.1)') 'background', bg
-          write (0, '(a10, " R,G,B = ", 3f6.1)') 'sigma', sg
+          write(*, '(a10, " = ", *(f6.1))') 'background', bg
+          write(*, '(a10, " = ", *(f6.1))') 'sigma', sg
+
         end if
 
         if (cfg_equalize) then
@@ -232,7 +269,7 @@ program aqlrgb
         real(fp), dimension(:,:), allocatable :: krn, buf
 
         if (.not. associated(frame_l % data)) then
-          frame_l = Lum(frame_r % data, frame_g % data, frame_b % data)
+          call frame_l%copy(Lum(frame_r % data, frame_g % data, frame_b % data))
         end if
 
         krn = gausskrn_alloc(smooth_fwhm)
@@ -257,14 +294,10 @@ program aqlrgb
         use deconvolutions, only: deconvol_lr
 
         real(fp), allocatable :: krn(:,:), lum2(:,:)
-        real(fp) :: sharpen_strngth, sharpen_fwhm
         integer :: i
 
-        sharpen_fwhm = 1.3
-        sharpen_strngth = 0.67
-
         if (.not. associated(frame_l % data)) then
-          frame_l = Lum(frame_r % data, frame_g % data, frame_b % data)
+          call frame_l%copy(Lum(frame_r % data, frame_g % data, frame_b % data))
         end if
         allocate(lum2, mold = frame_l % data)
 
@@ -275,9 +308,9 @@ program aqlrgb
           frame_l % data(:,:) = sharpen_strngth * lum2 + (1 - sharpen_strngth) * (frame_l % data)
         case ('deconv')
           krn = gausskrn_alloc(sharpen_fwhm)
-          call deconvol_lr(frame_l % data, krn, sharpen_strngth, 64, lum2)
+          call deconvol_lr(frame_l % data, krn, sharpen_strngth, 99, lum2)
           frame_l % data(:,:) = lum2
-        case ('unshrp')
+        case ('unsharp')
           krn = gausskrn_alloc(sharpen_fwhm)
           call convol_fix(frame_l % data, krn, lum2, 'r')
           lum2(:,:) = frame_L % data - lum2 / sum(krn)
@@ -292,6 +325,12 @@ program aqlrgb
 
       end block do_unsharp_lum
     end if
+
+    ! if (curve /= '' .and. cfg_transf_lum) then
+    !   if (.not. associated(frame_l % data)) then
+    !     frame_l = Lum(frame_r % data, frame_g % data, frame_b % data)
+    !   end if
+    ! end if
 
     if (associated(frame_l % data)) then
       do_lrgb: block
@@ -311,9 +350,9 @@ program aqlrgb
 
         integer :: i
         real(fp), allocatable :: x(:,:), y(:,:)
-        real(fp) :: xfl, av, sd
+        real(fp) :: a, b, av, sd
 
-        write (0, '("performing ",a," curve transform on the image: ",a)') &
+        write(*, '("performing ",a," curve transform on the image: ",a)') &
             trim(merge('luminance', 'color    ', cfg_transf_lum)), curve
 
         if (associated(frame_l % data)) then
@@ -322,14 +361,14 @@ program aqlrgb
           x = Lum(frame_r % data, frame_g % data, frame_b % data)
         end if
 
-        call outliers(x, 3._fp, 32, av, sd)
-        xfl = av - 5.0 * sd
-        print *, 'av', av, 'sd', sd, 'xfl', xfl
+        call outliers(x(1+margin:ny-margin, 1+margin:ny-margin), 3._fp, 10, av, sd)
+        b = av - curve_param * sd
+        a = curve_param * sd 
 
         if ( cfg_transf_lum ) then
           curve_lum: block
             allocate(y, mold = x)
-            call apply_curve(curve, x, (av - sd) / curve_param, xfl, y)
+            call apply_curve(curve, x, a, b, y)
             x = y / x
             deallocate(y)
             do i = 1, 3
@@ -338,7 +377,7 @@ program aqlrgb
           end block curve_lum
         else
           do i = 1, 3
-            call apply_curve(curve, cube(:,:,i), (av - sd) / curve_param, xfl, cube(:,:,i))
+            call apply_curve(curve, cube(:,:,i), a, b, cube(:,:,i))
           end do
         end if
       end block do_curve
@@ -374,13 +413,14 @@ program aqlrgb
       call frame_b % write_fits(add_suffix(outfn, '.b'))
     end if
 
+    call frame_l%destroy
   end block do_rgb
 
 contains
 
   elemental real(fp) function Lum(R,G,B) result(L)
     real(fp), intent(in) :: R, G, B
-    real(fp), parameter :: wr = 0.9, wg = 1.0, wb = 0.7
+    real(fp), parameter :: wr = 0.9, wg = 1.1, wb = 0.7
     L = (wr * R + wg * G + wb * B) / (wr + wg + wb)
   end function
 
@@ -405,7 +445,7 @@ contains
   end subroutine
 
   subroutine print_help
-    use globals, only: hlp_fmt, hlp_fmtc
+    use globals, only: hlp_fmt, hlp_fmtc, fmthlp
     write (*, '(a)') 'prepares the aligned images for RGB processing'
     write (*, '(a)') 'usage: aqlrgb [L] R G B [-o FILE] [options]'
     write (*, '(a)') 'R, G, B are color frames and L is optional luminance'
@@ -423,6 +463,9 @@ contains
     write (*, hlp_fmt) '-sqrt/-asinh/-log', 'compress the image levels before saving'
     write (*, hlp_fmt) '-sqrt2/-asinh2/-log2', 'same but using luminosity'
     write (*, hlp_fmtc) '(boosts star colors but can kill some details)'
+    write (*, '(a)') '-sharpen/wavelet/deconv [FWHM [strength]]'
+    write (*, hlp_fmtc) 'sharpen the luminance (default strength=0.85)'
+    print fmthlp, '-margin W', 'sets width for processing margin in px {def.: 64}'
     write (*, hlp_fmt) '-h[elp]', 'prints help'
   end subroutine
 
@@ -439,7 +482,7 @@ contains
     iostat = 0
     open (99, file = fn, status = 'old', iostat = iostat)
     if (iostat == 0) then
-      write (0, '("file ",a," exists, deleting...")') trim(fn)
+      write(*, '("file ",a," exists, deleting...")') trim(fn)
       close (99, status = 'delete')
     end if
 

@@ -1,12 +1,11 @@
 # Makefile for aquila
-# (c) 2020 Dominik Gronkiewicz <gronki@gmail.com>
+# (c) 2021 Dominik Gronkiewicz <gronki@gmail.com>
 # on MIT license
 
 #-----------------------------------------------------------------------------#
-# 1:23 0:57 0:55 0:51 0:46
 FC := gfortran
 # optimization flags
-FFLAGS := -O3 -funsafe-math-optimizations -march=native -fopenmp
+FFLAGS := -g1 -O3 -funsafe-math-optimizations -march=native -fopenmp
 # Fortran language flags (always included)
 FFLAGS_LANG := -fimplicit-none -ffree-line-length-none -std=f2018 -pedantic
 # debugging flags
@@ -45,8 +44,8 @@ prefix := $(shell if test -w "/usr/local"; then echo "/usr/local"; \
 
 #-----------------------------------------------------------------------------#
 
-VPATH := ../src/modules:../src/programs:../src/test
-PROGRAMS := aqstack aqlrgb
+VPATH := ../src/modules:../src/modules/framehandling:../src/programs:../src/test
+PROGRAMS := aqstack aqlrgb aqlrgb2
 TESTS := $(patsubst ../src/test/test_%, test_%, $(basename $(wildcard ../src/test/test_*.[fF]90)))
 
 #-----------------------------------------------------------------------------#

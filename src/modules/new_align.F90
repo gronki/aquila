@@ -4,73 +4,49 @@ module new_align
   use findstar, only: source
   implicit none
   private
-  public :: transform_t, transform_xyr_t, transform_vec_size, align2, improject2
-
-  integer, parameter :: transform_vec_size = 8
+  public :: transform_t, transform_xyr_t, align2, improject2
 
   type, abstract :: transform_t
-    real(fp) :: r0 = 1
-    real(fp) :: vec(transform_vec_size) = 0
+    real(fp) :: scale = 1
+    real(fp), allocatable :: vec(:)
   contains
-    procedure(iface_npar), deferred :: npar
-    procedure(iface_det), deferred :: det
+    procedure :: npar
     procedure(iface_apply), deferred :: apply
     procedure(iface_pder), deferred :: pder
     procedure, pass(v) :: project => improject2
     procedure, pass(v0) :: align => align2
-    ! procedure(iface_getvec), deferred :: vec
-    ! procedure(iface_setvec), deferred, private :: setvec
-    ! generic :: operator(=) => setvec
   end type
 
   abstract interface
-    elemental function iface_npar(t) result(npar)
-      import transform_t, fp
-      class(transform_t), intent(in) :: t
-      integer :: npar
-    end function
-    ! pure function iface_getvec(t) result(vec)
-    !   import transform_t, fp
-    !   class(transform_t), intent(in) :: t
-    !   real(fp), allocatable :: vec(:)
-    ! end function
-    elemental function iface_det(t) result(det)
-      import transform_t, fp
-      class(transform_t), intent(in) :: t
-      real(fp) :: det
-    end function
+
     elemental subroutine iface_apply(t, x1, y1, x2, y2)
       import transform_t, fp
       class(transform_t), intent(in) :: t
       real(fp), intent(in) :: x1, y1
       real(fp), intent(out) :: x2, y2
     end subroutine
+
     pure subroutine iface_pder(t, x, y, dx, dy)
-      import transform_t, fp, transform_vec_size
+      import transform_t, fp
       class(transform_t), intent(in) :: t
       real(fp), intent(in) :: x, y
-      real(fp), dimension(transform_vec_size), intent(out) :: dx, dy
+      real(fp), dimension(:), intent(out) :: dx, dy
     end subroutine
-    ! pure subroutine iface_setvec(t, v)
-    !   import transform_t, fp
-    !   class(transform_t), intent(inout) :: t
-    !   real(fp), intent(in) :: v(:)
-    ! end subroutine
+
   end interface
 
   !------------------------------------------------------------------------------------!
 
   type, extends(transform_t) :: transform_xyr_t
-    ! real(fp) :: x, y, r
   contains
-    procedure :: npar   => xyr_npar
-    procedure :: det    => xyr_det
     procedure :: apply  => xyr_apply
     procedure :: pder   => xyr_pder
-    ! procedure :: vec    => xyr_vec
-    ! procedure :: setvec => xyr_setvec
     procedure :: align_polygon
   end type
+
+  interface transform_xyr_t
+    module procedure transform_xyr_ctor
+  end interface
 
   !------------------------------------------------------------------------------------!
 
@@ -78,56 +54,58 @@ contains
 
   !------------------------------------------------------------------------------------!
 
-  elemental function xyr_npar(t) result(npar)
-    class(transform_xyr_t), intent(in) :: t
+  elemental function npar(t)
+    class(transform_t), intent(in) :: t
     integer :: npar
-    npar = 3
+
+    if (allocated(t % vec)) then
+      npar = size(t % vec)
+    else
+      npar = 0
+    end if
   end function
 
-  ! pure function xyr_vec(t) result(vec)
-  !   class(transform_xyr_t), intent(in) :: t
-  !   real(fp), allocatable :: vec(:)
-  !   allocate(vec(3))
-  !   vec(1) = t % x; vec(2) = t % y; vec(3) = t % r
-  ! end function
+  !------------------------------------------------------------------------------------!
 
-  elemental function xyr_det(t) result(det)
-    class(transform_xyr_t), intent(in) :: t
-    real(fp) :: det
-    det = 1
+  function transform_xyr_ctor(scale) result(self)
+    type(transform_xyr_t) :: self
+    real(fp), intent(in), optional :: scale
+
+    allocate(self % vec(3))
+    self % vec(:) = 0
+
+    if (present(scale)) self%scale = scale
   end function
+
 
   elemental subroutine xyr_apply(t, x1, y1, x2, y2)
     class(transform_xyr_t), intent(in) :: t
     real(fp), intent(in) :: x1, y1
     real(fp), intent(out) :: x2, y2
-    associate (th => t % vec(3) / t % r0)
-      x2 = t % vec(1) + cos(th) * x1 - sin(th) * y1
-      y2 = t % vec(2) + sin(th) * x1 + cos(th) * y1
-    end associate
+    real(fp) :: th
+
+    th = t % vec(3) / t % scale
+    x2 = t % vec(1) + cos(th) * x1 - sin(th) * y1
+    y2 = t % vec(2) + sin(th) * x1 + cos(th) * y1
   end subroutine
+
 
   pure subroutine xyr_pder(t, x, y, dx, dy)
     class(transform_xyr_t), intent(in) :: t
     real(fp), intent(in) :: x, y
-    real(fp), dimension(transform_vec_size), intent(out) :: dx, dy
+    real(fp), dimension(:), intent(out) :: dx, dy
+    real(fp) :: th
+
     dx(1) = 1
     dy(1) = 0
     dx(2) = 0
     dy(2) = 1
-    associate (th => t % vec(3) / t % r0)
-      dx(3) = (- sin(th) * x - cos(th) * y) / (t % r0)
-      dy(3) = (  cos(th) * x - sin(th) * y) / (t % r0)
-    end associate
-    dx(4:) = 0; dy(4:) = 0
+
+    th = t % vec(3) / t % scale
+    dx(3) = (- sin(th) * x - cos(th) * y) / (t % scale)
+    dy(3) = (  cos(th) * x - sin(th) * y) / (t % scale)
   end subroutine
 
-  ! pure subroutine xyr_setvec(t, v)
-  !   class(transform_xyr_t), intent(inout) :: t
-  !   real(fp), intent(in) :: v(:)
-  !   if (size(v) /= 3) error stop
-  !   t % x = v(1); t % y = v(2); t % r = v(3)
-  ! end subroutine
 
   subroutine align_polygon(t, xy1, xy2, nstars, nmatches)
     use polygon_matching, only: find_transform_polygons
@@ -137,7 +115,7 @@ contains
     real(fp) :: init_dx, init_dy, init_r
 
     call find_transform_polygons(xy1, xy2, nstars, nmatches, init_dx, init_dy, init_r)
-    t%vec(1:3) = [init_dx, init_dy, init_r * t%r0]
+    t%vec(1:3) = [init_dx, init_dy, init_r * t%scale]
   end subroutine
 
   !------------------------------------------------------------------------------------!
@@ -148,7 +126,7 @@ contains
     type(source) :: xy1(size(xy))
     integer :: ii, nmax
     real(fp) :: k0, y0, lam
-    real(fp) :: y0_dv(transform_vec_size), y0n_dv(transform_vec_size)
+    real(fp) :: y0_dv(size(v0%vec)), y0n_dv(size(v0%vec))
     ! maximum dF/dx at x = k0 / sqrt(2)
 
 #   ifdef _DEBUG
@@ -170,7 +148,7 @@ contains
       v0 % vec = v0 % vec + y0n_dv * lam
 
 #     ifdef _DEBUG
-      write (0, '(i4, f7.2, f9.4, *(f9.4))') ii, k0, lam, v0 % vec(1:v0 % npar())
+      write (0, '(i4, f7.2, f9.4, *(f9.4))') ii, k0, lam, v0 % vec
 #     endif
 
       if ( lam .lt. 0.005 ) then
@@ -192,7 +170,7 @@ contains
       real(fp), intent(in) :: dx_0
       integer :: i, ii
       real(fp) :: dx
-      real(fp) :: y, y_dv(transform_vec_size), y_dx
+      real(fp) :: y, y_dv(size(v0%vec)), y_dx
       class(transform_t), allocatable :: v
       integer, parameter :: u = 8
 
@@ -235,9 +213,9 @@ contains
     subroutine comp_ydv(v, y, y_dv)
 
       class(transform_t), intent(in) :: v
-      real(fp), intent(out) :: y, y_dv(transform_vec_size)
+      real(fp), intent(out) :: y, y_dv(size(v0%vec))
       real(fp) :: aa, bb, y_dx1, y_dy1
-      real(fp), dimension(transform_vec_size) :: x1_dv, y1_dv
+      real(fp), dimension(size(v0%vec)) :: x1_dv, y1_dv
       integer :: i0, i
 
       y = 0

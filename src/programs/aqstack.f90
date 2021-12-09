@@ -295,29 +295,35 @@ program aqstack
         if (ref_fn /= "") then
           read_ref_frame: block
             type(image_frame_t) :: imref
+
             call imref % read_fits(ref_fn)
             call register_stars(imref % data(:,:), lst0)
-            deallocate(imref % data)
+            call imref % destroy
+
+            istart = 1
           end block read_ref_frame
-          istart = 1
         else
           findstar_initial: block
             type(transform_xyr_t) :: ity
+
+            ity = transform_xyr_t(scale=r0)
+
             call register_stars(buffer(:,:,1), lst0)
-            istart = 2
+
             if (cfg_resampling) then
               ! scale the first frame
               call ity % project(buffer(:,:,1), buffer_resample(:,:,1), resample_factor)
             end if
+
+            istart = 2
           end block findstar_initial
         end if
 
         call cpu_time(t1)
         !$omp parallel do private(i, lst, buf_copy, tx)
         do i = istart, nframes
-          allocate(transform_xyr_t :: tx)
-          tx % r0 = r0
-          
+          tx = transform_xyr_t(scale=r0)
+
           ! register the stars
           call register_stars(buffer(:,:,i), lst)
           
@@ -347,7 +353,7 @@ program aqstack
           end select
           
           print '("ALIGN ",a," frame(",i2,") found ",i4," stars")', trim(align_method), i, size(lst)
-          print '(" solution(",i2,") =", *(f8.2))', i, tx % vec(1 : tx % npar())
+          print '(" solution(",i2,") =", *(f8.2))', i, tx % vec
           
           !$omp critical
           margin = max(margin, check_corners(tx, nx, ny))

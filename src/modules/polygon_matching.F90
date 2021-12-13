@@ -61,13 +61,18 @@ contains
 
   !--------------------------------------------------------------------------!
 
-  pure subroutine next_combin(c, top)
-    integer, intent(inout) :: c(:)
-    integer, intent(in) :: top
+  pure subroutine next_combin(c, n)
+    ! given a vector of integers [1..n, 1..n, ...], generate the next vector
+    ! the first call should be applied to c=[1,1,...], and the last resulting
+    ! vector will be [n,n,...], after which it will overlow to [1,1,...].
+
+    integer, intent(inout) :: c(:) ! vector of numbers in range 1..n to be bumped
+    integer, intent(in) :: n       ! maximum number
+
     integer :: i
 
     do i = 1, size(c)
-      if (c(i) < top) then
+      if (c(i) < n) then
         c(i) = c(i) + 1
         exit
       end if
@@ -95,16 +100,20 @@ contains
   !--------------------------------------------------------------------------!
 
   subroutine find_star_polygons(ls, nmax, polys)
+    ! finds all possible polygons given the list of stars
 
     use iso_fortran_env, only: int64, real64
 
-    integer :: nmax, i, j
+    class(source) :: ls(:)                 ! list of sources
+    integer :: nmax                        ! how many sources to analyze
+    type(polygon), allocatable :: polys(:) ! output list of polygons
+
+    integer :: i, j
     integer :: indices(n_corners)
-    class(source) :: ls(:)
     integer(int64) :: ncomb, n
-    type(polygon), allocatable :: polys(:)
     type(polygon_extra) :: tr
 
+    ! how many combinations to pick n_corners ordered points?
     ncomb = product([( int(nmax - (i - 1), kind(ncomb)), i = 1, n_corners )]) &
           / product([( i, i = 1, n_corners )])
 
@@ -150,8 +159,12 @@ contains
   !--------------------------------------------------------------------------!
 
   subroutine match_polygons(t1, t2, matches)
-    type(polygon), intent(in) :: t1(:), t2(:)
-    type(polygon_match), intent(out) :: matches(:)
+    ! analyze two lists of polygons, and find the best matching ones, based
+    ! of a vector of translation, rotation and scale independent characteristics.
+
+    type(polygon), intent(in) :: t1(:), t2(:)       ! two polygon lists
+    type(polygon_match), intent(out) :: matches(:)  ! best polygon matches
+
     integer :: i, j, k, nmatches_cur, i_worst, nmatches
     real(real64) :: dv(polygon_nv), vs, vs_worst
 
@@ -198,12 +211,16 @@ contains
   !--------------------------------------------------------------------------!
 
   subroutine process_best_matches(matches, transxav, transyav, angrotav)
+    ! find translation and rotation angle based on the best polygon matches
+
     use statistics, only: sigclip2
 
-    type(polygon_match), intent(in) :: matches(:)
+    type(polygon_match), intent(in) :: matches(:) ! matches from match_polygons
+    real(real64) :: transxav, transyav, angrotav  ! translation and rotation estimate
+
     type(polygon_extra) :: tr1, tr2
     real(real64), dimension(size(matches), n_corners) :: cosrot, sinrot, transx, transy
-    real(real64) :: cosrotav, sinrotav, angrotav, transxav, transyav, angrot
+    real(real64) :: cosrotav, sinrotav, angrot
     integer :: i, k, nmatches
 
     nmatches = size(matches)
@@ -261,10 +278,15 @@ contains
   !--------------------------------------------------------------------------!
 
   subroutine find_transform_polygons(ls1, ls2, nstars, nmatches, dx, dy, r)
-    integer, intent(in) :: nstars, nmatches
-    class(source), intent(in) :: ls1(:), ls2(:)
+    ! perfrom the polygon-matching estimation of translation and rotation angle
+    ! based on a list of detected sources.
+
+    class(source), intent(in) :: ls1(:), ls2(:) ! lists of detected sources
+    integer, intent(in) :: nstars               ! how many stars to use
+    integer, intent(in) :: nmatches             ! how many best matches to analyze
+    real(real64), intent(out) :: dx, dy, r      ! output translation and rotation angle
+
     type(polygon), allocatable :: t1(:), t2(:)
-    real(real64) :: dx, dy, r
     type(polygon_match) :: matches(nmatches)
     
     call find_star_polygons(ls1, nstars, t1)

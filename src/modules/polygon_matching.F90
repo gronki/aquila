@@ -9,8 +9,8 @@ module polygon_matching
   integer, parameter :: polygon_nv = 1 + 2 * (n_corners - 1)
 
   type :: polygon
-    type(source) :: s(n_corners)
-    real(real64) :: v(polygon_nv) = 0
+    type(source) :: vertices(n_corners)
+    real(real64) :: characteristic(polygon_nv) = 0
   end type
     
   type, extends(polygon) :: polygon_extra
@@ -48,16 +48,32 @@ contains
 
     self%polygon = t
 
-    self%xc = sum(t%s(:)%x) / n_corners
-    self%yc = sum(t%s(:)%y) / n_corners
+    self%xc = sum(t%vertices(:)%x) / n_corners
+    self%yc = sum(t%vertices(:)%y) / n_corners
 
     do i = 1, n_corners
       i_next = cycl(i + 1, n_corners)
-      self%l(i) = hypot(t%s(i_next)%x - t%s(i)%x, t%s(i_next)%y - t%s(i)%y)
-      self%ux(i) = (t%s(i_next)%x - t%s(i)%x) / self%l(i)
-      self%uy(i) = (t%s(i_next)%y - t%s(i)%y) / self%l(i)
+      self%l(i) = hypot(t%vertices(i_next)%x - t%vertices(i)%x, t%vertices(i_next)%y - t%vertices(i)%y)
+      self%ux(i) = (t%vertices(i_next)%x - t%vertices(i)%x) / self%l(i)
+      self%uy(i) = (t%vertices(i_next)%y - t%vertices(i)%y) / self%l(i)
     end do
   end function
+
+  !--------------------------------------------------------------------------!
+
+  pure subroutine next_combin(c, top)
+    integer, intent(inout) :: c(:)
+    integer, intent(in) :: top
+    integer :: i
+
+    do i = 1, size(c)
+      if (c(i) < top) then
+        c(i) = c(i) + 1
+        exit
+      end if
+      c(i) = 1
+    end do
+  end subroutine
 
   !--------------------------------------------------------------------------!
 
@@ -82,13 +98,12 @@ contains
 
     use iso_fortran_env, only: int64, real64
 
-    integer :: i1, i2, i3, i4, nmax, i, j
+    integer :: nmax, i, j
+    integer :: indices(n_corners)
     class(source) :: ls(:)
     integer(int64) :: ncomb, n
     type(polygon), allocatable :: polys(:)
     type(polygon_extra) :: tr
-
-    if (n_corners /= 4) error stop 'find_star_polygons is for fixed n_corners'
 
     ncomb = product([( int(nmax - (i - 1), kind(ncomb)), i = 1, n_corners )]) &
           / product([( i, i = 1, n_corners )])
@@ -102,29 +117,31 @@ contains
     allocate(polys(ncomb))
 
     n = 0
+    indices(:) = 1
 
-    do i1 = 1, nmax
-    do i2 = 1, nmax
-    do i3 = 1, nmax
-    do i4 = 1, nmax
+    do
 
       if (n >= size(polys)) exit
-      if (.not. unique_int([i1, i2, i3, i4])) cycle
 
-      polys(n+1) = polygon(s=[ls(i1), ls(i2), ls(i3), ls(i4)])
+      ! call the next combination of indices, skip if any two indices are equal
+      call next_combin(indices, nmax)
+      if (.not. unique_int(indices)) cycle
+
+      ! create a polygon from the stars
+      polys(n+1) = polygon(vertices=[(ls(indices(i)), i = 1, n_corners)])
       tr = polygon_extra(polys(n+1))
 
+      ! check if sections between points are of increasing length 
+      ! to avoid duplicates
       if (.not. all([( tr%l(i) > tr%l(i+1), i = 1, n_corners-1 )])) cycle
-      ! if (.not. (tr%l(1) > tr%l(2) .and. tr%l(2) > tr%l(3))) cycle
 
       n = n + 1
-      polys(n)%v(:) = [sum(tr%l(:)), &
+
+      ! construct the characteristic vector for the polygon
+      polys(n)%characteristic(:) = [sum(tr%l(:)), &
         (tr%l(i) / tr%l(i+1),                             i = 1, n_corners-1), &
         (tr%ux(i) * tr%ux(i+1) + tr%uy(i) * tr%uy(i+1),   i = 1, n_corners-1)]
           
-    end do
-    end do
-    end do
     end do
 
     if (n < size(polys)) polys = polys(1:n)
@@ -146,17 +163,23 @@ contains
       do j = 1, size(t2)
         if (j <= i) cycle
 
-        dv(:) = 2 * (t1(i)%v - t2(j)%v) / (abs(t1(i)%v) + abs(t2(j)%v))
+        ! the difference between the characteristic vectors of two polygons
+        dv(:) = 2 * (t1(i)%characteristic - t2(j)%characteristic) &
+              / (abs(t1(i)%characteristic) + abs(t2(j)%characteristic))
+        ! the measure of a difference
         vs = norm2(dv)
 
         if ((nmatches_cur < nmatches) .or. (vs < vs_worst)) then
           if (nmatches_cur < nmatches) then
+            ! if less than max matches, add regardless of the score
             nmatches_cur = nmatches_cur + 1
             matches(nmatches_cur) = polygon_match(t1(i), t2(j), dv, vs)
           else
+            ! if we have max matches, replace the worst match
             matches(i_worst) = polygon_match(t1(i), t2(j), dv, vs)
           end if
           
+          ! after updating, find the next worst match
           i_worst = maxloc(matches(1:nmatches_cur) % vs, 1)
           vs_worst = matches(i_worst) % vs
           
@@ -190,10 +213,10 @@ contains
 
 #       ifdef _DEBUG
         print '(/, a, es11.3, 8x, *(es11.3))', 'MATCH', match%dv, match%vs
-        print '(a, 3x, *("star=",3f9.1,:,2x))', 'T1', t1%s
-        print '(a, 3x,   "vect=", *(es11.3))', 'T1', t1%v
-        print '(a, 3x, *("star=",3f9.1,:,2x))', 'T2', t2%s
-        print '(a, 3x,   "vect=", *(es11.3))', 'T2', t2%v
+        print '(a, 3x, *("star=",3f9.1,:,2x))', 'T1', t1%vertices
+        print '(a, 3x,   "vect=", *(es11.3))', 'T1', t1%characteristic
+        print '(a, 3x, *("star=",3f9.1,:,2x))', 'T2', t2%vertices
+        print '(a, 3x,   "vect=", *(es11.3))', 'T2', t2%characteristic
 #       endif
 
         tr1 = polygon_extra(t1)
@@ -207,8 +230,10 @@ contains
         angrot = atan2(sum(sinrot(k,:)) / n_corners, sum(cosrot(k,:)) / n_corners)
     
         do i = 1, n_corners
-          transx(k,i) = matches(k)%t2%s(i)%x - (cos(angrot) * matches(k)%t1%s(i)%x - sin(angrot) * matches(k)%t1%s(i)%y)
-          transy(k,i) = matches(k)%t2%s(i)%y - (sin(angrot) * matches(k)%t1%s(i)%x + cos(angrot) * matches(k)%t1%s(i)%y)
+          transx(k,i) = matches(k)%t2%vertices(i)%x &
+          - (cos(angrot) * matches(k)%t1%vertices(i)%x - sin(angrot) * matches(k)%t1%vertices(i)%y)
+          transy(k,i) = matches(k)%t2%vertices(i)%y &
+          - (sin(angrot) * matches(k)%t1%vertices(i)%x + cos(angrot) * matches(k)%t1%vertices(i)%y)
         end do
 
 #       ifdef _DEBUG

@@ -5,17 +5,19 @@ module polygon_matching
   use findstar, only: source
   implicit none
 
-  integer, parameter :: n_corners = 4
-  integer, parameter :: polygon_nv = 1 + 2 * (n_corners - 1)
+  ! number of polygon vertices
+  integer, parameter :: num_poly_vertices = 4
+  ! length of the characteristic vector
+  integer, parameter :: num_poly_charac_vector = 1 + 2 * (num_poly_vertices - 1)
 
   type :: polygon
-    type(source) :: vertices(n_corners)
-    real(real64) :: characteristic(polygon_nv) = 0
+    type(source) :: vertices(num_poly_vertices)
+    real(real64) :: characteristic(num_poly_charac_vector) = 0
   end type
     
   type, extends(polygon) :: polygon_extra
     real(real64) :: xc, yc
-    real(real64), dimension(n_corners) :: l, ux, uy
+    real(real64), dimension(num_poly_vertices) :: l, ux, uy
   end type
 
   interface polygon_extra
@@ -24,7 +26,7 @@ module polygon_matching
 
   type :: polygon_match
     type(polygon) :: t1, t2
-    real(real64) :: dv(polygon_nv), vs
+    real(real64) :: dv(num_poly_charac_vector), vs
   end type
 
   private :: cycl
@@ -48,11 +50,11 @@ contains
 
     self%polygon = t
 
-    self%xc = sum(t%vertices(:)%x) / n_corners
-    self%yc = sum(t%vertices(:)%y) / n_corners
+    self%xc = sum(t%vertices(:)%x) / num_poly_vertices
+    self%yc = sum(t%vertices(:)%y) / num_poly_vertices
 
-    do i = 1, n_corners
-      i_next = cycl(i + 1, n_corners)
+    do i = 1, num_poly_vertices
+      i_next = cycl(i + 1, num_poly_vertices)
       self%l(i) = hypot(t%vertices(i_next)%x - t%vertices(i)%x, t%vertices(i_next)%y - t%vertices(i)%y)
       self%ux(i) = (t%vertices(i_next)%x - t%vertices(i)%x) / self%l(i)
       self%uy(i) = (t%vertices(i_next)%y - t%vertices(i)%y) / self%l(i)
@@ -99,6 +101,26 @@ contains
 
   !--------------------------------------------------------------------------!
 
+  pure logical function is_descending(arr)
+    ! check if a sequence is strictly descending
+
+    real(kind=real64), intent(in) :: arr(:) ! sequence to be analyzed
+    integer :: i
+
+    is_descending = .true.
+    if (size(arr) < 2) return
+
+    do i = 1, size(arr) - 1
+      if (arr(i) <= arr(i + 1)) then
+        is_descending = .false.
+        return
+      end if
+    end do
+
+  end function
+
+  !--------------------------------------------------------------------------!
+
   subroutine find_star_polygons(ls, nmax, polys)
     ! finds all possible polygons given the list of stars
 
@@ -107,53 +129,60 @@ contains
     class(source) :: ls(:)                 ! list of sources
     integer :: nmax                        ! how many sources to analyze
     type(polygon), allocatable :: polys(:) ! output list of polygons
+    type(source) :: tmp_vertices(num_poly_vertices)
 
     integer :: i, j
-    integer :: indices(n_corners)
+    integer :: indices(num_poly_vertices)
     integer(int64) :: ncomb, n
     type(polygon_extra) :: tr
 
     ! how many combinations to pick n_corners ordered points?
-    ncomb = product([( int(nmax - (i - 1), kind(ncomb)), i = 1, n_corners )]) &
-          / product([( i, i = 1, n_corners )])
+    ncomb = product([( int(nmax - (i - 1), kind(ncomb)), i = 1, num_poly_vertices )]) &
+          / product([( i, i = 1, num_poly_vertices )])
 
 #   ifdef _DEBUG
-      print *, 'n_corners =', n_corners
+      print *, 'n_corners =', num_poly_vertices
       print *, 'nmax =', nmax
       print *, 'ncomb =', ncomb
 #   endif
 
     allocate(polys(ncomb))
 
-    n = 0
+    n = 1
     indices(:) = 1
 
     do
 
-      if (n >= size(polys)) exit
+      if (n > size(polys)) exit
 
       ! call the next combination of indices, skip if any two indices are equal
       call next_combin(indices, nmax)
       if (.not. unique_int(indices)) cycle
 
       ! create a polygon from the stars
-      polys(n+1) = polygon(vertices=[(ls(indices(i)), i = 1, n_corners)])
-      tr = polygon_extra(polys(n+1))
+      ! loop workaround because of gfortran ICE
+      do i = 1, num_poly_vertices
+        tmp_vertices(i) = ls(indices(i))
+      end do
+      polys(n) = polygon(vertices=tmp_vertices)
+      tr = polygon_extra(polys(n))
 
       ! check if sections between points are of increasing length 
       ! to avoid duplicates
-      if (.not. all([( tr%l(i) > tr%l(i+1), i = 1, n_corners-1 )])) cycle
+      if (.not. is_descending(tr%l)) cycle
 
-      n = n + 1
 
       ! construct the characteristic vector for the polygon
       polys(n)%characteristic(:) = [sum(tr%l(:)), &
-        (tr%l(i) / tr%l(i+1),                             i = 1, n_corners-1), &
-        (tr%ux(i) * tr%ux(i+1) + tr%uy(i) * tr%uy(i+1),   i = 1, n_corners-1)]
+        (tr%l(i) / tr%l(i+1),                             i = 1, num_poly_vertices-1), &
+        (tr%ux(i) * tr%ux(i+1) + tr%uy(i) * tr%uy(i+1),   i = 1, num_poly_vertices-1)]
           
+      n = n + 1
+    
     end do
 
-    if (n < size(polys)) polys = polys(1:n)
+    ! n is equal to number of found polygons + 1
+    if (n-1 < size(polys)) polys = polys(1:n-1)
   end subroutine find_star_polygons
 
   !--------------------------------------------------------------------------!
@@ -166,7 +195,7 @@ contains
     type(polygon_match), intent(out) :: matches(:)  ! best polygon matches
 
     integer :: i, j, k, nmatches_cur, i_worst, nmatches
-    real(real64) :: dv(polygon_nv), vs, vs_worst
+    real(real64) :: dv(num_poly_charac_vector), vs, vs_worst
 
     nmatches = size(matches)
     nmatches_cur = 0
@@ -219,7 +248,7 @@ contains
     real(real64) :: transxav, transyav, angrotav  ! translation and rotation estimate
 
     type(polygon_extra) :: tr1, tr2
-    real(real64), dimension(size(matches), n_corners) :: cosrot, sinrot, transx, transy
+    real(real64), dimension(size(matches), num_poly_vertices) :: cosrot, sinrot, transx, transy
     real(real64) :: cosrotav, sinrotav, angrot
     integer :: i, k, nmatches
 
@@ -239,14 +268,14 @@ contains
         tr1 = polygon_extra(t1)
         tr2 = polygon_extra(t2)
 
-        do i = 1, n_corners
+        do i = 1, num_poly_vertices
           cosrot(k,i) = tr1%ux(i) * tr2%ux(i) + tr1%uy(i) * tr2%uy(i)
           sinrot(k,i) = tr1%ux(i) * tr2%uy(i) - tr1%uy(i) * tr2%ux(i)
         end do
 
-        angrot = atan2(sum(sinrot(k,:)) / n_corners, sum(cosrot(k,:)) / n_corners)
+        angrot = atan2(sum(sinrot(k,:)) / num_poly_vertices, sum(cosrot(k,:)) / num_poly_vertices)
     
-        do i = 1, n_corners
+        do i = 1, num_poly_vertices
           transx(k,i) = matches(k)%t2%vertices(i)%x &
           - (cos(angrot) * matches(k)%t1%vertices(i)%x - sin(angrot) * matches(k)%t1%vertices(i)%y)
           transy(k,i) = matches(k)%t2%vertices(i)%y &
@@ -262,12 +291,12 @@ contains
       end associate
     end do
 
-    cosrotav = sigclip2(sum(cosrot, 2) / n_corners, 3.0_real64)
-    sinrotav = sigclip2(sum(sinrot, 2) / n_corners, 3.0_real64)
+    cosrotav = sigclip2(sum(cosrot, 2) / num_poly_vertices, 3.0_real64)
+    sinrotav = sigclip2(sum(sinrot, 2) / num_poly_vertices, 3.0_real64)
     angrotav = atan2(sinrotav, cosrotav)
 
-    transxav = sigclip2(sum(transx, 2) / n_corners, 3.0_real64)
-    transyav = sigclip2(sum(transy, 2) / n_corners, 3.0_real64)
+    transxav = sigclip2(sum(transx, 2) / num_poly_vertices, 3.0_real64)
+    transyav = sigclip2(sum(transy, 2) / num_poly_vertices, 3.0_real64)
     
 #   ifdef _DEBUG
     print '("AVG", 3x, "X=", f9.1, 3x, "Y=", f9.1, 3x, "a=", f9.1)', transxAv, transyav, angrotav*57.3

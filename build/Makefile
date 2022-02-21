@@ -5,7 +5,7 @@
 #-----------------------------------------------------------------------------#
 FC := gfortran
 # optimization flags
-FFLAGS := -g1 -O3 -funsafe-math-optimizations -march=native -fopenmp
+FFLAGS := -g1 -O3 -funsafe-math-optimizations -fopenmp
 # Fortran language flags (always included)
 FFLAGS_LANG := -fimplicit-none -ffree-line-length-none -std=f2018 -pedantic
 # debugging flags
@@ -53,6 +53,8 @@ TESTS := $(patsubst ../src/test/test_%, test_%, $(basename $(wildcard ../src/tes
 all: $(PROGRAMS)
 debug: $(PROGRAMS)
 debug $(TESTS): FFLAGS := $(FFLAGS_DEBUG)
+native: $(PROGRAMS)
+native: FFLAGS += -march=native
 
 install: all
 	@echo "installing in $(DESTDIR)$(prefix)"

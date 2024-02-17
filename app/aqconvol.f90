@@ -17,8 +17,6 @@ program aqconvol
     call print_help(); stop
   end if
 
-  cfg_verbose_deconvolution = .true.
-
   parse_cli: block
     integer :: i, nargs
     character(len = 256) :: arg(3)

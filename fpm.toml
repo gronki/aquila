@@ -1,0 +1,39 @@
+name = "aquila"
+version = "0.1.0"
+license = "license"
+author = "Dominik Gronkiewicz"
+maintainer = "gronki@gmail.com"
+copyright = "Copyright 2024, Dominik Gronkiewicz"
+
+[build]
+auto-executables = false
+auto-tests = true
+auto-examples = true
+module-naming = false
+link = ["cfitsio", "png"]
+
+[install]
+library = false
+
+[fortran]
+implicit-typing = false
+implicit-external = false
+source-form = "free"
+
+[[executable]]
+name = "aqstack"
+source-dir = "app"
+main = "aqstack.f90"
+
+[[executable]]
+name = "aqlrgb"
+source-dir = "app"
+main = "aqlrgb.F90"
+
+[[executable]]
+name = "aqconvol"
+source-dir = "app"
+main = "aqconvol.f90"
+
+[dependencies]
+# openmp = "*"

@@ -12,8 +12,6 @@ program test_deconvolution
   real(fp), dimension(:,:), allocatable :: k
   real(fp), parameter :: ffz = 0.33
 
-  cfg_verbose_deconvolution = .true.
-
   call img1 % read_fits('deconv.fits')
   call img2 % alloc_zeros(img1)
 

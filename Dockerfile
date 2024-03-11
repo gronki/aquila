@@ -1,18 +1,19 @@
-FROM intel/oneapi-hpckit AS builder
-RUN apt-get update && apt-get install -y libcfitsio-dev libpng-dev && apt-get clean
+FROM debian:bookworm-slim AS builder
+RUN apt-get update && apt-get install -y --no-install-recommends gfortran-12 libcfitsio-dev libpng-dev && apt-get clean
 
 WORKDIR /fpm
 ADD https://github.com/fortran-lang/fpm/releases/download/v0.10.0/fpm-0.10.0.F90 fpm.F90
-RUN ifort -O fpm.F90 -o fpm && install fpm /usr/local/bin/
+RUN gfortran-12 -O fpm.F90 -o fpm && install fpm /usr/local/bin/
 
 WORKDIR /build
 COPY . .
-ENV FPM_FC=ifort
-RUN fpm install --profile release --prefix /build/result
+ENV FPM_FC=gfortran-12
+ENV FPM_FFLAGS="-O3 -funsafe-math-optimizations -g1 -march=haswell -mtune=generic -fopenmp"
+RUN fpm build --verbose && fpm install --prefix /build/result
 
-FROM intel/oneapi-runtime
+FROM debian:bookworm-slim
 
-RUN apt-get update && apt-get install -y libcfitsio9 libpng16-16 && apt-get clean
+RUN apt-get update && apt-get install -y --no-install-recommends libcfitsio10 libpng16-16 libgfortran-12-dev && apt-get clean
 COPY --from=builder /build/result/ /usr/
 
-WORKDIR /home
+WORKDIR /work

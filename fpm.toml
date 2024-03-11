@@ -16,9 +16,8 @@ link = ["cfitsio", "png"]
 library = false
 
 [fortran]
-implicit-typing = false
-implicit-external = false
 source-form = "free"
+implicit-external = true
 
 [[executable]]
 name = "aqstack"
@@ -35,5 +34,5 @@ name = "aqconvol"
 source-dir = "app"
 main = "aqconvol.f90"
 
-[dependencies]
-# openmp = "*"
+#[dependencies]
+#openmp = "*"

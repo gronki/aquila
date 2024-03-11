@@ -5,14 +5,14 @@ WORKDIR /fpm
 ADD https://github.com/fortran-lang/fpm/releases/download/v0.10.0/fpm-0.10.0.F90 fpm.F90
 RUN ifort -O fpm.F90 -o fpm && install fpm /usr/local/bin/
 
-WORKDIR /build
+WORKDIR /source
 COPY . .
 ENV FPM_FC=ifort
-RUN fpm install --profile release --prefix /build/result
+RUN fpm install --profile release --prefix /build
 
 FROM intel/oneapi-runtime
 
 RUN apt-get update && apt-get install -y libcfitsio9 libpng16-16 && apt-get clean
-COPY --from=builder /build/result/ /usr/
+COPY --from=builder /build/ /usr/
 
 WORKDIR /work

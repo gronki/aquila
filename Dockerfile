@@ -5,15 +5,15 @@ WORKDIR /fpm
 ADD https://github.com/fortran-lang/fpm/releases/download/v0.10.0/fpm-0.10.0.F90 fpm.F90
 RUN gfortran-12 -O fpm.F90 -o fpm && install fpm /usr/local/bin/
 
-WORKDIR /build
+WORKDIR /source
 COPY . .
 ENV FPM_FC=gfortran-12
 ENV FPM_FFLAGS="-O3 -funsafe-math-optimizations -g1 -mavx2 -mtune=generic -fopenmp"
-RUN fpm build --verbose && fpm install --prefix /build/result
+RUN fpm build --verbose && fpm install --prefix /build
 
 FROM debian:bookworm-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends libcfitsio10 libpng16-16 libgfortran-12-dev && apt-get clean
-COPY --from=builder /build/result/ /usr/
+COPY --from=builder /build/ /usr/
 
 WORKDIR /work

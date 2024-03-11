@@ -8,7 +8,7 @@ RUN gfortran-12 -O fpm.F90 -o fpm && install fpm /usr/local/bin/
 WORKDIR /build
 COPY . .
 ENV FPM_FC=gfortran-12
-ENV FPM_FFLAGS="-O3 -funsafe-math-optimizations -g1 -march=haswell -mtune=generic -fopenmp"
+ENV FPM_FFLAGS="-O3 -funsafe-math-optimizations -g1 -mavx2 -mtune=generic -fopenmp"
 RUN fpm build --verbose && fpm install --prefix /build/result
 
 FROM debian:bookworm-slim

@@ -3,7 +3,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends gfortran-12 lib
 
 WORKDIR /fpm
 ADD https://github.com/fortran-lang/fpm/releases/download/v0.10.0/fpm-0.10.0.F90 fpm.F90
-RUN gfortran-12 -O fpm.F90 -o fpm && install fpm /usr/local/bin/
+RUN gfortran-12 -O0 fpm.F90 -o fpm && install fpm /usr/local/bin/
 
 WORKDIR /source
 COPY . .

@@ -352,12 +352,14 @@ program aqstack
             error stop 'align method unknown'
           end select
           
-          print '("ALIGN ",a," frame(",i2,") found ",i4," stars")', trim(align_method), i, size(lst)
-          print '(" solution(",i2,") =", *(f8.2))', i, tx % vec
           
           !$omp critical
-          margin = max(margin, check_corners(tx, nx, ny))
+          margin = max(margin, check_corners(tx, nx, ny) + 2)
           !$omp end critical
+          
+          print '("ALIGN ",a," frame(",i2,") found ",i4," stars")', trim(align_method), i, size(lst)
+          print '(" solution(",i2,") =", *(f8.2))', i, tx % vec
+          print '("margin = ", i0)', margin
           
           ! when not resampling, we have only one copy of data, so we copy
           ! each frame to a temporary buffer before projection

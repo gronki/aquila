@@ -7,7 +7,7 @@ RUN ifort -O0 fpm.F90 -o fpm && install fpm /usr/local/bin/
 
 WORKDIR /source
 COPY . .
-ENV FPM_FC=ifort
+ENV FPM_FC=ifx
 ARG FFLAGS="-O2 -g1 -openmp"
 ENV FPM_FFLAGS="${FFLAGS}"
 RUN fpm install --profile release --prefix /build

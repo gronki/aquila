@@ -1,4 +1,4 @@
-FROM debian:bookworm-slim AS builder
+FROM debian:bookworm AS builder
 RUN apt-get update && apt-get install -y --no-install-recommends gfortran-12 libcfitsio-dev libpng-dev && apt-get clean
 
 WORKDIR /fpm
@@ -12,9 +12,11 @@ ARG FFLAGS="-O3 -funsafe-math-optimizations -g1 -fopenmp"
 ENV FPM_FFLAGS="${FFLAGS}"
 RUN fpm build --verbose && fpm install --prefix /build
 
-FROM debian:bookworm-slim
+FROM debian:bookworm
 
-RUN apt-get update && apt-get install -y --no-install-recommends libcfitsio10 libpng16-16 libgfortran-12-dev && apt-get clean
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends libcfitsio10 libpng16-16 libgfortran5 libgomp1 && \
+    apt-get clean
 COPY --from=builder /build/ /usr/
 
 WORKDIR /work

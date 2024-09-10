@@ -1,6 +1,6 @@
 name = "aquila"
-version = "0.1.0"
-license = "license"
+version = "210111"
+license = "BSD 3-clause"
 author = "Dominik Gronkiewicz"
 maintainer = "gronki@gmail.com"
 copyright = "Copyright 2024, Dominik Gronkiewicz"

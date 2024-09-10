@@ -8,11 +8,9 @@ RUN gfortran-12 -O0 fpm.F90 -o fpm && install fpm /usr/local/bin/
 
 WORKDIR /source
 
-ENV VERSION="210111"
+ENV VERSION="unknown"
 ENV DEP_PACKAGES="libcfitsio10, libpng16-16, libgomp1, libgfortran5"
 ENV FPM_FC=gfortran-12
-ENV FFLAGS="-O3 -funsafe-math-optimizations -g1 -fopenmp"
-ENV FPM_FFLAGS="${FFLAGS}"
 
 RUN mkdir -p /result
 

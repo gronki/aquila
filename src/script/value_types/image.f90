@@ -1,7 +1,7 @@
 module image_m
 
     use iso_fortran_env, only: real32
-    use value_base_m
+    use value_m
     implicit none (type, external)
     private
 

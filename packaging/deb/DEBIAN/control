@@ -2,7 +2,7 @@ Package: aquila
 Version:
 Section: science
 Priority: optional
-Architecture: amd64
+Architecture:
 Maintainer: Dominik Gronkiewicz <gronki@gmail.com>
 Depends:
 Description: A short description of your program

@@ -13,11 +13,11 @@ if [ ! -f "$DOCKERFILE_PATH" ]; then
 fi
 
 if [ -z "$(docker images -q "$IMAGE_NAME"  2> /dev/null)" ]; then
-    docker build -t "$IMAGE_NAME" -f "$DOCKERFILE_PATH" .
+    docker build --pull -t "$IMAGE_NAME" -f "$DOCKERFILE_PATH" .
 fi
 
 FFLAGS="-O3 -g1 -funsafe-math-optimizations -fopenmp"
-if [ $(arch) -eq x86_64 ]; then
+if [ $(arch) == x86_64 ]; then
     FFLAGS="$FFLAGS -mavx2"
 fi
 
@@ -25,8 +25,9 @@ docker run -it --rm \
     -u $(id -u):$(id -g) \
     -e DISTRO="${DISTRO:?}" \
     -e FPM_FFLAGS="$FFLAGS" \
-    -e VERSION=210111 \
-    -e ARCH="$(arch)" \
+    -e VERSION=$(grep 'parameter :: version' src/globals.F90 | cut -d\' -f2) \
     -v $(pwd):/source \
+    -v $(mktemp -d):/source/build \
     -v $(pwd)/packaging:/result \
+    --workdir /source \
     "$IMAGE_NAME"

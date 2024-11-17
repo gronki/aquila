@@ -39,9 +39,7 @@ name = "aqconvol"
 source-dir = "app"
 main = "aqconvol.f90"
 
-#[dependencies]
-#openmp = "*"
-
 [dependencies]
-fastconv.git = "https://github.com/gronki/fastconv.git"
-aq2_task_dispatch.git = "https://github.com/gronki/task-dispatch.git"
+openmp = "*"
+fastconv = {path = "deps/fastconv"}
+aq2_task_dispatch = {path = "deps/task-dispatch"}

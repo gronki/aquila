@@ -34,5 +34,5 @@ name = "aqconvol"
 source-dir = "app"
 main = "aqconvol.f90"
 
-#[dependencies]
-#openmp = "*"
+[dependencies]
+openmp = "*"

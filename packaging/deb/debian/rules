@@ -1,0 +1,25 @@
+#!/usr/bin/make -f
+
+# Use debhelper with a specified compatibility level
+%:
+	dh $@
+
+# Set the compiler flags (based on your .spec customizations)
+# FFLAGS += $(shell dpkg-buildflags --get FFLAGS)
+FPM_FFLAGS := $(shell dpkg-buildflags --get FFLAGS)
+FPM_FFLAGS += -fno-lto -O3 -funsafe-math-optimizations -faggressive-function-elimination -g
+
+# Architecture-specific flags
+ifeq ($(DEB_HOST_ARCH), amd64)
+    FPM_FFLAGS += -mavx2
+endif
+
+export FPM_FFLAGS
+
+# Override the build and install targets to match the .spec file behavior
+override_dh_auto_build:
+	$(FPM_FC) fpm.F90 -O0 -o fpm
+
+override_dh_auto_install:
+	./fpm install --verbose --profile release --prefix $(CURDIR)/debian/aquila/usr
+

@@ -1,3 +1,5 @@
 *.deb
 *.rpm
 rpm/rpmbuild
+deb/result
+*.tar.gz

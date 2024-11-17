@@ -1,9 +1,0 @@
-Package: aquila
-Version:
-Section: science
-Priority: optional
-Architecture:
-Maintainer: Dominik Gronkiewicz <gronki@gmail.com>
-Depends:
-Description: A short description of your program
- A longer description of your program.

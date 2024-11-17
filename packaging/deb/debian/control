@@ -1,0 +1,15 @@
+Source: aquila
+Section: science
+Priority: optional
+Maintainer: Dominik Gronkiewicz <gronki@gmail.com>
+Homepage: https://github.com/gronki/aquila
+Build-Depends: debhelper-compat (= 12), gfortran-14, libcfitsio-dev, libpng-dev
+Standards-Version: 4.5.0
+Rules-Requires-Root: no
+
+Package: aquila
+Version: 210111
+Architecture: any
+Depends: libcfitsio10, libpng16-16, libgomp1, libgfortran5
+Description: A short description of your program
+ A longer description of your program.

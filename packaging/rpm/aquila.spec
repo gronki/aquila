@@ -7,8 +7,8 @@ License:        MIT
 URL:            https://github.com/gronki/aquila
 Source0:        aquila-%{version}.tar.gz
 
-BuildRequires:  cfitsio-devel libpng-devel
-Requires:       cfitsio libpng
+BuildRequires:  gcc-fortran cfitsio-devel libpng-devel
+Requires:       libgfortran cfitsio libpng
 
 %description
 command-line utilities for astronomical image processing
@@ -18,16 +18,14 @@ command-line utilities for astronomical image processing
 
 %build
 %set_build_flags
-export FPM_FFLAGS="${FPM_FFLAGS} -g"
-fpm clean --all
-fpm build
-pwd
+gfortran -O0 fpm.F90 -o fpm
 
 %install
 rm -rf "%{buildroot}"
-pwd
-export FPM_FFLAGS="${FPM_FFLAGS} -g"
-fpm install --no-rebuild --prefix "%{buildroot}%{_prefix}"
+FPM_FFLAGS="${FCFLAGS} -fno-lto -O3 -funsafe-math-optimizations -faggressive-function-elimination -g"
+[ $(arch) == "x86_64" ] && FPM_FFLAGS="${FPM_FFLAGS} -mavx2"
+export FPM_FFLAGS
+./fpm install --verbose --profile release --prefix "%{buildroot}%{_prefix}"
 
 %files
 #%license LICENSE

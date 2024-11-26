@@ -1,0 +1,6 @@
+DOCKERFILE_PATH="packaging/rpm/tumbleweed/Dockerfile"
+IMAGE_NAME="opensuse/tumbleweed"
+IMAGE_TAG="latest"
+FC="gfortran-14"
+REQUIRES="libgfortran5 cfitsio libpng16-16"
+BUILD_REQUIRES="gcc14-fortran cfitsio-devel libpng16-devel"

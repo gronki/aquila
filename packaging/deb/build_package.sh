@@ -18,7 +18,7 @@ docker build --pull -t "$IMAGE_NAME" \
     --build-arg ARG_DISTRO="$DISTRO" \
     --build-arg ARG_DISTRO_VERSION="$DISTRO_VERSION" \
     --build-arg ARG_GCC_VERSION="$GCC_VERSION" \
-    --build-arg ARG_DEP_PACKAGES="$DEP_PACKAGES" \
+    --build-arg ARG_REQUIRES="$REQUIRES" \
     .
     # --build-arg MY_UID=$(id -u) \
     # --build-arg MY_GID=$(id -g) \

@@ -25,8 +25,8 @@ VOLUME ["/source"]
 
 ENV DISTRO=${ARG_DISTRO}
 ENV DISTRO_VERSION=${ARG_DISTRO_VERSION}
-ARG ARG_DEP_PACKAGES="libcfitsio10, libpng16-16, libgomp1, libgfortran5"
-ENV DEP_PACKAGES=${ARG_DEP_PACKAGES}
+ARG ARG_REQUIRES="libcfitsio10, libpng16-16, libgomp1, libgfortran5"
+ENV REQUIRES=${ARG_REQUIRES}
 ENV FPM_FC="gfortran-${ARG_GCC_VERSION}"
 ENV VERSION="unknown"
 

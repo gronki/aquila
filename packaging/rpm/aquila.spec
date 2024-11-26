@@ -3,10 +3,11 @@ Version:        210111
 Release:        1%{?dist}
 Summary:        aquila
 
-License:        MIT
+License:        BSD 3-clause
 URL:            https://github.com/gronki/aquila
 Source0:        aquila-%{version}.tar.gz
 
+# below dependencies are for Fedora
 BuildRequires:  gcc-fortran cfitsio-devel libpng-devel
 Requires:       libgfortran cfitsio libpng
 
@@ -18,7 +19,7 @@ command-line utilities for astronomical image processing
 
 %build
 %set_build_flags
-gfortran -O0 fpm.F90 -o fpm
+${FC} -O0 fpm.F90 -o fpm
 
 %install
 rm -rf "%{buildroot}"

@@ -15,7 +15,7 @@ program test_hotpixel
 
   ! test: find hot
 
-  call find_hot(im % data, m)
+  call find_hot(im % data, 3.0_fp, m)
 
   ! test: write/read
 

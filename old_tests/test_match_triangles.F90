@@ -14,7 +14,7 @@ program test_matchriangles
 
   character(len=256) :: fn1, fn2
   type(extended_source), allocatable :: ls1(:), ls2(:)
-  type(triangle), allocatable :: t1(:), t2(:)
+  type(polygon), allocatable :: t1(:), t2(:)
   integer :: nmax = 32
   
   if (command_argument_count() /= 2) stop 'supply 2 FITS filenames'
@@ -38,7 +38,7 @@ program test_matchriangles
 
   block
     real(real64) :: cosrotav, sinrotav, angrotav, transxav, transyav
-    type(triangle_match) :: matches(12)
+    type(polygon_match) :: matches(12)
 
     call match_triangles(t1, t2, matches)
     call process_best_matches(matches, transxav, transyav, angrotav)

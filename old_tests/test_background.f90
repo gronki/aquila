@@ -26,7 +26,7 @@ program background
 
   main: block
 
-    use statistics, only: outliers, quickselect, sigstd
+    use statistics, only: outliers, quickselect, avsd
 
     integer, parameter :: mrad = 15
     real(fp), dimension(4 * mrad**2 + 4 * mrad + 1) :: k
@@ -61,8 +61,7 @@ program background
                   imo => imout(max(i, 1) : min(i + nb - 1, ni),     &
                                max(j, 1) : min(j + nb - 1, nj), :))
             associate (n => size(imc))
-              call outliers(imc, 5.0_fp, 16, mskc)
-              call sigstd(imc, mean, stdev)
+              call outliers(imc, mskc, 5.0_fp, 16, mean, stdev)
               imo(:,:,2) = imc(:,:) - mean
               ! imo(:,:,3) = imc(:,:) - (mean + stdev)
               k(1:n) = reshape(imc, [n])

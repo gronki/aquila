@@ -1,0 +1,16 @@
+ARG UBUNTU_TAG=22.04
+FROM ubuntu:${UBUNTU_TAG} AS builder
+
+ARG GCC_VERSION=12
+
+ENV FPM_FC=gfortran-${GCC_VERSION}
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git gfortran-${GCC_VERSION} libcfitsio-dev libpng-dev && apt-get clean
+
+WORKDIR /fpm
+ADD https://github.com/fortran-lang/fpm/releases/download/v0.11.0/fpm-0.11.0.F90 fpm.F90
+RUN ${FPM_FC} -O0 fpm.F90 -o fpm && install fpm /usr/local/bin/
+
+WORKDIR /source

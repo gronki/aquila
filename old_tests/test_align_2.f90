@@ -61,12 +61,12 @@ program test_align_2
     use new_align
     type(transform_xyr_t) :: v
 
-    v % r0 = 500
+    v % scale = 500
     call cpu_time(t1)
-    call align2(stars0, stars1, v)
+    call align2(stars0, stars1, v, 2.0_fp)
     call cpu_time(t2)
 
-    print '(a12,2f9.3,es12.3)', 'MODERN =', v % vec(1:2), v % vec(3) / v % r0
+    print '(a12,2f9.3,es12.3)', 'MODERN =', v % vec(1:2), v % vec(3) / v % scale
     write (0, '("PERF =", f9.3)') t2 - t1
   end block test_new
 

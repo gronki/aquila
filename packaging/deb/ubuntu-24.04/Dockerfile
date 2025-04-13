@@ -1,9 +1,9 @@
-FROM ubuntu:22.04 AS builder
+FROM ubuntu:24.04 AS builder
 
-ENV FPM_FC=gfortran-12
+ENV FPM_FC=gfortran-14
 ENV DEBIAN_FRONTEND=noninteractive
 
-RUN apt-get update && apt-get install -y --no-install-recommends git gfortran-12 libcfitsio-dev libpng-dev && apt-get clean
+RUN apt-get update && apt-get install -y --no-install-recommends git gfortran-14 libcfitsio-dev libpng-dev && apt-get clean
 
 WORKDIR /fpm
 ADD https://github.com/fortran-lang/fpm/releases/download/v0.11.0/fpm-0.11.0.F90 fpm.F90

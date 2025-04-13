@@ -2,13 +2,10 @@ program test_align
 
   use transforms
   use globals
+  use findstar
   implicit none
 
-  type :: star
-    real(fp) :: x, y, v
-  end type
-
-  type(star), dimension(:), allocatable :: stars1, stars2
+  type(source), dimension(:), allocatable :: stars1, stars2
 
   call random_seed()
 
@@ -26,7 +23,7 @@ program test_align
     stars1(:) % y = 1 + x(:) * 767
 
     call random_number(x)
-    stars1(:) % v = exp(x(:) * log(100.0))
+    stars1(:) % flux = exp(x(:) * log(100.0))
 
   end block generate_stars
 
@@ -57,7 +54,7 @@ contains
     allocate(xy1(size(xy)))
 
     call t % apply(xy(:) % x, xy(:) % y, xy1(:) % x, xy1(:) % y)
-    xy1(:) % v = xy(:) % v
+    xy1(:) % flux = xy(:) % flux
 
     do i0 = 1, size(xy0)
       do i1 = 1, size(xy1)
@@ -65,7 +62,7 @@ contains
         aa = sqrt((xy1(i1) % x - xy0(i0) % x)**2 &
         &       + (xy1(i1) % y - xy0(i0) % y)**2 + k0**2 )
 
-        bb = sqrt(xy0(i0) % v * xy1(i1) % v) * k0
+        bb = sqrt(xy0(i0) % flux * xy1(i1) % flux) * k0
 
         U = U + bb / aa
         U_dx1 = - (xy1(i1) % x - xy0(i0) % x) * bb / aa**3

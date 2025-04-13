@@ -13,7 +13,7 @@ if [ ! -f "$DOCKERFILE_PATH" ]; then
     exit 1
 fi
 
-if [ -z "${DOCKER} images -q ${IMAGE_NAME}" ]; then
+if [ -z "$(${DOCKER} images -q ${IMAGE_NAME})" ]; then
     ${DOCKER} build -t "$IMAGE_NAME" -f "$DOCKERFILE_PATH" .
 fi
 
@@ -22,5 +22,6 @@ ${DOCKER} run -it --rm \
     -e VERSION=210111 \
     -e ARCH="x86_64" \
     -v $(pwd):/source \
+    -v $(mktemp -d):/source/build \
     -v $(pwd)/packaging:/result \
     "$IMAGE_NAME"

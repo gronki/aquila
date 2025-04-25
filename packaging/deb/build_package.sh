@@ -13,9 +13,7 @@ if [ ! -f "$DOCKERFILE_PATH" ]; then
     exit 1
 fi
 
-if [ -z "$(${DOCKER} images -q ${IMAGE_NAME})" ]; then
-    ${DOCKER} build -t "$IMAGE_NAME" -f "$DOCKERFILE_PATH" .
-fi
+${DOCKER} build -t "$IMAGE_NAME" -f "$DOCKERFILE_PATH" .
 
 ${DOCKER} run -it --rm \
     -e DISTRO="${DISTRO:?}" \

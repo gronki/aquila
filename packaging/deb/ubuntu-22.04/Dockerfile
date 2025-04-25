@@ -12,7 +12,7 @@ RUN ${FPM_FC} -O0 fpm.F90 -o fpm && install fpm /usr/local/bin/
 WORKDIR /source
 
 ENV VERSION="unknown"
-ENV DEP_PACKAGES="libcfitsio10, libpng16-16, libgfortran5, libgomp1"
+ENV DEP_PACKAGES="libcfitsio9, libpng16-16, libgfortran5, libgomp1"
 ENV FPM_FFLAGS="-O3 -funsafe-math-optimizations -g1 -fopenmp -mavx2"
 ENV FPM_LDFLAGS=""
 

@@ -4,7 +4,9 @@ use operation_m
 use value_m
 use str_value_m
 use legacy_frame_value_m
+use image_frame_m
 use input_args_m
+use framehandling
 
 implicit none (type, external)
 private
@@ -21,36 +23,57 @@ public :: load_legacy_frame_op_t
 contains
 
 subroutine exec_one(op, inputs, output, err)
-    class(load_legacy_frame_op_t), intent(in) :: op !! operation
-    type(value_ref_t), intent(in) :: inputs(:) !! operation inputs
-    class(value_t), intent(out), allocatable :: output !! output/result
-    type(err_t), intent(inout) :: err !! error
-    real(kind=f64) :: x, exponent
-    character(len=:), allocatable :: fn
- 
-    call parse_str(inputs(1) % value, to=fn, err=err)
-    if (check(err)) return
- 
-    
- 
- end subroutine
- 
- pure function name() 
-    character(len=32) :: name
- 
-    name = "load_frame"
- end function
- 
- pure subroutine get_info(argspec, help)
-    type(arg_entry_t), intent(out), allocatable, optional :: argspec(:)
-    character(len=:), intent(out), allocatable, optional :: help
- 
-    if (present(argspec)) &
-       argspec = [ arg_entry_t(pos=1, name="file") ]
- 
-    if (present(help)) &
-       help = "Loads FITS file into legacy frame object."
- 
- end subroutine
+   class(load_legacy_frame_op_t), intent(in) :: op !! operation
+   type(value_ref_t), intent(in) :: inputs(:) !! operation inputs
+   class(value_t), intent(out), allocatable :: output !! output/result
+   type(err_t), intent(inout) :: err !! error
+
+   character(len=:), allocatable :: fn
+   type(legacy_frame_value_t), allocatable, target :: result
+   integer :: nx, ny, errno
+   real(kind=img_k), allocatable :: frame
+
+   errno = 0
+
+   call parse_str(inputs(1) % value, to=fn, err=err)
+   if (check(err)) return
+
+   call read_fits_naxes(fn, nx, ny, errno)
+   if (errno /= 0) then
+      call seterr(err, "reading image dimension of file " // fn // " failed")
+      return
+   end if
+
+   allocate(result)
+   allocate(result % data(nx, ny))
+   result % frame % data => result % data
+   call result % frame % read_fits(fn, errno)
+
+   if (errno /= 0) then
+      call seterr(err, "reading FITS image file " // fn // " failed")
+      return
+   end if
+
+   call move_alloc(result, output)
+
+end subroutine
+
+pure function name()
+   character(len=32) :: name
+
+   name = "load_frame"
+end function
+
+pure subroutine get_info(argspec, help)
+   type(arg_entry_t), intent(out), allocatable, optional :: argspec(:)
+   character(len=:), intent(out), allocatable, optional :: help
+
+   if (present(argspec)) &
+      argspec = [ arg_entry_t(pos=1, name="file") ]
+
+   if (present(help)) &
+      help = "Loads FITS file into legacy frame object."
+
+end subroutine
 
 end module

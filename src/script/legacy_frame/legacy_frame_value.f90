@@ -13,7 +13,7 @@ module legacy_frame_value_m
         procedure :: to_str => image_to_str
     end type
 
-    public :: legacy_frame_value_t
+    public :: legacy_frame_value_t, img_k
 
 contains
 
@@ -23,7 +23,7 @@ contains
         character(len=64) :: buf
         character(len=:), allocatable :: str
 
-        if (allocated(value%data)) then
+        if (.not. allocated(value%data)) then
             str = "<empty legacy image frame>"
             return
         end if

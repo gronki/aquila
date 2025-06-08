@@ -58,10 +58,10 @@ program aqstack
   actual_job: block
 
     type(image_frame_t), dimension(:), allocatable :: frames
-    real(fp), allocatable, target :: buffer(:,:,:)
     type(image_frame_t) :: frame_bias, frame_dark, frame_flat
     logical, allocatable :: fix_mask(:,:)
     integer :: i, errno
+    real(fp), allocatable :: buffers_to_stack(:,:,:)
     integer :: nx, ny
 
 
@@ -78,7 +78,7 @@ program aqstack
         call frame_dark % read_fits(dark_fn)
         print '(a12,": ",a)', 'dark', trim(dark_fn)
 
-        if (cfg_dark_is_dirty .and. associated(frame_bias % data)) then
+        if (cfg_dark_is_dirty .and. allocated(frame_bias % data)) then
           frame_dark%data = frame_dark%data - frame_bias%data
           cfg_dark_is_dirty = .false.
           print '(a)', 'dark was dirty but now is clean'
@@ -152,22 +152,8 @@ program aqstack
 
       errno = 0
 
-      if (i == 1) then
-        call read_fits_naxes(input_fn(i), nx, ny, errno)
+      associate (cur_frame => frames(i))
 
-        if (errno /= 0) then
-          print '("problem opening file: ", a)', trim(input_fn(i))
-          cycle read_frames_loop
-        end if
-
-        allocate(buffer(nx, ny, nframes))
-
-      end if
-
-      associate (cur_frame => frames(i), cur_buffer => buffer(:,:,i))
-
-        cur_frame % data => cur_buffer
-        call cur_frame % hdr % erase()
         call cur_frame % read_fits(input_fn(i), errno)
 
         if (errno /= 0) then
@@ -175,11 +161,24 @@ program aqstack
           error stop
         end if
 
-        if (associated(frame_bias % data)) then
-          cur_buffer(:,:) = cur_buffer(:,:) - frame_bias % data(:,:)
+        if (i == 1) then
+          nx = size(cur_frame % data, 1)
+          ny = size(cur_frame % data, 2)
         end if
 
-        if (associated(frame_dark % data) .and. .not. cfg_correct_hot_only) then
+        if (any(shape(cur_frame % data) /= [nx, ny])) &
+            error stop "images have different dimensions"
+
+        if (allocated(frame_bias % data)) then
+          if (any(shape(cur_frame % data) /= shape(frame_bias % data))) &
+            error stop "image and bias frame have different dimensions"
+          cur_frame % data(:,:) = cur_frame % data(:,:) - frame_bias % data(:,:)
+        end if
+
+        if (allocated(frame_dark % data) .and. .not. cfg_correct_hot_only) then
+
+          if (any(shape(cur_frame % data) /= shape(frame_dark % data))) &
+            error stop "image and dark frame have different dimensions"
 
           ! perform dark scaling for only clean dark (without bias)
           if (.not. cfg_dark_is_dirty) then
@@ -201,7 +200,7 @@ program aqstack
                 
                 ! we remove hotpixels before optimization
                 if (allocated(fix_mask)) then
-                  call fix_hot(cur_buffer, fix_mask)
+                  call fix_hot(cur_frame % data, fix_mask)
                 else
                   error stop 'enable hotpixels please'
                 end if
@@ -209,11 +208,11 @@ program aqstack
                 if (darkopt_sigma > 0) then
                   allocate(darkopt_msk(nx, ny))
                   darkopt_msk(:,:) = .true.
-                  call outliers(cur_buffer, darkopt_msk, darkopt_sigma, 10, av, sd)
+                  call outliers(cur_frame % data, darkopt_msk, darkopt_sigma, 10, av, sd)
                   print '(f0.1, "% used for dark optimization")', real(count(darkopt_msk)) / (nx * ny) * 100
-                  call optimize_dark_frame_fast(cur_buffer, frame_dark%data, a, darkopt_msk)
+                  call optimize_dark_frame_fast(cur_frame % data, frame_dark%data, a, darkopt_msk)
                 else
-                  call optimize_dark_frame_fast(cur_buffer, frame_dark%data, a)
+                  call optimize_dark_frame_fast(cur_frame % data, frame_dark%data, a)
                 end if
 
                 if (a < 0) a = 0
@@ -221,30 +220,32 @@ program aqstack
               end if 
               
               write (*, '(a, f10.3)') 'dark scaling=', a
-              cur_buffer(:,:) = cur_buffer(:,:) - a * frame_dark%data(:,:)
+              cur_frame % data(:,:) = cur_frame % data(:,:) - a * frame_dark%data(:,:)
             end block dark_scaling
           else
             ! dark is dirty = no bias was given. subtract without scaling
-            cur_buffer(:,:) = cur_buffer(:,:) - frame_dark%data(:,:)
+            cur_frame % data(:,:) = cur_frame % data(:,:) - frame_dark%data(:,:)
           end if
         end if
           
-        if (associated(frame_flat % data)) then
-          cur_buffer(:,:) = cur_buffer(:,:) / frame_flat % data(:,:)
+        if (allocated(frame_flat % data)) then
+          if (any(shape(cur_frame % data) /= shape(frame_flat % data))) &
+            error stop "image and flat frame have different dimensions"
+          cur_frame % data(:,:) = cur_frame % data(:,:) / frame_flat % data(:,:)
         end if
 
-        where (.not. ieee_is_normal(cur_buffer)) cur_buffer = 0
+        where (.not. ieee_is_normal(cur_frame % data)) cur_frame % data = 0
         
         ! fix hot pixels second time (post-flatfield)
         if (allocated(fix_mask)) then
-          call fix_hot(cur_buffer, fix_mask)
+          call fix_hot(cur_frame % data, fix_mask)
         end if
 
         ! print some frame statistics for quick check
         frame_stats: block
           real(fp) :: avg, std
 
-          call avsd(cur_buffer, avg, std)
+          call avsd(cur_frame % data, avg, std)
 
           print '(a32, f9.1, f7.1, f9.2)', trim(input_fn(i)), &
           &     avg, std, cur_frame % hdr % get_real('EXPTIME')
@@ -275,7 +276,6 @@ program aqstack
       align_frames: block
         use new_align
         use polygon_matching, only: find_transform_polygons
-        real(fp), allocatable :: buf_copy(:,:), buffer_resample(:,:,:)
         type(extended_source), dimension(:), allocatable :: lst0, lst
         integer :: i, istart
         class(transform_xyr_t), allocatable :: tx
@@ -286,10 +286,10 @@ program aqstack
 
         if (cfg_resampling) then
           print '("WARNING ", a)', 'resampling may require a lot of memory'
-          allocate(buffer_resample(nint(resample_factor * nx), nint(resample_factor * ny), nframes))
-          buffer_resample(:,:,:) = 0
+          allocate(buffers_to_stack(nint(resample_factor * nx), nint(resample_factor * ny), nframes))
+          buffers_to_stack(:,:,:) = 0
         else
-          allocate(buf_copy(nx, ny))
+          allocate(buffers_to_stack(nx, ny, nframes))
         end if
 
         if (ref_fn /= "") then
@@ -298,7 +298,6 @@ program aqstack
 
             call imref % read_fits(ref_fn)
             call register_stars(imref % data(:,:), lst0)
-            call imref % destroy
 
             istart = 1
           end block read_ref_frame
@@ -308,11 +307,12 @@ program aqstack
 
             ity = transform_xyr_t(scale=r0)
 
-            call register_stars(buffer(:,:,1), lst0)
+            call register_stars(frames(1) % data, lst0)
 
             if (cfg_resampling) then
-              ! scale the first frame
-              call ity % project(buffer(:,:,1), buffer_resample(:,:,1), resample_factor)
+              call ity % project(frames(1) % data, buffers_to_stack(:,:,1), resample_factor)
+            else
+              call ity % project(frames(1) % data, buffers_to_stack(:,:,1))
             end if
 
             istart = 2
@@ -320,12 +320,12 @@ program aqstack
         end if
 
         call cpu_time(t1)
-        !$omp parallel do private(i, lst, buf_copy, tx)
+        !$omp parallel do private(i, lst, tx) shared(buffers_to_stack)
         do i = istart, nframes
           tx = transform_xyr_t(scale=r0)
 
           ! register the stars
-          call register_stars(buffer(:,:,i), lst)
+          call register_stars(frames(i) % data, lst)
           
           select case (align_method)
 
@@ -361,14 +361,10 @@ program aqstack
           print '(" solution(",i2,") =", *(f8.2))', i, tx % vec
           print '("margin = ", i0)', margin
           
-          ! when not resampling, we have only one copy of data, so we copy
-          ! each frame to a temporary buffer before projection
-          if (.not. cfg_resampling) then
-            buf_copy(:,:) = buffer(:,:,i)
-            buffer(:,:,i) = 0
-            call tx % project(buf_copy, buffer(:,:,i))
+          if (cfg_resampling) then
+            call tx % project(frames(i) % data, buffers_to_stack(:,:,i), resample_factor)
           else
-            call tx % project(buffer(:,:,i), buffer_resample(:,:,i), resample_factor)
+            call tx % project(frames(i) % data, buffers_to_stack(:,:,i))
           end if
 
           deallocate(tx)
@@ -377,20 +373,12 @@ program aqstack
         call cpu_time(t2)
         print perf_fmt, 'align', t2 - t1
 
-        ! if resampling was performed, replace the normal buffer with resampled
-        if (cfg_resampling) then
-          deallocate(buffer)
-          call move_alloc(buffer_resample, buffer)
-          do i = 1, nframes
-            frames(i) % data => buffer(:,:,i)
-          end do
-        end if
       end block align_frames
     end if
 
     if (cfg_normalize) then
       call cpu_time(t1)
-      call normalize_offset_gain(buffer(:, :, 1:nframes), margin)
+      call normalize_offset_gain(buffers_to_stack(:, :, 1:nframes), margin)
       call cpu_time(t2)
       print perf_fmt, 'norm', t2 - t1
     end if
@@ -415,7 +403,7 @@ program aqstack
         end if
       end block save_processed
     else
-      call stack_and_write(strategy, method, frames(1:nframes), buffer(:, :, 1:nframes), output_fn)
+      call stack_and_write(strategy, method, frames(1:nframes), buffers_to_stack(:, :, 1:nframes), output_fn)
     end if
 
   end block actual_job

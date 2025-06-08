@@ -10,7 +10,6 @@ program aqlrgb
   character(len = 16) :: curve = "", sharpen = ''
   logical :: is_lrgb = .false.
   character(len = 256), allocatable :: fnames(:)
-  real(fp), allocatable, target :: cube(:,:,:)
   logical :: cfg_equalize = .false.
   logical :: cfg_color_smooth = .false.
   logical :: cfg_save_cube = .true.
@@ -170,24 +169,22 @@ program aqlrgb
   is_lrgb = (size(fnames) == 4)
 
   do_rgb: block
-    type(image_frame_t) :: frame_r, frame_g, frame_b, frame_l
+    type(image_frame_t) :: frames(4)
+    integer :: nch, ich
+
+    associate(frame_l => frames(4), frame_r=> frames(1), frame_g => frames(2), frame_b => frames(3))
 
     call read_fits_naxes(fnames(1), nx, ny)
-    allocate(cube(nx, ny, merge(4, 3, is_lrgb)))
-
-    if (is_lrgb) then
-      frame_l % data => cube(:,:,4)
-      call frame_l % read_fits(fnames(1))
-    end if
-
-    frame_r % data => cube(:,:,1)
+    nch = merge(4, 3, is_lrgb)
+    
+    if (is_lrgb) call frame_l % read_fits(fnames(1))
     call frame_r % read_fits(fnames(merge(2, 1, is_lrgb)))
-    frame_g % data => cube(:,:,2)
     call frame_g % read_fits(fnames(merge(3, 2, is_lrgb)))
-    frame_b % data => cube(:,:,3)
     call frame_b % read_fits(fnames(merge(4, 3, is_lrgb)))
 
-    where (.not. ieee_is_normal(cube)) cube = 0
+    do ich = 1, nch
+      where (.not. ieee_is_normal(frames(ich) % data)) frames(ich) % data = 0
+    end do
 
     if (cfg_equalize .or. cfg_background) then
       perform_equalize: block
@@ -195,18 +192,17 @@ program aqlrgb
         use ieee_arithmetic, only: ieee_is_normal
         logical, dimension(:,:), allocatable :: mask, maskbg
         real(fp), dimension(:,:), allocatable :: L
-        integer :: i, j, sz(3)
+        integer :: i, j
         real(fp) :: coeff, av, sd, bg_off
-        real(fp), dimension(size(cube, 3)) :: bg, sg
+        real(fp), dimension(nch) :: bg, sg
         real(fp), parameter :: a = 2.0, b = 0.5
 
-        sz = shape(cube)
 
-        allocate(mask(sz(1), sz(2))); mask(:,:) = .true.
+        allocate(mask(nx, ny), source=.true.)
         mask(1:margin, :) = .false.
-        mask(sz(1) - margin + 1:, :) = .false.
+        mask(nx - margin + 1:, :) = .false.
         mask(:, 1:margin) = .false.
-        mask(:, sz(2) - margin + 1:) = .false.
+        mask(:, ny - margin + 1:) = .false.
         maskbg = mask
 
         L = Lum(frame_r % data, frame_g % data, frame_b % data)
@@ -218,8 +214,8 @@ program aqlrgb
 
         deallocate(L)
 
-        do i = 1, size(cube, 3)
-          call avsd(cube(:,:,i), maskbg, av, sg(i))
+        do i = 1, nch
+          call avsd(frames(i) % data, maskbg, av, sg(i))
           bg(i) = av - a * sg(i)
         end do
 
@@ -233,13 +229,13 @@ program aqlrgb
         write(*, '(a10, " = ", *(f6.1))') 'sigma', sg
 
         if ( cfg_background ) then
-          frame_r % data = frame_r % data - (bg(1) - bg_off)
-          frame_g % data = frame_g % data - (bg(2) - bg_off)
-          frame_b % data = frame_b % data - (bg(3) - bg_off)
+          do ich = 1, 3
+            frames(ich) % data = frames(ich) % data - (bg(ich) - bg_off)
+          end do
 
-          do i = 1, size(cube, 3)
-            ! cube(:,:,i) = cube(:,:,i) - (bg(i) - bg_off)
-            call avsd(cube(:,:,i), maskbg, av, sg(i))
+          do i = 1, nch
+            ! frames(i) % data = frames(i) % data - (bg(i) - bg_off)
+            call avsd(frames(i) % data, maskbg, av, sg(i))
             bg(i) = av - a * sg(i)
           end do
 
@@ -252,13 +248,13 @@ program aqlrgb
           associate (x => frame_g % data - bg(2), y => frame_r % data - bg(1))
             coeff = sum(x * y, mask) / sum(x**2, mask)
             print '("R:G = ", f8.3)', coeff
-            frame_r % data = bg(1) + (frame_r % data - bg(1)) / coeff
+            frame_r % data = bg(1) + y / coeff
           end associate
 
           associate (x => frame_g % data - bg(2), y => frame_b % data - bg(3))
             coeff = sum(x * y, mask) / sum(x**2, mask)
             print '("B:G = ", f8.3)', coeff
-            frame_b % data = bg(3) + (frame_b % data - bg(3)) / coeff
+            frame_b % data = bg(3) + y / coeff
           end associate
         end if
       end block perform_equalize
@@ -268,8 +264,8 @@ program aqlrgb
       perform_color_smooth: block
         real(fp), dimension(:,:), allocatable :: krn, buf
 
-        if (.not. associated(frame_l % data)) then
-          call frame_l%copy(Lum(frame_r % data, frame_g % data, frame_b % data))
+        if (.not. allocated(frame_l % data)) then
+          frame_l % data = Lum(frame_r % data, frame_g % data, frame_b % data)
         end if
 
         krn = gausskrn_alloc(smooth_fwhm)
@@ -296,8 +292,8 @@ program aqlrgb
         real(fp), allocatable :: krn(:,:), lum2(:,:)
         integer :: i
 
-        if (.not. associated(frame_l % data)) then
-          call frame_l%copy(Lum(frame_r % data, frame_g % data, frame_b % data))
+        if (.not. allocated(frame_l % data)) then
+          frame_l%data = Lum(frame_r % data, frame_g % data, frame_b % data)
         end if
         allocate(lum2, mold = frame_l % data)
 
@@ -327,12 +323,12 @@ program aqlrgb
     end if
 
     ! if (curve /= '' .and. cfg_transf_lum) then
-    !   if (.not. associated(frame_l % data)) then
+    !   if (.not. allocated(frame_l % data)) then
     !     frame_l = Lum(frame_r % data, frame_g % data, frame_b % data)
     !   end if
     ! end if
 
-    if (associated(frame_l % data)) then
+    if (allocated(frame_l % data)) then
       do_lrgb: block
         real(fp), allocatable :: x(:,:)
         x = (frame_l % data) / Lum(frame_r % data, frame_g % data, frame_b % data)
@@ -355,7 +351,7 @@ program aqlrgb
         write(*, '("performing ",a," curve transform on the image: ",a)') &
             trim(merge('luminance', 'color    ', cfg_transf_lum)), curve
 
-        if (associated(frame_l % data)) then
+        if (allocated(frame_l % data)) then
           x = frame_l % data
         else
           x = Lum(frame_r % data, frame_g % data, frame_b % data)
@@ -372,24 +368,31 @@ program aqlrgb
             x = y / x
             deallocate(y)
             do i = 1, 3
-              cube(:,:,i) = cube(:,:,i) * x
+              frames(i) % data = frames(i) % data * x
             end do
           end block curve_lum
         else
           do i = 1, 3
-            call apply_curve(curve, cube(:,:,i), a, b, cube(:,:,i))
+            call apply_curve(curve, frames(i) % data, a, b, frames(i) % data)
           end do
         end if
       end block do_curve
     end if
 
     if (cfg_save_cube) then
-      if (endswith(outfn, '.png')) then
-        block
-          use png
+      block
+        use png
 
-          real(fp) :: vmin, vmax, av, sd
-          real(fp), allocatable :: l(:,:)
+        real(fp) :: vmin, vmax, av, sd
+        real(fp), allocatable :: l(:,:), cube(:,:,:)
+
+        allocate(cube(nx, ny, 3))
+
+        do ich = 1, 3
+          cube(:, :, ich) = frames(ich) % data
+        end do
+
+        if (endswith(outfn, '.png')) then
 
           l = Lum(frame_r % data(64:nx-64,64:ny-64), &
           &   frame_g % data(64:nx-64,64:ny-64),     &
@@ -403,17 +406,16 @@ program aqlrgb
 
           call write_png(outfn, (cube(:,:,1:3) - vmin) / (vmax - vmin))
           call write_fits_3d(replace_extn(outfn, 'fits'), cube(:,:,1:3))
-        end block
-      else
-        call write_fits_3d(outfn, cube(:,:,1:3))
-      end if
+        else
+          call write_fits_3d(outfn, cube(:,:,1:3))
+        end if
+      end block
     else
       call frame_r % write_fits(add_suffix(outfn, '.r'))
       call frame_g % write_fits(add_suffix(outfn, '.g'))
       call frame_b % write_fits(add_suffix(outfn, '.b'))
     end if
-
-    call frame_l%destroy
+  end associate
   end block do_rgb
 
 contains

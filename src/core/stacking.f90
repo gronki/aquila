@@ -154,8 +154,6 @@ contains
 
     end block write_stack
 
-    call frame_out % destroy
-
   end subroutine stack_and_write
 
   !----------------------------------------------------------------------------!

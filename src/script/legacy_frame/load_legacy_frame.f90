@@ -46,7 +46,6 @@ subroutine exec_one(op, inputs, output, err)
 
    allocate(result)
    allocate(result % data(nx, ny))
-   result % frame % data => result % data
    call result % frame % read_fits(fn, errno)
 
    if (errno /= 0) then

@@ -6,3 +6,4 @@
 *.smod
 *.o
 /build
+*.fits

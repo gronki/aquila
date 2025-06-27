@@ -51,14 +51,16 @@ contains
     real(fp), intent(in), optional :: threshold
     integer, parameter :: rslice = 16, margin = 5
 
-    logical, dimension(size(im,1), size(im,2)) :: mask, master_mask
-    real(fp), dimension(size(im,1), size(im,2)) :: xx, yy
-    ! real(fp) :: xax(size(im,1),size(im,2)), yax(size(im,1),size(im,2))
+    logical, dimension(:,:), allocatable :: mask, master_mask
+    real(fp), dimension(:,:), allocatable :: xx, yy
     integer :: i, ix,iy,nx,ny, xymax(2)
     real(fp) :: sthr
 
     nx = size(im, 1)
     ny = size(im, 2)
+
+    allocate(mask(nx, ny), master_mask(nx, ny))
+    allocate(xx(nx, ny), yy(nx, ny))
 
     do concurrent (ix = 1:nx, iy = 1:ny)
       xx(ix, iy) = ix - 0.5_fp * (nx + 1)
@@ -128,12 +130,24 @@ contains
 
     end do extract_stars
 
-    cleanup_assymetric_outliers: block
+    block
+      logical :: outlier_mask(size(list))
 
-      logical :: mask(size(list))
+      call cleanup_assymetric_outliers(list, outlier_mask)
+
+      list = pack(list, outlier_mask)
+    end block
+
+  end subroutine
+
+  subroutine cleanup_assymetric_outliers(list, mask)
+
+      type(extended_source), intent(in) :: list(:)
+      logical, intent(out) :: mask(:)
       real(fp) :: asymmetry(size(list))
       integer :: ix_max
       real(fp) :: deviation
+      integer :: i
       character(*), parameter :: fmt1 = '("iter =", i3, 3x, "asymm = ", f5.3, 3x, "max = ", f5.3)'
 
       if (cfg_verbose) write (0, *) '-- OUTLIER CLEANUP'
@@ -161,10 +175,6 @@ contains
 
       end do remove_outliers
 
-      list = pack(list, mask)
-
-    end block cleanup_assymetric_outliers
-
-  end subroutine
+    end subroutine cleanup_assymetric_outliers
 
 end module findstar

@@ -403,7 +403,16 @@ program aqstack
         end if
       end block save_processed
     else
-      call stack_and_write(strategy, method, frames(1:nframes), buffers_to_stack(:, :, 1:nframes), output_fn)
+      stack_frames: block
+        type(image_frame_t) :: frame_out
+        
+        call stack_frames(strategy, method, frames(1:nframes), buffers_to_stack(:, :, 1:nframes), frame_out)
+
+        associate (output_fn_clean => select_output_filename(output_fn, method))
+          print '(a,a)', 'writing output file: ', trim(output_fn_clean)
+          call frame_out % write_fits(output_fn_clean)
+        end associate
+      end block stack_frames
     end if
 
   end block actual_job

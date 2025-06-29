@@ -93,13 +93,13 @@ contains
 
   !----------------------------------------------------------------------------!
 
-  subroutine stack_and_write(strategy, method, frames, buffer, output_fn)
+  subroutine stack_frames(strategy, method, frames, buffer, frame_out)
     use framehandling, only: image_frame_t
 
-    character(len = *), intent(in) :: strategy, method, output_fn
+    character(len = *), intent(in) :: strategy, method
     real(fp), intent(in) :: buffer(:,:,:)
     type(image_frame_t), intent(in) :: frames(:)
-    type(image_frame_t) :: frame_out
+    type(image_frame_t), intent(out) :: frame_out
     real(real64) :: t1, t2
     integer :: nstack
     character(len = 128) :: output_fn_clean
@@ -136,25 +136,26 @@ contains
       end block estimate_noise
     end if
 
-    write_stack: block
-      if (output_fn == "") then
-        if (strategy /= "") then
-          output_fn_clean = trim(strategy) // ".fits"
-        else
-          output_fn_clean = "out.fits"
-        end if
+    call frame_out % hdr % add('AQLVER', version)
+
+  end subroutine stack_frames
+
+  !----------------------------------------------------------------------------!
+
+  function select_output_filename(output_fn, strategy) result(output_fn_clean)
+    character(len=*), intent(in) :: output_fn, strategy
+    character(len=:), allocatable :: output_fn_clean
+
+    if (output_fn == "") then
+      if (strategy /= "") then
+        output_fn_clean = trim(strategy) // ".fits"
       else
-        output_fn_clean = output_fn
+        output_fn_clean = "out.fits"
       end if
-
-      call frame_out % hdr % add('AQLVER', version)
-
-      print '(a,a)', 'writing output file: ', trim(output_fn_clean)
-      call frame_out % write_fits(output_fn_clean)
-
-    end block write_stack
-
-  end subroutine stack_and_write
+    else
+      output_fn_clean = output_fn
+    end if
+  end function
 
   !----------------------------------------------------------------------------!
 

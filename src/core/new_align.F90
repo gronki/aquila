@@ -263,9 +263,9 @@ contains
     do j = 1, size(im, 2)
       do i = 1, size(im, 1)
 
-        call ij_to_xy(real(i, fp), real(j, fp), ni, nj, 1.0_fp, x, y)
+        call ij_to_xy(real(i, fp), real(j, fp), ni, nj, scale, x, y)
         call v % apply(x, y, x0, y0)
-        call xy_to_ij(x0, y0, ni0, nj0, scale, i0f, j0f)
+        call xy_to_ij(x0, y0, ni0, nj0, real(1, fp), i0f, j0f)
 
         i0 = floor(i0f)
         j0 = floor(j0f)

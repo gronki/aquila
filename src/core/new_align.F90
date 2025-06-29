@@ -1,7 +1,7 @@
 module new_align
 
   use globals
-  use findstar, only: source
+  use findstar, only: source, xy_to_ij, ij_to_xy
   implicit none
   private
   public :: transform_t, transform_xyr_t, align2, improject2
@@ -248,33 +248,33 @@ contains
     real(fp), dimension(:,:), intent(out), contiguous :: im
     real(fp), intent(in), optional :: resample
 
-    integer   ::  i,  j
+    integer   ::  i,  j, ni, nj, i0, j0, ni0, nj0
     integer   :: ki, kj
-    real(fp)  :: xi, xj, ri, rj, i1, j1, ci, cj
+    real(fp)  :: i0f, j0f, ri, rj, i1, j1, scale, x, y, x0, y0
 
-    ci = 0.5_fp * (size(im0, 1) + 1)
-    cj = 0.5_fp * (size(im0, 2) + 1)
+    ni = size(im, 1)
+    nj = size(im, 2)
+    ni0 = size(im0, 1)
+    nj0 = size(im0, 2)
+
+    scale = 1
+    if (present(resample)) scale = resample
 
     do j = 1, size(im, 2)
       do i = 1, size(im, 1)
 
-        if ( present(resample) ) then
-          i1 = (i - 0.5_fp) / resample + 0.5_fp
-          j1 = (j - 0.5_fp) / resample + 0.5_fp
-        else
-          i1 = i; j1 = j
-        end if
+        call ij_to_xy(real(i, fp), real(j, fp), ni, nj, scale, x, y)
+        call v % apply(x, y, x0, y0)
+        call xy_to_ij(x0, y0, ni0, nj0, real(1, fp), i0f, j0f)
 
-        call v % apply(i1 - ci, j1 - cj, xi, xj)
+        i0 = floor(i0f)
+        j0 = floor(j0f)
 
-        xi = xi + ci
-        xj = xj + cj
+        ki = max(1, min(i0, ni0 - 1))
+        kj = max(1, min(j0, nj0 - 1))
 
-        ki = max(1, min(floor(xi), size(im0, 1) - 1))
-        kj = max(1, min(floor(xj), size(im0, 2) - 1))
-
-        ri = xi - ki
-        rj = xj - kj
+        ri = i0f - ki
+        rj = j0f - kj
 
         if ( abs(2 * ri - 1) <= 2 .and. abs(2 * rj - 1) <= 2 ) then
           im(i,j)  = im0(ki,   kj  ) * (1 - ri)  * (1 - rj)  &

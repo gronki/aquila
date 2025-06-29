@@ -19,6 +19,8 @@ module findstar
 
   real(fp), parameter :: max_rms = 12
 
+  private :: cleanup_assymetric_outliers, fill_mask
+
 contains
 
   !----------------------------------------------------------------------------!
@@ -43,6 +45,31 @@ contains
 
   !----------------------------------------------------------------------------!
 
+  elemental subroutine ij_to_xy(i, j, ni, nj, scale, x, y)
+    real(fp), intent(in) :: i, j, scale
+    integer, intent(in) :: ni, nj
+    real(fp), intent(out) :: x, y
+
+    x = (j - 0.5_fp * (nj + 1)) / scale
+    y = (i - 0.5_fp * (ni + 1)) / scale
+
+  end subroutine
+
+  !----------------------------------------------------------------------------!
+
+  elemental subroutine xy_to_ij(x, y, ni, nj, scale, i, j)
+    real(fp), intent(in) :: x, y, scale
+    integer, intent(in) :: ni, nj
+    real(fp), intent(out) :: i, j
+
+    j = x * scale + 0.5_fp * (nj + 1)
+    i = y * scale + 0.5_fp * (ni + 1)
+
+  end subroutine
+
+  !----------------------------------------------------------------------------!
+
+
   subroutine aqfindstar(im, list, limit, threshold)
     real(fp), dimension(:,:), intent(in) :: im
     type(extended_source), intent(out), allocatable :: list(:)
@@ -53,18 +80,19 @@ contains
 
     logical, dimension(:,:), allocatable :: mask, master_mask
     real(fp), dimension(:,:), allocatable :: xx, yy
-    integer :: i, ix,iy,nx,ny, xymax(2)
+    integer :: i, j, ni, nj, nx, ny, imax, jmax, xymax(2)
     real(fp) :: sthr
 
-    nx = size(im, 1)
-    ny = size(im, 2)
+    ni = size(im, 1)
+    ny = ni
+    nj = size(im, 2)
+    nx = nj
 
-    allocate(mask(nx, ny), master_mask(nx, ny))
-    allocate(xx(nx, ny), yy(nx, ny))
+    allocate(mask(ni, nj), master_mask(ni, nj))
+    allocate(xx(ni, nj), yy(ni, nj))
 
-    do concurrent (ix = 1:nx, iy = 1:ny)
-      xx(ix, iy) = ix - 0.5_fp * (nx + 1)
-      yy(ix, iy) = iy - 0.5_fp * (ny + 1)
+    do concurrent (i = 1:ni, j = 1:nj)
+      call ij_to_xy(real(i, fp), real(j, fp), ni, nj, 1.0_fp, xx(i, j), yy(i, j))
     end do
 
     ! calculate the threshold
@@ -89,16 +117,18 @@ contains
 
       ! localize maximum pixel within good pixels
       xymax = maxloc(im, master_mask)
+      imax = xymax(1)
+      jmax = xymax(2)
 
       ! set this pixel to true in child mask
       mask(:,:) = .false.
-      mask(xymax(1), xymax(2)) = .true.
+      mask(imax, jmax) = .true.
 
       ! crop the image to save processing power
-      associate (ilo => max(xymax(1) - rslice, 1), &
-                 ihi => min(xymax(1) + rslice, nx), &
-                 jlo => max(xymax(2) - rslice, 1), &
-                 jhi => min(xymax(2) + rslice, ny))
+      associate (ilo => max(imax - rslice, 1), &
+                 ihi => min(imax + rslice, ni), &
+                 jlo => max(jmax - rslice, 1), &
+                 jhi => min(jmax + rslice, nj))
         associate (c_mask => mask(ilo:ihi, jlo:jhi), &
               c_master_mask => master_mask(ilo:ihi, jlo:jhi), &
               c_im => im(ilo:ihi, jlo:jhi), &

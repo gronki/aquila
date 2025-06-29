@@ -143,32 +143,40 @@ contains
 
   subroutine improject(im0, mx, im, resample)
     real(fp), dimension(:,:), intent(in), contiguous :: im0
+    real(fp), intent(in) :: mx(2,3)
     real(fp), dimension(:,:), intent(out), contiguous :: im
     real(fp), intent(in), optional :: resample
 
-    real(fp) :: mx(2,3)
-    integer   ::  i,  j
+    integer   ::  i,  j, ni, nj, i0, j0, ni0, nj0
     integer   :: ki, kj
-    real(fp)  :: xi, xj, ri, rj, i1, j1
+    real(fp)  :: i0f, j0f, ri, rj, i1, j1, scale, x, y, x0, y0
+
+    ni = size(im, 1)
+    nj = size(im, 2)
+    ni0 = size(im0, 1)
+    nj0 = size(im0, 2)
+
+    scale = 1
+    if (present(resample)) scale = resample
 
     do j = 1, size(im, 2)
       do i = 1, size(im, 1)
 
-        if ( present(resample) ) then
-          i1 = (i - 0.5_fp) / resample + 0.5_fp
-          j1 = (j - 0.5_fp) / resample + 0.5_fp
-        else
-          i1 = i; j1 = j
-        end if
+        call ij_to_xy(real(i, fp), real(j, fp), ni, nj, 1.0_fp, x, y)
 
-        xi = mx(1,1) + mx(1,2) * i1 + mx(1,3) * j1
-        xj = mx(2,1) + mx(2,2) * i1 + mx(2,3) * j1
+        x0 = mx(1,1) + mx(1,2) * x + mx(1,3) * y
+        y0 = mx(2,1) + mx(2,2) * x + mx(2,3) * y
 
-        ki = max(1, min(floor(xi), size(im0, 1) - 1))
-        kj = max(1, min(floor(xj), size(im0, 2) - 1))
+        call xy_to_ij(x0, y0, ni0, nj0, scale, i0f, j0f)
 
-        ri = xi - ki
-        rj = xj - kj
+        i0 = floor(i0f)
+        j0 = floor(j0f)
+
+        ki = max(1, min(i0, ni0 - 1))
+        kj = max(1, min(j0, nj0 - 1))
+
+        ri = i0f - ki
+        rj = j0f - kj
 
         if ( abs(2 * ri - 1) <= 2 .and. abs(2 * rj - 1) <= 2 ) then
           im(i,j)  = im0(ki,   kj  ) * (1 - ri)  * (1 - rj)  &

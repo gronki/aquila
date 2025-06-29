@@ -403,7 +403,7 @@ program aqstack
         end if
       end block save_processed
     else
-      stack_frames: block
+      block
         type(image_frame_t) :: frame_out
         character(len=:), allocatable :: output_fn_clean
         
@@ -413,7 +413,7 @@ program aqstack
         print '(a,a)', 'writing output file: ', trim(output_fn_clean)
         call frame_out % write_fits(output_fn_clean)
         
-      end block stack_frames
+      end block
     end if
 
   end block actual_job

@@ -108,8 +108,8 @@ contains
         integer :: i, j, nx, ny, nc, bits_
         integer(c_int) :: clrtype
 
-        nx = size(im,1)
-        ny = size(im,2)
+        nx = size(im,2)
+        ny = size(im,1)
         nc = size(im,3)
 
         bits_ = 8
@@ -162,10 +162,10 @@ contains
 
             do j = 1, ny
                 if (bits_ == 8) then
-                    row8 = sc8(reshape(transpose(im(:,j,:)), [nx * nc]))
+                    row8 = sc8(reshape(transpose(im(j,:,:)), [nx * nc]))
                     call png_write_row(png_ptr, c_loc(row8))
                 else
-                    row16 = sc16(reshape(transpose(im(:,j,:)), [nx * nc]))
+                    row16 = sc16(reshape(transpose(im(j,:,:)), [nx * nc]))
                     call png_write_row(png_ptr, c_loc(row16))
                 end if
             end do

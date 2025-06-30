@@ -38,14 +38,8 @@ subroutine exec_one(op, inputs, output, err)
    call parse_str(inputs(1) % value, to=fn, err=err)
    if (check(err)) return
 
-   call read_fits_naxes(fn, nx, ny, errno)
-   if (errno /= 0) then
-      call seterr(err, "reading image dimension of file " // fn // " failed")
-      return
-   end if
 
    allocate(result)
-   allocate(result % data(nx, ny))
    call result % frame % read_fits(fn, errno)
 
    if (errno /= 0) then

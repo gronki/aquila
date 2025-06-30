@@ -8,7 +8,6 @@ module legacy_frame_value_m
 
     type, extends(value_t) :: legacy_frame_value_t
         type(image_frame_t) :: frame
-        real(kind=img_k), allocatable :: data(:,:)
     contains
         procedure :: to_str => image_to_str
     end type
@@ -23,13 +22,13 @@ contains
         character(len=64) :: buf
         character(len=:), allocatable :: str
 
-        if (.not. allocated(value%data)) then
+        if (.not. allocated(value%frame%data)) then
             str = "<empty legacy image frame>"
             return
         end if
 
-        associate (data => value%data)
-            write(buf, "(i0,a,i0,a,f0.3,a)") size(data,1), "x", size(data, 2), &
+        associate (data => value%frame%data)
+            write(buf, "(i0,a,i0,a,f0.3,a)") size(data,2), "x", size(data, 1), &
                 " image (exp=", value%frame%exptime, " sec)"
         end associate
 

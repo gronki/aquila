@@ -1,8 +1,9 @@
 module frame_m
 
-  use iso_fortran_env, only: real32, real64
+  use iso_fortran_env
   use ieee_arithmetic
   use globals
+  use fitsio_hdr_m
 
   !----------------------------------------------------------------------------!
 
@@ -56,16 +57,16 @@ contains
 
   !----------------------------------------------------------------------------!
 
-  pure subroutine check_shape(self, nx, ny)
+  pure subroutine check_shape(self, ni, nj)
     class(frame_t), intent(inout) :: self
-    integer, intent(in) :: nx, ny
+    integer, intent(in) :: ni, nj
 
     if (allocated(self % data)) then
-      if (size(self%data, 1) == nx .and. size(self%data, 2) == ny) return
+      if (size(self%data, 1) == ni .and. size(self%data, 2) == nj) return
       deallocate(self % data)
     end if
 
-    allocate(self%data(nx, ny))
+    allocate(self%data(ni, nj))
     
   end subroutine
 
@@ -74,6 +75,8 @@ contains
   subroutine read_image_data(self, un, ftiostat)
     class(frame_t), intent(inout) :: self
     integer :: sz(2), ndim, bsize, ftiostat, un
+    real(kind=kind(self%data)), allocatable, target :: tmpbuf(:,:)
+    real(kind=kind(self%data)), pointer, contiguous :: flatptr(:)
     logical :: anyf
     ! get number of dimensions
     call ftgidm(un, ndim, ftiostat)
@@ -81,17 +84,12 @@ contains
 
     ! get image dimensions
     call ftgisz(un, 2, sz, ftiostat)
-    call self % check_shape(sz(1), sz(2))
+    allocate(tmpbuf(sz(1), sz(2)))
+    flatptr(1:size(tmpbuf)) => tmpbuf
 
-    ! read image data
-    select case (storage_size(self % data))
-    case (32)
-      call ftgpve(un, 1, 1, product(sz), 0, self % data, anyf, ftiostat)
-    case (64)
-      call ftgpvd(un, 1, 1, product(sz), 0, self % data, anyf, ftiostat)
-    case default
-      error stop
-    end select
+    call ftgpv(un, 1, 1, product(sz), 0._fp, flatptr, anyf, ftiostat)
+
+    if (ftiostat == 0) self % data = transpose(tmpbuf)
   end subroutine
 
   !----------------------------------------------------------------------------!
@@ -139,6 +137,8 @@ contains
     character(len = *), intent(in) :: fn
     integer, intent(inout), optional :: errno
     integer :: ftiostat, un, iostat
+    real(kind=kind(self%data)), allocatable, target :: tmpbuf(:,:)
+    real(kind=kind(self%data)), pointer, contiguous :: flatptr(:)
 
     iostat = 0
     open (99, file = fn, status = 'old', iostat = iostat)
@@ -160,8 +160,10 @@ contains
       end if
     end if
 
-    call ftphps(un, -32, 2, shape(self % data), ftiostat)
-    call ftppre(un, 1, 1, size(self % data), real(self % data, real32), ftiostat)
+    tmpbuf = transpose(self % data)
+    flatptr(1:size(tmpbuf)) => tmpbuf
+    call ftphps(un, bitpix(self % data), 2, shape(tmpbuf), ftiostat)
+    call ftppr(un, 1, 1, size(self % data), flatptr, ftiostat)
 
     call ftclos(un, ftiostat)
     call ftfiou(un, ftiostat)

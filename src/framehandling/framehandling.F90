@@ -16,9 +16,9 @@ contains
 
   !----------------------------------------------------------------------------!
 
-  subroutine read_fits_naxes(fn, nx, ny, errno)
+  subroutine read_fits_naxes(fn, ni, nj, errno)
     character(len = *), intent(in) :: fn
-    integer, intent(out) :: nx, ny
+    integer, intent(out) :: ni, nj
     integer, intent(inout), optional :: errno
     integer :: sz(2), ndim, bsize, ftiostat, un
     logical :: anyf
@@ -43,8 +43,8 @@ contains
 
     ! get image dimensions
     call ftgisz(un, 2, sz, ftiostat)
-    nx = sz(1)
-    ny = sz(2)
+    ni = sz(2)
+    nj = sz(1)
 
     ! close the unit
     call ftclos(un, ftiostat)

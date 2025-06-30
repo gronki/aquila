@@ -50,8 +50,8 @@ contains
     integer, intent(in) :: ni, nj
     real(fp), intent(out) :: x, y
 
-    x = (j - 0.5_fp * (nj + 1)) / scale
-    y = (i - 0.5_fp * (ni + 1)) / scale
+    x =   (j - 0.5_fp * (nj + 1)) / scale
+    y = - (i - 0.5_fp * (ni + 1)) / scale
 
   end subroutine
 
@@ -62,8 +62,8 @@ contains
     integer, intent(in) :: ni, nj
     real(fp), intent(out) :: i, j
 
-    j = x * scale + 0.5_fp * (nj + 1)
-    i = y * scale + 0.5_fp * (ni + 1)
+    j =   x * scale + 0.5_fp * (nj + 1)
+    i = - y * scale + 0.5_fp * (ni + 1)
 
   end subroutine
 

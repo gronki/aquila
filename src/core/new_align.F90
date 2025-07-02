@@ -10,11 +10,18 @@ module new_align
     real(fp) :: scale = 1
     real(fp), allocatable :: vec(:)
   contains
+    procedure(iface_npar), deferred :: npar
     procedure(iface_apply), deferred :: apply
     procedure(iface_pder), deferred :: pder
   end type
 
   abstract interface
+
+    elemental function iface_npar(t) result(npar)
+      import transform_t
+      class(transform_t), intent(in) :: t
+      integer :: npar
+    end function
 
     elemental subroutine iface_apply(t, x1, y1, x2, y2)
       import transform_t, fp
@@ -38,6 +45,7 @@ module new_align
   contains
     procedure :: apply  => xyr_apply
     procedure :: pder   => xyr_pder
+    procedure :: npar   => xyr_npar
   end type
 
   interface transform_xyr_t
@@ -89,6 +97,14 @@ contains
     dy(3) = (  cos(th) * x - sin(th) * y) / (t % scale)
   end subroutine
 
+  elemental function xyr_npar(t) result(npar)
+    class(transform_xyr_t), intent(in) :: t
+    integer :: npar
+
+    npar = 3
+  end function
+
+  !------------------------------------------------------------------------------------!
 
   subroutine align_polygon(xy1, xy2, nstars, nmatches, t)
     use polygon_matching, only: find_transform_polygons
@@ -98,7 +114,7 @@ contains
     real(fp) :: init_dx, init_dy, init_r
 
     call find_transform_polygons(xy1, xy2, nstars, nmatches, init_dx, init_dy, init_r)
-    t%vec(1:3) = [init_dx, init_dy, init_r * t%scale]
+    t%vec = [init_dx, init_dy, init_r * t%scale]
   end subroutine
 
   !------------------------------------------------------------------------------------!
@@ -107,10 +123,18 @@ contains
     class(source_t), intent(in) :: xy(:), xy0(:)
     class(transform_t), intent(inout) :: v0
     type(source_t) :: xy1(size(xy))
-    integer :: ii, nmax
+    integer :: ii, nmax, npar
     real(fp) :: k0, y0, lam
-    real(fp) :: y0_dv(size(v0%vec)), y0n_dv(size(v0%vec))
+    real(fp) :: y0_dv(v0%npar()), y0n_dv(v0%npar())
     ! maximum dF/dx at x = k0 / sqrt(2)
+
+    if (.not. allocated(v0 % vec)) then
+      error stop "fatal: transform v0 not initialized"
+    end if
+
+    npar = v0%npar()
+
+    ! allocate(y0_dv(npar), y0n_dv(npar))
 
 #   ifdef _DEBUG
     write (0, '("k0 =", g10.4)') k0
@@ -153,11 +177,11 @@ contains
       real(fp), intent(in) :: dx_0
       integer :: i, ii
       real(fp) :: dx
-      real(fp) :: y, y_dv(size(v0%vec)), y_dx
+      real(fp) :: y, y_dx, y_dv(npar)
       class(transform_t), allocatable :: v
       integer, parameter :: u = 8
 
-      v = v0
+      allocate(v, source=v0)
       dx = dx_0
 
 #     ifdef _DEBUG
@@ -196,9 +220,9 @@ contains
     subroutine comp_ydv(v, y, y_dv)
 
       class(transform_t), intent(in) :: v
-      real(fp), intent(out) :: y, y_dv(size(v0%vec))
+      real(fp), intent(out) :: y, y_dv(npar)
       real(fp) :: aa, bb, y_dx1, y_dy1
-      real(fp), dimension(size(v0%vec)) :: x1_dv, y1_dv
+      real(fp), dimension(npar) :: x1_dv, y1_dv
       integer :: i0, i
 
       y = 0

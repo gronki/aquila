@@ -2,7 +2,7 @@ program test_autorot
 
   use new_align
   use globals
-  use findstar, only: source
+  use findstar, only: source_t
 
   implicit none
 
@@ -12,7 +12,7 @@ program test_autorot
   logical :: flip = .false.
   integer :: it, nfail = 0, npass = 0
 
-  type(source), allocatable :: stars0(:), stars1(:)
+  type(source_t), allocatable :: stars0(:), stars1(:)
 
   call random_seed()
 
@@ -128,7 +128,7 @@ contains
 
   subroutine stars_ft(stars, wx, wy, ft)
     integer :: i, j
-    type(source) :: stars(:)
+    type(source_t) :: stars(:)
     complex(fp) :: ft(:,:)
     real :: wx, wy
     real(fp) :: a(size(stars))

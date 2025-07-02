@@ -3,15 +3,15 @@ module findstar
   use globals
   implicit none
 
-  type :: point
+  type :: point_t
     real(fp) :: x, y
   end type
 
-  type, extends(point) :: source
+  type, extends(point_t) :: source_t
     real(fp) :: flux = 0
   end type
 
-  type, extends(source) :: extended_source
+  type, extends(source_t) :: extended_source_t
     real(fp) :: rms
     real(fp) :: deviation_xy
     real(fp) :: deviation_uv
@@ -72,8 +72,8 @@ contains
 
   subroutine aqfindstar(im, list, limit, threshold)
     real(fp), dimension(:,:), intent(in) :: im
-    type(extended_source), intent(out), allocatable :: list(:)
-    type(extended_source) :: star
+    type(extended_source_t), intent(out), allocatable :: list(:)
+    type(extended_source_t) :: star
     integer, intent(in), optional :: limit
     real(fp), intent(in), optional :: threshold
     integer, parameter :: rslice = 16, margin = 5
@@ -172,7 +172,7 @@ contains
 
   subroutine cleanup_assymetric_outliers(list, mask)
 
-      type(extended_source), intent(in) :: list(:)
+      type(extended_source_t), intent(in) :: list(:)
       logical, intent(out) :: mask(:)
       real(fp) :: asymmetry(size(list))
       integer :: ix_max

@@ -13,7 +13,7 @@ program test_matchriangles
   implicit none
 
   character(len=256) :: fn1, fn2
-  type(extended_source), allocatable :: ls1(:), ls2(:)
+  type(extended_source_t), allocatable :: ls1(:), ls2(:)
   type(polygon), allocatable :: t1(:), t2(:)
   integer :: nmax = 32
   
@@ -31,9 +31,9 @@ program test_matchriangles
   print *
   print '(10(es11.3))', ls2 % flux
 
-  call find_starriangles(ls1%source, nmax, t1)
+  call find_starriangles(ls1%source_t, nmax, t1)
   print *
-  call find_starriangles(ls2%source, nmax, t2)
+  call find_starriangles(ls2%source_t, nmax, t2)
   print *
 
   block
@@ -50,11 +50,11 @@ contains
 subroutine register_stars_file(fn, lst)
   use framehandling, only: image_frame_t
   use stacking, only: register_stars
-  use findstar, only: extended_source
+  use findstar, only: extended_source_t
 
   character(len=*) :: fn
   type(image_frame_t) :: im
-  type(extended_source), allocatable, intent(out) :: lst(:)
+  type(extended_source_t), allocatable, intent(out) :: lst(:)
 
   call im % read_fits(fn)
   call register_stars(im%data, lst)

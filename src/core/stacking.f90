@@ -10,10 +10,10 @@ contains
   subroutine register_stars(im, lst)
     use convolutions, only: convol_fix
     use kernels, only: mexhakrn_alloc
-    use findstar, only: aqfindstar, extended_source
+    use findstar, only: aqfindstar, extended_source_t
 
     real(fp), intent(in), contiguous :: im(:,:)
-    type(extended_source), intent(out), allocatable :: lst(:)
+    type(extended_source_t), intent(out), allocatable :: lst(:)
     real(fp), allocatable :: im2(:,:), krn(:,:)
     integer :: nstars
 

@@ -2,11 +2,11 @@ program test_align_2
 
   use new_align
   use globals
-  use findstar, only: source
+  use findstar, only: source_t
 
   implicit none
 
-  type(source), allocatable :: stars0(:), stars1(:)
+  type(source_t), allocatable :: stars0(:), stars1(:)
   real(8) :: t1, t2
 
   call random_seed()
@@ -63,7 +63,7 @@ program test_align_2
 
     v % scale = 500
     call cpu_time(t1)
-    call align2(stars0, stars1, v, 2.0_fp)
+    call align_gravity(stars0, stars1, v, 2.0_fp)
     call cpu_time(t2)
 
     print '(a12,2f9.3,es12.3)', 'MODERN =', v % vec(1:2), v % vec(3) / v % scale

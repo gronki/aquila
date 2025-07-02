@@ -1,15 +1,15 @@
 module legacy_align
 
   use globals
-  use findstar, only: extended_source, source
+  use findstar, only: extended_source_t, source_t
   implicit none
 
 contains
 
   subroutine align_xyr(xy, xy0, mx)
-    class(source), intent(in) :: xy(:)
-    class(source), intent(in) :: xy0(:)
-    type(source) :: xy1(size(xy))
+    class(source_t), intent(in) :: xy(:)
+    class(source_t), intent(in) :: xy0(:)
+    type(source_t) :: xy1(size(xy))
     real(fp), intent(inout) :: mx(2,3)
     integer :: ii, i, nmax
     integer, parameter :: i_x = 1, i_y = 2, i_r = 3

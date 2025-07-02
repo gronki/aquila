@@ -7,7 +7,7 @@ program aqstack
   use statistics
   use stacking
   use hotpixels
-  use findstar, only: extended_source
+  use findstar, only: extended_source_t
   use iso_fortran_env, only: real64, stderr => error_unit
 
   !----------------------------------------------------------------------------!
@@ -276,7 +276,7 @@ program aqstack
       align_frames: block
         use new_align
         use polygon_matching, only: find_transform_polygons
-        type(extended_source), dimension(:), allocatable :: lst0, lst
+        type(extended_source_t), dimension(:), allocatable :: lst0, lst
         integer :: i, istart
         class(transform_xyr_t), allocatable :: tx
         real(fp) :: r0
@@ -310,9 +310,9 @@ program aqstack
             call register_stars(frames(1) % data, lst0)
 
             if (cfg_resampling) then
-              call ity % project(frames(1) % data, buffers_to_stack(:,:,1), resample_factor)
+              call project_bilinear(ity, frames(1) % data, buffers_to_stack(:,:,1), resample_factor)
             else
-              call ity % project(frames(1) % data, buffers_to_stack(:,:,1))
+              call project_bilinear(ity, frames(1) % data, buffers_to_stack(:,:,1))
             end if
 
             istart = 2
@@ -330,23 +330,23 @@ program aqstack
           select case (align_method)
 
           case ('polygon')
-            call tx % align_polygon(lst0, lst, 30, 12)
+            call align_polygon(lst0, lst, 30, 12, tx)
             
           case ('gravity')
             ! find an initial estimate for a transform
-            call tx % align_polygon(lst0, lst, 24, 8)
+            call align_polygon(lst0, lst, 24, 8, tx)
             ! fine-tune the transform between frames
-            call tx % align(lst0, lst, 2.0_fp)
+            call align_gravity(lst0, lst, tx, 2.0_fp)
 
           case ('gravity_only')
             associate (a => 0.25 * (2 * r0))
               if (a > 15) then
-                call tx % align(lst0, lst, a)
+                call align_gravity(lst0, lst, tx, a)
               end if
             end associate
 
-            call tx % align(lst0, lst, 10.0_fp)
-            call tx % align(lst0, lst, 2.0_fp)
+            call align_gravity(lst0, lst, tx, 10.0_fp)
+            call align_gravity(lst0, lst, tx, 2.0_fp)
             
           case default
             error stop 'align method unknown'
@@ -362,9 +362,9 @@ program aqstack
           print '("margin = ", i0)', margin
           
           if (cfg_resampling) then
-            call tx % project(frames(i) % data, buffers_to_stack(:,:,i), resample_factor)
+            call project_bilinear(tx, frames(i) % data, buffers_to_stack(:,:,i), resample_factor)
           else
-            call tx % project(frames(i) % data, buffers_to_stack(:,:,i))
+            call project_bilinear(tx, frames(i) % data, buffers_to_stack(:,:,i))
           end if
 
           deallocate(tx)

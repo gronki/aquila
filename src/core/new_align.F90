@@ -1,20 +1,17 @@
 module new_align
 
   use globals
-  use findstar, only: source, xy_to_ij, ij_to_xy
+  use findstar, only: source_t, xy_to_ij, ij_to_xy
   implicit none
   private
-  public :: transform_t, transform_xyr_t, align2, improject2
+  public :: transform_t, transform_xyr_t, align_gravity, project_bilinear, align_polygon
 
   type, abstract :: transform_t
     real(fp) :: scale = 1
     real(fp), allocatable :: vec(:)
   contains
-    procedure :: npar
     procedure(iface_apply), deferred :: apply
     procedure(iface_pder), deferred :: pder
-    procedure, pass(v) :: project => improject2
-    procedure, pass(v0) :: align => align2
   end type
 
   abstract interface
@@ -41,7 +38,6 @@ module new_align
   contains
     procedure :: apply  => xyr_apply
     procedure :: pder   => xyr_pder
-    procedure :: align_polygon
   end type
 
   interface transform_xyr_t
@@ -51,19 +47,6 @@ module new_align
   !------------------------------------------------------------------------------------!
 
 contains
-
-  !------------------------------------------------------------------------------------!
-
-  elemental function npar(t)
-    class(transform_t), intent(in) :: t
-    integer :: npar
-
-    if (allocated(t % vec)) then
-      npar = size(t % vec)
-    else
-      npar = 0
-    end if
-  end function
 
   !------------------------------------------------------------------------------------!
 
@@ -107,10 +90,10 @@ contains
   end subroutine
 
 
-  subroutine align_polygon(t, xy1, xy2, nstars, nmatches)
+  subroutine align_polygon(xy1, xy2, nstars, nmatches, t)
     use polygon_matching, only: find_transform_polygons
     class(transform_xyr_t), intent(inout) :: t
-    class(source), intent(in) :: xy1(:), xy2(:)
+    class(source_t), intent(in) :: xy1(:), xy2(:)
     integer, intent(in) :: nstars, nmatches
     real(fp) :: init_dx, init_dy, init_r
 
@@ -120,10 +103,10 @@ contains
 
   !------------------------------------------------------------------------------------!
 
-  subroutine align2(xy, xy0, v0, k0)
-    class(source), intent(in) :: xy(:), xy0(:)
+  subroutine align_gravity(xy, xy0, v0, k0)
+    class(source_t), intent(in) :: xy(:), xy0(:)
     class(transform_t), intent(inout) :: v0
-    type(source) :: xy1(size(xy))
+    type(source_t) :: xy1(size(xy))
     integer :: ii, nmax
     real(fp) :: k0, y0, lam
     real(fp) :: y0_dv(size(v0%vec)), y0n_dv(size(v0%vec))
@@ -242,7 +225,7 @@ contains
 
   !------------------------------------------------------------------------------------!
 
-  subroutine improject2(v, im0, im, resample)
+  subroutine project_bilinear(v, im0, im, resample)
     class(transform_t), intent(in) :: v
     real(fp), dimension(:,:), intent(in), contiguous :: im0
     real(fp), dimension(:,:), intent(out), contiguous :: im

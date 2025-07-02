@@ -2,7 +2,7 @@ module polygon_matching
 
   use globals
   use iso_fortran_env, only: real64, int64
-  use findstar, only: source
+  use findstar, only: source_t
   implicit none
 
   ! number of polygon vertices
@@ -11,7 +11,7 @@ module polygon_matching
   integer, parameter :: num_poly_charac_vector = 1 + 2 * (num_poly_vertices - 1)
 
   type :: polygon
-    type(source) :: vertices(num_poly_vertices)
+    type(source_t) :: vertices(num_poly_vertices)
     real(real64) :: characteristic(num_poly_charac_vector) = 0
   end type
     
@@ -126,10 +126,10 @@ contains
 
     use iso_fortran_env, only: int64, real64
 
-    class(source) :: ls(:)                 ! list of sources
+    class(source_t) :: ls(:)                 ! list of sources
     integer :: nmax                        ! how many sources to analyze
     type(polygon), allocatable :: polys(:) ! output list of polygons
-    type(source) :: tmp_vertices(num_poly_vertices)
+    type(source_t) :: tmp_vertices(num_poly_vertices)
 
     integer :: i, j
     integer :: indices(num_poly_vertices)
@@ -310,7 +310,7 @@ contains
     ! perfrom the polygon-matching estimation of translation and rotation angle
     ! based on a list of detected sources.
 
-    class(source), intent(in) :: ls1(:), ls2(:) ! lists of detected sources
+    class(source_t), intent(in) :: ls1(:), ls2(:) ! lists of detected sources
     integer, intent(in) :: nstars               ! how many stars to use
     integer, intent(in) :: nmatches             ! how many best matches to analyze
     real(real64), intent(out) :: dx, dy, r      ! output translation and rotation angle

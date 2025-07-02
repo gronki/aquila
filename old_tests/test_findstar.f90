@@ -29,7 +29,7 @@ program test_findstar
     use kernels, only: mexhakrn_alloc
     use convolutions, only: convol_fix
 
-    type(extended_source), allocatable :: list(:)
+    type(extended_source_t), allocatable :: list(:)
     real(fp), allocatable :: imcv(:,:)
     real(fp), dimension(5,5) :: krn = &
                  reshape([  0, -1, -2, -1,  0, &

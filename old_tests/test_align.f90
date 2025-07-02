@@ -5,7 +5,7 @@ program test_align
   use findstar
   implicit none
 
-  type(source), dimension(:), allocatable :: stars1, stars2
+  type(source_t), dimension(:), allocatable :: stars1, stars2
 
   call random_seed()
 
@@ -38,8 +38,8 @@ contains
   subroutine comp_ydv(t, xy0, xy, k0, U, U_dv)
     
     class(transform), intent(in) :: t
-    type(source), dimension(:), intent(in) :: xy0, xy
-    type(source), dimension(:), allocatable :: xy1
+    type(source_t), dimension(:), intent(in) :: xy0, xy
+    type(source_t), dimension(:), allocatable :: xy1
 
     real(fp), intent(in) :: k0
     real(fp), intent(out) :: U, U_dv(:)

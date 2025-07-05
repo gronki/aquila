@@ -4,6 +4,7 @@ program aqlrgb
   use framehandling
   use convolutions, only: convol_fix
   use kernels, only: gausskrn_alloc
+  use str_utils_m
 
   implicit none
   character(len = 256) :: outfn = "lrgb.fits"

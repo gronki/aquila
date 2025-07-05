@@ -1,6 +1,6 @@
 program test_addsuffix
 
-  use framehandling, only: add_suffix
+  use str_utils_m, only: add_suffix
   implicit none
 
   character(len = 256) :: fnin, fnout

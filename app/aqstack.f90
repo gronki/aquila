@@ -8,6 +8,7 @@ program aqstack
   use stacking
   use hotpixels
   use findstar, only: extended_source_t
+  use str_utils_m
   use iso_fortran_env, only: real64, stderr => error_unit
 
   !----------------------------------------------------------------------------!

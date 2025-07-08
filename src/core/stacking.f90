@@ -7,7 +7,7 @@ contains
 
   !----------------------------------------------------------------------------!
 
-  subroutine register_stars(im, lst)
+  subroutine register_stars(im, lst, limit)
     use convolutions, only: convol_fix
     use kernels, only: mexhakrn_alloc
     use findstar, only: aqfindstar, extended_source_t
@@ -15,14 +15,20 @@ contains
     real(fp), intent(in), contiguous :: im(:,:)
     type(extended_source_t), intent(out), allocatable :: lst(:)
     real(fp), allocatable :: im2(:,:), krn(:,:)
+    integer, intent(in), optional :: limit
     integer :: nstars
+    integer :: limit_
+
+    limit_ = 256
+    if (present(limit)) limit_ = limit
+
 
     krn = mexhakrn_alloc(2.3_fp)
 
     allocate(im2(size(im,1), size(im,2)))
 
     call convol_fix(im, krn, im2, 'r')
-    call aqfindstar(im2, lst, limit = 256)
+    call aqfindstar(im2, lst, limit = limit_)
   end subroutine
 
   !----------------------------------------------------------------------------!

@@ -6,6 +6,7 @@ program test_console
    use example_operations_m
    use runner_m
    use readline_prompt_m
+   use OPERATION_IMPORTS_M
 
    type(namespace_t), target :: namespace
    type(operation_db_t) :: operation_db
@@ -15,14 +16,5 @@ program test_console
 
    call run_interactive_console(readline_prompt_t(), operation_db, namespace)
 
-
-contains
-
-    subroutine init_operations(db)
-        use load_legacy_frame_op_m
-        type(operation_db_t), intent(inout) :: db
-
-        call add_operation(db, load_legacy_frame_op_t())
-    end subroutine
 end program
 

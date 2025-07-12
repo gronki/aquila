@@ -3,6 +3,7 @@ module legacy_frame_value_m
     use globals, only: img_k => fp
     use image_frame_m
     use value_m
+    use error_m
     implicit none (type, external)
     private
 
@@ -10,6 +11,7 @@ module legacy_frame_value_m
         type(image_frame_t) :: frame
     contains
         procedure :: to_str => image_to_str
+        procedure :: write => image_write
     end type
 
     public :: legacy_frame_value_t, img_k
@@ -34,5 +36,17 @@ contains
 
         str = trim(adjustl(buf))
     end function
+
+    subroutine image_write(val, fn, err)
+        class(legacy_frame_value_t), intent(in) :: val
+        character(len=*), intent(in) :: fn
+        type(err_t), intent(out) :: err
+        integer :: errno
+        
+        errno = 0
+        call val % frame % write_fits(fn, errno)
+        if (errno /= 0) &
+            call seterr(err, "writing FITS file failed")
+     end subroutine
 
 end module

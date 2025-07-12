@@ -148,6 +148,26 @@ contains
 
   !----------------------------------------------------------------------------!
 
+  subroutine collect_frames_into_buffer(frames, buffer)
+    use framehandling, only: image_frame_t
+
+    class(image_frame_t), intent(in) :: frames(:)
+    real(kind=fp), allocatable :: buffer(:,:,:)
+    integer :: n_frames, i, ni, nj
+
+    n_frames = size(frames)
+    do i = 1, n_frames
+      if (i == 1) then
+          ni = size(frames(i)%data, 1)
+          nj = size(frames(i)%data, 2)
+          allocate(buffer(ni, nj, n_frames))
+      end if
+      buffer(:,:,i) = frames(i) % data
+    end do
+  end subroutine
+
+  !----------------------------------------------------------------------------!
+
   function select_output_filename(output_fn, strategy) result(output_fn_clean)
     character(len=*), intent(in) :: output_fn, strategy
     character(len=:), allocatable :: output_fn_clean

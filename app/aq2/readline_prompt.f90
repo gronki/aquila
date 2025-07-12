@@ -2,6 +2,7 @@ module readline_prompt_m
 
 use runner_m
 use iso_c_binding
+implicit none(type, external)
 private
 
 type, extends(console_prompt_t) :: readline_prompt_t
@@ -24,6 +25,10 @@ subroutine c_readline_prompt_free(input) bind(C, name="readline_prompt_free")
    import :: c_ptr
    type(c_ptr), value :: input
 end subroutine
+function check_input_is_tty() bind(C, name="check_input_is_tty")
+   import :: c_int
+   integer(c_int) :: check_input_is_tty
+end function
 end interface
 
 contains
@@ -32,6 +37,7 @@ subroutine readline_init(prompt)
    class(readline_prompt_t), intent(inout) :: prompt
 
    call c_readline_prompt_init
+   prompt % halt_on_error = check_input_is_tty() == 0
 end subroutine
 
 subroutine readline_prompt(prompt, line, eof)

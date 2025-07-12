@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <readline/readline.h>
 #include <readline/history.h>
+#include <unistd.h>
 
 void readline_prompt_init()
 {
@@ -21,4 +22,8 @@ void readline_prompt_free(char *input)
 {
     if (input)
         free(input);
+}
+
+int check_input_is_tty() {
+    return isatty(STDIN_FILENO);
 }

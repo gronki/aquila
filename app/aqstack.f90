@@ -375,6 +375,11 @@ program aqstack
         print perf_fmt, 'align', t2 - t1
 
       end block align_frames
+    else
+      allocate(buffers_to_stack(nx, ny, nframes))
+      do i = 1, nframes
+        buffers_to_stack(:,:,i) = frames(i) % data
+      end do
     end if
 
     if (cfg_normalize) then
@@ -410,7 +415,7 @@ program aqstack
         
         call stack_frames(strategy, method, frames(1:nframes), buffers_to_stack(:, :, 1:nframes), frame_out)
 
-        output_fn_clean = select_output_filename(output_fn, method)
+        output_fn_clean = select_output_filename(output_fn, strategy)
         print '(a,a)', 'writing output file: ', trim(output_fn_clean)
         call frame_out % write_fits(output_fn_clean)
         

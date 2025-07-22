@@ -14,7 +14,7 @@ module legacy_frame_value_m
         procedure :: write => image_write
     end type
 
-    public :: legacy_frame_value_t, img_k
+    public :: legacy_frame_value_t, img_k, as_frame
 
 contains
 
@@ -47,6 +47,23 @@ contains
         call val % frame % write_fits(fn, errno)
         if (errno /= 0) &
             call seterr(err, "writing FITS file failed")
+     end subroutine
+
+     subroutine as_frame(val, frame, err)
+        class(value_t), target :: val
+        type(legacy_frame_value_t), pointer :: frame
+        type(err_t), intent(out), optional :: err
+
+        select type(val)
+        type is (legacy_frame_value_t)
+           if (.not. allocated(val % frame % data)) then
+              call seterr(err, "frame data not allocated")
+              return
+           end if
+           frame => val
+        class default
+           call seterr( err, "expected image frame as `frame` parameter" )
+        end select
      end subroutine
 
 end module

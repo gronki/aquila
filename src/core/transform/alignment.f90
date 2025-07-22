@@ -21,6 +21,42 @@ subroutine align_polygon(xy1, xy2, nstars, nmatches, t)
    t%vec = [init_dx, init_dy, init_r * t%scale]
 end subroutine
 
+subroutine classic_align(lst0, lst, align_method, r0, tx, errno)
+
+   class(source_t), intent(in) :: lst0(:), lst(:)
+   character(len=*), intent(in) :: align_method
+   type(transform_xyr_t), intent(inout) :: tx
+   integer, intent(out) :: errno
+   real(fp) :: r0
+   real(fp) :: a
+
+   errno = 0
+   select case (align_method)
+
+   case ('polygon')
+     call align_polygon(lst0, lst, 30, 12, tx)
+     
+   case ('gravity')
+     ! find an initial estimate for a transform
+     call align_polygon(lst0, lst, 24, 8, tx)
+     ! fine-tune the transform between frames
+     call align_gravity(lst0, lst, tx, 2.0_fp)
+
+   case ('gravity_only')
+     a = 0.25 * (2 * r0)
+     if (a > 15) then
+       call align_gravity(lst0, lst, tx, a)
+     end if
+
+     call align_gravity(lst0, lst, tx, 10.0_fp)
+     call align_gravity(lst0, lst, tx, 2.0_fp)
+     
+   case default
+      print *, 'align: unknown method: ', align_method
+     errno = 1
+   end select
+end subroutine
+
  !------------------------------------------------------------------------------------!
 
 subroutine align_gravity(xy, xy0, v0, k0)

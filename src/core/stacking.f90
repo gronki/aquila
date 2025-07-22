@@ -157,6 +157,8 @@ contains
 
     n_frames = size(frames)
     do i = 1, n_frames
+      if (.not. allocated(frames(i) % data)) &
+        error stop "attempting to collect frames into buffer but one of them is empty"
       if (i == 1) then
           ni = size(frames(i)%data, 1)
           nj = size(frames(i)%data, 2)
@@ -218,7 +220,11 @@ contains
       end do
       !$omp end parallel do
     case default
-      buffer_out(:, :) = sum(buffer(:, :, 1:nstack), 3) / nstack
+      do j = 1, size(buffer, 2)
+        do i = 1, size(buffer, 1)
+          buffer_out(i,j) = sum(buffer(i, j, 1:nstack)) / nstack
+        end do
+      end do
     end select
   end subroutine
 

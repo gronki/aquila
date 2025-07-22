@@ -278,7 +278,7 @@ program aqstack
         use new_align
         use polygon_matching, only: find_transform_polygons
         type(extended_source_t), dimension(:), allocatable :: lst0, lst
-        integer :: i, istart
+        integer :: i, istart, errno
         class(transform_xyr_t), allocatable :: tx
         real(fp) :: r0
 
@@ -327,32 +327,8 @@ program aqstack
 
           ! register the stars
           call register_stars(frames(i) % data, lst)
-          
-          select case (align_method)
-
-          case ('polygon')
-            call align_polygon(lst0, lst, 30, 12, tx)
-            
-          case ('gravity')
-            ! find an initial estimate for a transform
-            call align_polygon(lst0, lst, 24, 8, tx)
-            ! fine-tune the transform between frames
-            call align_gravity(lst0, lst, tx, 2.0_fp)
-
-          case ('gravity_only')
-            associate (a => 0.25 * (2 * r0))
-              if (a > 15) then
-                call align_gravity(lst0, lst, tx, a)
-              end if
-            end associate
-
-            call align_gravity(lst0, lst, tx, 10.0_fp)
-            call align_gravity(lst0, lst, tx, 2.0_fp)
-            
-          case default
-            error stop 'align method unknown'
-          end select
-          
+          call classic_align(lst0, lst, align_method, r0, tx, errno)
+          if (errno /= 0) error stop "align error"
           
           !$omp critical
           margin = max(margin, check_corners(tx, nx, ny) + 2)

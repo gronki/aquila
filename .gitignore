@@ -8,3 +8,4 @@
 *.o
 /build
 *.fits
+fpm.F90

@@ -1,4 +1,4 @@
-FROM ubuntu:24.04 AS builder
+FROM ubuntu:20.04 AS builder
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -33,7 +33,7 @@ RUN echo "source /opt/intel/oneapi/setvars.sh" > /etc/buildenv.sh
 WORKDIR /source
 
 ENV VERSION="unknown"
-ENV DEP_PACKAGES="libcfitsio10, libpng16-16, libreadline8t64"
+ENV DEP_PACKAGES="libcfitsio8, libpng16-16, libreadline8"
 ENV FPM_FFLAGS="-O2 -fp-model=fast -g1"
 ENV FPM_LDFLAGS="-static-intel -qopenmp-link=static"
 

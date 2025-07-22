@@ -26,17 +26,36 @@ ENV FPM_CC=icx
 ENV FPM_CXX=icpx
 
 WORKDIR /fpm
-ADD packaging/fpm.F90 .
+ADD https://github.com/fortran-lang/fpm/releases/download/v0.10.0/fpm-0.10.0.F90 fpm.F90
 RUN . /opt/intel/oneapi/setvars.sh && ${FPM_FC} -O0 fpm.F90 -o fpm && install fpm /usr/local/bin/
 RUN echo "source /opt/intel/oneapi/setvars.sh" > /etc/buildenv.sh
 
 WORKDIR /source
+COPY . .
 
-ENV VERSION="unknown"
-ENV DEP_PACKAGES="libcfitsio10, libpng16-16, libreadline8t64"
 ENV FPM_FFLAGS="-O2 -fp-model=fast -g1"
 ENV FPM_LDFLAGS="-static-intel -qopenmp-link=static"
 
-RUN mkdir -p /result
+RUN . /opt/intel/oneapi/setvars.sh && \
+    rm -rf build && \
+    find -name \*.mod -delete && \
+    find -name \*.smod -delete && \
+    fpm build && fpm install --no-rebuild --prefix=/opt/aquila
 
-ENTRYPOINT [ "bash", "packaging/deb/entrypoint.sh", "/result" ]
+FROM ubuntu:24.04 AS runner
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+COPY --from=builder /opt/aquila/ /opt/aquila/
+
+RUN apt-get update && apt-get install -y libcfitsio10 libpng16-16 libreadline8t64 && apt-get clean
+
+ENV PATH="${PATH}:/opt/aquila/bin"
+ENV LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:/opt/aquila/lib"
+
+COPY scripts/docker_entrypoint.sh /src/entrypoint.sh
+RUN chmod +x /src/entrypoint.sh
+
+WORKDIR /work
+
+ENTRYPOINT [ "/src/entrypoint.sh" ]

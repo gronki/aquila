@@ -125,8 +125,9 @@ contains
       call frame_out % hdr % add_str('STCKMTD', method)
       if (strategy /= '') call frame_out % hdr % add_str('FRAMETYP', strategy)
 
-      call propagate_average_value_real(frames(1:nstack), 'EXPTIME', frame_out)
-      call propagate_average_value_real(frames(1:nstack), 'CCD-TEMP', frame_out)
+      call propagate_average_value_real(frames(1:nstack), 'EXPTIME', frame_out, .false.)
+      call propagate_average_value_real(frames(1:nstack), 'CCD-TEMP', frame_out, .true.)
+      frame_out%exptime = sum(frames(1:nstack)%exptime)
 
     end block write_extra_info_hdr
 
@@ -230,11 +231,12 @@ contains
 
   !----------------------------------------------------------------------------!
 
-  subroutine propagate_average_value_real(frames, kw, frame_out)
+  subroutine propagate_average_value_real(frames, kw, frame_out, average)
     use framehandling, only: image_frame_t
 
     class(image_frame_t), intent(in) :: frames(:)
     class(image_frame_t), intent(inout) :: frame_out
+    logical, intent(in) :: average
     character(len = *) :: kw
     logical :: m(size(frames))
     real :: av
@@ -243,7 +245,7 @@ contains
     m(:) = [ (frames(i) % hdr % has_key(kw), i = 1, size(frames)) ]
     if (count(m) > 0) then
       av = sum([ (merge(frames(i) % hdr % get_real(kw, 0.0), 0.0, m(i)), &
-      &     i = 1, size(frames)) ]) / count(m)
+      &     i = 1, size(frames)) ]) / merge(count(m), 1, average)
       call frame_out % hdr % add_real(kw, av)
     end if
   end subroutine

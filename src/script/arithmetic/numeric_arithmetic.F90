@@ -76,6 +76,7 @@ elemental function add__frame__frame(v1, v2) result(v)
 
    v%frame = strip_buffer(v1%frame)
    v%frame%data = v1%frame%data + v2%frame%data
+   v%frame%exptime = v1%frame%exptime + v2%frame%exptime
 end function
 
 elemental function add__real__real(v1, v2) result(v)
@@ -132,6 +133,7 @@ elemental function mul__real__frame(v1, v2) result(v)
 
    v%frame = strip_buffer(v2%frame)
    v%frame%data = v1%value * v2%frame%data
+   v%frame%exptime = v1%value * v2%frame%exptime
 end function
 
 elemental function mul__frame__real(v1, v2) result(v)
@@ -141,6 +143,7 @@ elemental function mul__frame__real(v1, v2) result(v)
 
    v%frame = strip_buffer(v1%frame)
    v%frame%data = v1%frame%data * v2%value
+   v%frame%exptime = v1%frame%exptime * v2%value
 end function
 
 elemental function mul__frame__frame(v1, v2) result(v)
@@ -178,6 +181,7 @@ elemental function div__frame__real(v1, v2) result(v)
 
    v%frame = strip_buffer(v1%frame)
    v%frame%data = v1%frame%data / v2%value
+   v%frame%exptime = v1%frame%exptime / v2%value
 end function
 
 elemental function div__frame__frame(v1, v2) result(v)

@@ -22,9 +22,9 @@ fi
 
 VERSION=$(grep 'version =' src/globals/globals.F90 | cut -d\' -f2)
 
-# if ! ${DOCKER} images -aq ${IMAGE_NAME}; then
+if ! ${DOCKER} image inspect ${IMAGE_NAME} >/dev/null; then
     ${DOCKER} build -t "$IMAGE_NAME" -f "$DOCKERFILE_PATH" .
-# fi
+fi
 
 ${DOCKER} run -it --rm \
     -e DISTRO="${DISTRO:?}" \

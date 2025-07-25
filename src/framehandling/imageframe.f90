@@ -30,6 +30,8 @@ module image_frame_m
 
   !----------------------------------------------------------------------------!
 
+  public :: strip_buffer
+
 contains
 
   subroutine read_fits(self, fn, errno)
@@ -92,5 +94,18 @@ contains
   end function
 
   !----------------------------------------------------------------------------!
+
+  pure function strip_buffer(fr) result(stripped)
+    type(image_frame_t), intent(in) :: fr
+    type(image_frame_t) :: stripped
+
+    stripped % ccdtemp  = fr % ccdtemp
+    stripped % exptime  = fr % exptime
+    stripped % fn       = fr % fn
+    stripped % frametyp = fr % frametyp
+    stripped % hdr      = fr % hdr
+
+  end function
+
 
 end module

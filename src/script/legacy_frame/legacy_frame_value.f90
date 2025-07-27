@@ -49,10 +49,11 @@ contains
             call seterr(err, "writing FITS file failed")
      end subroutine
 
-     subroutine as_frame(val, frame, err)
+     subroutine as_frame(val, frame, err, errmsg)
         class(value_t), target :: val
         type(legacy_frame_value_t), pointer :: frame
         type(err_t), intent(out), optional :: err
+        character(len=*), intent(in), optional :: errmsg
 
         select type(val)
         type is (legacy_frame_value_t)
@@ -62,7 +63,11 @@ contains
            end if
            frame => val
         class default
-           call seterr( err, "expected image frame as `frame` parameter" )
+           if (present(errmsg)) then
+             call seterr(err, errmsg)
+           else
+             call seterr( err, "expected image frame as `frame` parameter" )
+           end if
         end select
      end subroutine
 

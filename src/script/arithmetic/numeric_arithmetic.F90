@@ -45,7 +45,14 @@ end interface
 
 public :: operator(/)
 
-public :: val_add, val_sub, val_mul, val_div
+interface asinh
+module procedure asinh__real
+module procedure asinh__frame
+end interface
+
+public :: asinh
+
+public :: val_add, val_sub, val_mul, val_div, val_asinh
 
 contains
 
@@ -201,6 +208,23 @@ elemental function div__real__real(v1, v2) result(v)
    v%value = v1%value / v2%value
 end function
 
+! --------------------- ASINH ------------------------
+
+elemental function asinh__frame(v1) result(v)
+   type(legacy_frame_value_t), intent(in) :: v1
+   type(legacy_frame_value_t) :: v
+
+   v%frame = strip_buffer(v1%frame)
+   v%frame%data = asinh(v1%frame%data)
+end function
+
+elemental function asinh__real(v1) result(v)
+   type(real_value_t), intent(in) :: v1
+   type(real_value_t) :: v
+
+   v%value = asinh(v1 % value)
+end function
+
 ! --------------------- GENERAL ------------------------
 
 pure subroutine val_add(v1, v2, v, err)
@@ -341,6 +365,22 @@ pure subroutine val_div(v1, v2, v, err)
    class default
       call seterr(err, "arithmetic not allowed on " // v1%to_str())
    end select
+end subroutine
+
+pure subroutine val_asinh(v1, v, err)
+   class(value_t), intent(in) :: v1
+   class(value_t), intent(inout), allocatable :: v
+   type(err_t), intent(out), optional :: err
+
+   select type(v1)
+   type is(real_value_t)
+      v = asinh__real(v1)
+   type is(legacy_frame_value_t)
+      v = asinh__frame(v1)
+   class default
+      call seterr(err, "arithmetic not allowed on " // v1%to_str())
+   end select
+
 end subroutine
 
 end module

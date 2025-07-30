@@ -56,8 +56,23 @@ subroutine readline_prompt(prompt, line, eof)
       return
    end if
 
+#  ifdef __GFORTRAN__
+   block
+      character(kind=c_char, len=1), pointer :: f_str_arr(:)
+      integer :: i
+      call c_f_pointer(input, f_str_arr, [nchar])
+      do i = 1, len(line)
+         if (i <= nchar) then
+            line(i:i) = f_str_arr(i)
+         else
+            line(i:i) = " "
+         end if
+      end do
+   end block
+#  else
    call c_f_strpointer(input, f_str, nchar)
    line = f_str
+#  endif
    eof = .false.
 
 end subroutine

@@ -19,7 +19,8 @@ test -f flat.fits
 aqstack dark Dark/* -bias bias.fits
 test -f dark.fits
 aqstack final -bias bias.fits -dark dark.fits -hot-only -flat flat.fits \
-    Light/L/m94_Light_L_600* -o stack.fits
+    -align gravity Light/L/m94_Light_L_600* -o stack.fits
 test -f stack.fits
-
+cd ..
+aq2 <test.aq2
 echo OK

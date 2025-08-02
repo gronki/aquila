@@ -10,10 +10,12 @@ program test_console
 
    type(namespace_t), target :: namespace
    type(operation_db_t) :: operation_db
+   type(err_t) :: err
 
    call operation_db_init(operation_db)
    call init_operations(operation_db)
-   call run_interactive_console(readline_prompt_t(), operation_db, namespace)
+   call run_interactive_console(readline_prompt_t(), operation_db, namespace, err)
+   if (check(err)) error stop
 
 end program
 

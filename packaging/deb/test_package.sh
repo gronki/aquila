@@ -4,28 +4,32 @@ set -e
 
 DISTRO=$1
 
-IMAGE_NAME="aquila_package_tester:${DISTRO}"
+TEST_IMAGE_NAME="aquila_package_tester:${DISTRO}"
 DOCKERFILE_DIR="packaging/deb/${DISTRO}"
-DOCKERFILE_PATH="${DOCKERFILE_DIR}/Dockerfile.test"
+TEST_DOCKERFILE_PATH="${DOCKERFILE_DIR}/Dockerfile.test"
 DOCKER=podman
+ARCH=amd64
 
-if [ ! -f "$DOCKERFILE_PATH" ]; then
+if [ ! -f "$TEST_DOCKERFILE_PATH" ]; then
     echo "usage: packaging/deb/build_package.sh [distro_name]"
     echo "(required to run from root directory of the repo)"
     exit 1
 fi
 
 VERSION=$(grep 'version =' src/globals/globals.F90 | cut -d\' -f2)
+PACKAGE_NAME="aquila-${VERSION:?}-${DISTRO:?}-${ARCH:?}.deb"
 
-if ! ${DOCKER} image inspect ${IMAGE_NAME} >/dev/null; then
-    ${DOCKER} build -t "$IMAGE_NAME" -f "$DOCKERFILE_PATH" .
+if ! ${DOCKER} image inspect ${TEST_IMAGE_NAME} >/dev/null; then
+    echo "image $TEST_IMAGE_NAME not found; please first run"
+    echo "packaging/deb/build_image.sh ${DISTRO}"
+    exit 1
 fi
 
 ${DOCKER} run -it --rm \
-    -e DISTRO="${DISTRO:?}" \
-    -e VERSION="$VERSION" \
-    -e ARCH="x86_64" \
     -v $(pwd)/packaging:/packaging \
     -v $(pwd)/scratch:/testdata \
     --entrypoint "/bin/bash" \
-    "$IMAGE_NAME" /packaging/deb/entrypoint_test.sh
+    "$TEST_IMAGE_NAME" /packaging/deb/entrypoint_test.sh "$PACKAGE_NAME" || (
+        mkdir -p packaging/failed
+        mv "packaging/${PACKAGE_NAME}" packaging/failed/
+    )

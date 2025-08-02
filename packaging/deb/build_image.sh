@@ -7,6 +7,8 @@ DISTRO=$1
 IMAGE_NAME="aquila_package_builder:${DISTRO}"
 DOCKERFILE_DIR="packaging/deb/${DISTRO}"
 DOCKERFILE_PATH="${DOCKERFILE_DIR}/Dockerfile"
+TEST_IMAGE_NAME="aquila_package_tester:${DISTRO}"
+TEST_DOCKERFILE_PATH="${DOCKERFILE_DIR}/Dockerfile.test"
 DOCKER=podman
 
 if [ ! -f "$DOCKERFILE_PATH" ]; then
@@ -21,3 +23,4 @@ fi
     -o packaging/fpm.F90
 
 ${DOCKER} build -t "$IMAGE_NAME" -f "$DOCKERFILE_PATH" .
+${DOCKER} build -t "$TEST_IMAGE_NAME" -f "$TEST_DOCKERFILE_PATH" .

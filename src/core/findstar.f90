@@ -81,6 +81,7 @@ contains
     logical, dimension(:,:), allocatable :: mask, master_mask
     real(fp), dimension(:,:), allocatable :: xx, yy
     integer :: i, j, ni, nj, nx, ny, imax, jmax, xymax(2)
+    integer :: ilo, ihi, jlo, jhi
     real(fp) :: sthr
 
     ni = size(im, 1)
@@ -125,34 +126,34 @@ contains
       mask(imax, jmax) = .true.
 
       ! crop the image to save processing power
-      associate (ilo => max(imax - rslice, 1), &
-                 ihi => min(imax + rslice, ni), &
-                 jlo => max(jmax - rslice, 1), &
-                 jhi => min(jmax + rslice, nj))
-        associate (c_mask => mask(ilo:ihi, jlo:jhi), &
-              c_master_mask => master_mask(ilo:ihi, jlo:jhi), &
-              c_im => im(ilo:ihi, jlo:jhi), &
-              c_xx => xx(ilo:ihi, jlo:jhi), &
-              c_yy => yy(ilo:ihi, jlo:jhi))
-          ! make the child mask fill the entire blob
-          call fill_mask(c_mask, c_master_mask)
-          ! subtract the child mask from the major one
-          c_master_mask = c_master_mask .and. (.not. c_mask)
-          ! skip anything which is less than 3x3
-          if (count(c_mask) < 8) cycle
+      ilo = max(imax - rslice, 1)
+      ihi = min(imax + rslice, ni)
+      jlo = max(jmax - rslice, 1)
+      jhi = min(jmax + rslice, nj)
+      
+      associate (c_mask => mask(ilo:ihi, jlo:jhi), &
+            c_master_mask => master_mask(ilo:ihi, jlo:jhi), &
+            c_im => im(ilo:ihi, jlo:jhi), &
+            c_xx => xx(ilo:ihi, jlo:jhi), &
+            c_yy => yy(ilo:ihi, jlo:jhi))
+        ! make the child mask fill the entire blob
+        call fill_mask(c_mask, c_master_mask)
+        ! subtract the child mask from the major one
+        c_master_mask = c_master_mask .and. (.not. c_mask)
+        ! skip anything which is less than 3x3
+        if (count(c_mask) < 8) cycle
 
-          associate (flx => star % flux, cx => star % x, cy => star % y, rms => star % rms)
-            flx = sum(c_im, c_mask)
-            cx = sum(c_im * c_xx, c_mask) / flx
-            cy = sum(c_im * c_yy, c_mask) / flx
+        associate (flx => star % flux, cx => star % x, cy => star % y, rms => star % rms)
+          flx = sum(c_im, c_mask)
+          cx = sum(c_im * c_xx, c_mask) / flx
+          cy = sum(c_im * c_yy, c_mask) / flx
 
-            rms = sqrt(sum(c_im * ((c_xx - cx)**2 + (c_yy - cy)**2), c_mask) / flx)
+          rms = sqrt(sum(c_im * ((c_xx - cx)**2 + (c_yy - cy)**2), c_mask) / flx)
 
-            if (rms > max_rms) cycle extract_stars
+          if (rms > max_rms) cycle extract_stars
 
-            star % deviation_xy = sum(c_im * (c_xx - cx) * (c_yy - cy), c_mask) / (flx * rms**2)
-            star % deviation_uv = sum(c_im * ((c_xx - cx)**2 - (c_yy - cy)**2) / 2, c_mask) / (flx * rms**2)
-          end associate
+          star % deviation_xy = sum(c_im * (c_xx - cx) * (c_yy - cy), c_mask) / (flx * rms**2)
+          star % deviation_uv = sum(c_im * ((c_xx - cx)**2 - (c_yy - cy)**2) / 2, c_mask) / (flx * rms**2)
         end associate
       end associate
 

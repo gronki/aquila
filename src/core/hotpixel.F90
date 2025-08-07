@@ -40,25 +40,30 @@ contains
   pure subroutine fix_hot(im, hot_mask)
     ! use statistics, only: quickselect
     real(fp), contiguous, intent(inout) :: im(:,:)
-    logical, contiguous, intent(in) :: hot_mask(:,:)
-    integer :: i, j, n
+    logical, intent(in) :: hot_mask(:,:)
+    logical, allocatable :: not_hot_mask(:,:)
+    integer :: i, j, n, ilo, ihi, jlo, jhi
     integer, parameter :: r = 3
     real(fp) :: a((2 * r + 1)**2)
 
+    not_hot_mask = .not. hot_mask
+
     do j = 1, size(im, 2)
       do i = 1, size(im, 1)
-        if (hot_mask(i,j)) then
-          associate (ilo => max(i - r, 1), ihi => min(i + r, size(im, 1)), &
-            & jlo => max(j - r, 1), jhi => min(j + r, size(im, 2)))
-            associate (imc => im(ilo:ihi, jlo:jhi), msc => .not. hot_mask(ilo:ihi, jlo:jhi))
-              ! trzeba zrobic pure quickselect
-              ! n = count(msc)
-              ! a(1:n) = pack(imc, msc)
-              ! im(i, j) = quickselect(a(1:n), (n + 1) / 2)
-              im(i, j) = sum(imc, msc) / count(msc)
-            end associate
-          end associate
-        end if
+        if (not_hot_mask(i,j)) cycle
+
+        ilo = max(i - r, 1)
+        ihi = min(i + r, size(im, 1))
+        jlo = max(j - r, 1)
+        jhi = min(j + r, size(im, 2))
+
+        associate (imc => im(ilo:ihi, jlo:jhi), msc => not_hot_mask(ilo:ihi, jlo:jhi))
+          ! trzeba zrobic pure quickselect
+          ! n = count(msc)
+          ! a(1:n) = pack(imc, msc)
+          ! im(i, j) = quickselect(a(1:n), (n + 1) / 2)
+          im(i, j) = sum(imc, msc) / count(msc)
+        end associate
       end do
     end do
   end subroutine

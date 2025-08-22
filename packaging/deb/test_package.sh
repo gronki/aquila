@@ -25,11 +25,14 @@ if ! ${DOCKER} image inspect ${TEST_IMAGE_NAME} >/dev/null; then
     exit 1
 fi
 
+TESTDIR=$(mktemp -d)
+echo "testdir = $TESTDIR"
+
 ${DOCKER} run -it --rm \
-    -v $(pwd)/packaging:/packaging \
-    -v $(pwd)/scratch:/testdata \
+    -v $(pwd):/source \
+    -v $TESTDIR:/tmp/test \
     --entrypoint "/bin/bash" \
-    "$TEST_IMAGE_NAME" /packaging/deb/entrypoint_test.sh "$PACKAGE_NAME" || (
+    "$TEST_IMAGE_NAME" /source/packaging/deb/entrypoint_test.sh "$PACKAGE_NAME" || (
         mkdir -p packaging/failed
-        mv "packaging/${PACKAGE_NAME}" packaging/failed/
+        # mv "packaging/${PACKAGE_NAME}" packaging/failed/
     )

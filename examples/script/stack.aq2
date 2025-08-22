@@ -1,0 +1,18 @@
+lights_fn = array("testdata/m94/Light/L/m94_Light_L_600_secs_001.fits", "testdata/m94/Light/L/m94_Light_L_600_secs_002.fits", "testdata/m94/Light/L/m94_Light_L_600_secs_003.fits") 
+lights = load_frame(lights_fn)
+biases = array("testdata/m94/Bias/good_Bias_0.001_secs_001.fits", "testdata/m94/Bias/good_Bias_0.001_secs_002.fits", "testdata/m94/Bias/good_Bias_0.001_secs_003.fits") % load_frame()
+
+bias_master = stack(biases, method: "median", strategy: "bias")
+bias_master % save("bias_new.fits")
+lights = calibrate(lights, bias: bias_master)
+! TODO: make sure the user may not overwrite an exsting file.
+!lights % save(lights_fn % path(dir: "reduced", suffix: "_r"))
+
+stars = findstar(lights)
+alignments = align(stars, stars%item(1))
+
+aligned = project(lights, alignments)
+
+!aligned % save(lights_fn % path(dir: "aligned", suffix: "_a"))
+
+aligned % stack(method: "average") % save("stack_new.fits")

@@ -1,0 +1,17 @@
+S = load_frame("testdata/sho/stack_2_S.fits")
+H = load_frame("testdata/sho/stack_2_H.fits")
+O = load_frame("testdata/sho/stack_2_O.fits")
+
+R = mix(H, 0.9, S, 3)
+G = mix(H, 0.9, O, 1, S, -0.8) 
+B = mix(O, 3.3)
+rgb = array(R, G, B)
+
+rgb = stretch(rgb, array(90, 0, 90), array(230, 150, 190)) 
+
+hrgb = lrgb(H, item(rgb, 1), item(rgb, 2), item(rgb, 3)) % stretch(0, 50)
+rgb = mix(rgb, 0.5, hrgb, 0.5)
+rgb = rgb % mix(0.7) % asinh() % stretch(0.05, 1.8)
+
+item(rgb, 1) % save("sho_r.fits")
+png(item(rgb, 1), item(rgb, 2), item(rgb, 3), "sho.png")

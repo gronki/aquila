@@ -1,9 +1,9 @@
 name = "aquila"
-version = "210111"
-license = "license"
+version = "250812"
+license = "BSD 3-clause"
 author = "Dominik Gronkiewicz"
 maintainer = "gronki@gmail.com"
-copyright = "Copyright 2024, Dominik Gronkiewicz"
+copyright = "Copyright 2025, Dominik Gronkiewicz"
 
 [build]
 auto-executables = false

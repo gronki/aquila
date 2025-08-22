@@ -27,7 +27,8 @@ ENV FPM_CXX=icpx
 
 WORKDIR /fpm
 ADD packaging/fpm.F90 .
-RUN . /opt/intel/oneapi/setvars.sh && ${FPM_FC} -O0 fpm.F90 -o fpm && install fpm /usr/local/bin/
+RUN . /opt/intel/oneapi/setvars.sh && ${FPM_FC} -O0 fpm.F90 -o fpm \
+   && install fpm /usr/bin && rm -f *.mod *.smod *.o fpm
 RUN echo "source /opt/intel/oneapi/setvars.sh" > /etc/buildenv.sh
 
 WORKDIR /source

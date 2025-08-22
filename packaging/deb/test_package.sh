@@ -32,7 +32,7 @@ ${DOCKER} run -it --rm \
     -v $(pwd):/source \
     -v $TESTDIR:/tmp/test \
     --entrypoint "/bin/bash" \
-    "$TEST_IMAGE_NAME" /source/packaging/deb/entrypoint_test.sh "$PACKAGE_NAME" || (
-        mkdir -p packaging/failed
-        # mv "packaging/${PACKAGE_NAME}" packaging/failed/
+    "$TEST_IMAGE_NAME" /source/packaging/deb/entrypoint_test.sh "$PACKAGE_NAME" && (
+        mkdir -p packaging/passed
+        cp "packaging/${PACKAGE_NAME}" packaging/passed/
     )

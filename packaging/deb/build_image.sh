@@ -19,7 +19,7 @@ fi
 
 [ ! -f packaging/fpm.F90 ] && 
     curl -L \
-    https://github.com/fortran-lang/fpm/releases/download/v0.10.0/fpm-0.10.0.F90 \
+    https://github.com/fortran-lang/fpm/releases/download/v0.12.0/fpm-0.12.0.F90 \
     -o packaging/fpm.F90
 
 ${DOCKER} build -t "$IMAGE_NAME" -f "$DOCKERFILE_PATH" .

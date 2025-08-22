@@ -13,7 +13,7 @@ ENV FPM_CXX=g++-14
 
 WORKDIR /fpm
 ADD packaging/fpm.F90 .
-RUN ${FPM_FC} -O0 fpm.F90 -o fpm && install fpm /usr/local/bin/
+RUN ${FPM_FC} -O0 fpm.F90 -o fpm && install fpm /usr/bin && rm -f *.mod *.smod *.o fpm
 RUN echo > /etc/buildenv.sh
 
 WORKDIR /source

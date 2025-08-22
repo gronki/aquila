@@ -27,13 +27,13 @@ ENV FPM_CXX=icpx
 
 WORKDIR /fpm
 ADD https://github.com/fortran-lang/fpm/releases/download/v0.10.0/fpm-0.10.0.F90 fpm.F90
-RUN . /opt/intel/oneapi/setvars.sh && ${FPM_FC} -O0 fpm.F90 -o fpm && install fpm /usr/local/bin/
+RUN . /opt/intel/oneapi/setvars.sh && ${FPM_FC} -O0 fpm.F90 -o fpm && install fpm /usr/bin
 RUN echo "source /opt/intel/oneapi/setvars.sh" > /etc/buildenv.sh
 
 WORKDIR /source
 COPY . .
 
-ENV FPM_FFLAGS="-O2 -fp-model=fast -g1"
+ENV FPM_FFLAGS="-O2 -fp-model=fast -g1 -heap-arrays"
 ENV FPM_LDFLAGS="-static-intel -qopenmp-link=static"
 
 RUN . /opt/intel/oneapi/setvars.sh && \

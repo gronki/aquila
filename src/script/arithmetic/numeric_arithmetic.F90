@@ -227,7 +227,7 @@ end function
 
 ! --------------------- GENERAL ------------------------
 
-pure subroutine val_add(v1, v2, v, err)
+subroutine val_add(v1, v2, v, err)
    class(value_t), intent(in) :: v1
    class(value_t), intent(in) :: v2
    class(value_t), intent(inout), allocatable :: v
@@ -262,7 +262,7 @@ pure subroutine val_add(v1, v2, v, err)
    end select
 end subroutine
 
-pure subroutine val_sub(v1, v2, v, err)
+subroutine val_sub(v1, v2, v, err)
    class(value_t), intent(in) :: v1
    class(value_t), intent(in) :: v2
    class(value_t), intent(inout), allocatable :: v
@@ -297,7 +297,7 @@ pure subroutine val_sub(v1, v2, v, err)
    end select
 end subroutine
 
-pure subroutine val_mul(v1, v2, v, err)
+subroutine val_mul(v1, v2, v, err)
    class(value_t), intent(in) :: v1
    class(value_t), intent(in) :: v2
    class(value_t), intent(inout), allocatable :: v
@@ -332,7 +332,7 @@ pure subroutine val_mul(v1, v2, v, err)
    end select
 end subroutine
 
-pure subroutine val_div(v1, v2, v, err)
+subroutine val_div(v1, v2, v, err)
    class(value_t), intent(in) :: v1
    class(value_t), intent(in) :: v2
    class(value_t), intent(inout), allocatable :: v
@@ -367,7 +367,7 @@ pure subroutine val_div(v1, v2, v, err)
    end select
 end subroutine
 
-pure subroutine val_asinh(v1, v, err)
+subroutine val_asinh(v1, v, err)
    class(value_t), intent(in) :: v1
    class(value_t), intent(inout), allocatable :: v
    type(err_t), intent(out), optional :: err

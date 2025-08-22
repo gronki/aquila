@@ -101,6 +101,7 @@ contains
     integer :: bsize, ftiostat, un
 
     ftiostat = 0
+    if (present(errno)) errno = 0
 
     call ftgiou(un, ftiostat)
     call ftdkopn(un, fn, 0, bsize, ftiostat)

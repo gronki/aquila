@@ -45,17 +45,22 @@ contains
     call self % frame_t % read_fits(fn, status)
     if (present(errno)) errno = status
 
-    if (status == 0) then
-      self % fn = fn
-      call self % hdr % load(fn, errno)
-
-      if ('EXPTIME' .in. self % hdr) &
-        self % exptime = self % hdr % get_real('EXPTIME')
-      if ('CCD-TEMP' .in. self % hdr) &
-        self % ccdtemp = self % hdr % get_real('CCD-TEMP')
-      if ('FRAME' .in. self % hdr) &
-        self % frametyp = self % hdr % get_str('FRAME')
+    if (status /= 0) then
+      if (.not. present(errno)) &
+        error stop "reading FITS file failed: " // trim(fn)
+      return
     end if
+
+    self % fn = fn
+    call self % hdr % load(fn, errno)
+
+    if ('EXPTIME' .in. self % hdr) &
+      self % exptime = self % hdr % get_real('EXPTIME')
+    if ('CCD-TEMP' .in. self % hdr) &
+      self % ccdtemp = self % hdr % get_real('CCD-TEMP')
+    if ('FRAME' .in. self % hdr) &
+      self % frametyp = self % hdr % get_str('FRAME')
+
   end subroutine
 
   !----------------------------------------------------------------------------!

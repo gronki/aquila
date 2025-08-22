@@ -1,6 +1,6 @@
-S = load_frame("testdata/sho/stack_2_S.fits")
-H = load_frame("testdata/sho/stack_2_H.fits")
-O = load_frame("testdata/sho/stack_2_O.fits")
+S = load_frame("testdata/sho/stack_S.fits")
+H = load_frame("testdata/sho/stack_H.fits")
+O = load_frame("testdata/sho/stack_O.fits")
 
 R = mix(H, 0.9, S, 3)
 G = mix(H, 0.9, O, 1, S, -0.8) 

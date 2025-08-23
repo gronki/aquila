@@ -40,5 +40,6 @@ source-dir = "app"
 main = "aqconvol.f90"
 
 [dependencies]
+openmp = "*"
 fastconv = {path = "deps/fastconv"}
 aq2_task_dispatch = {path = "deps/task-dispatch"}

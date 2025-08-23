@@ -37,11 +37,11 @@ jobs:
           ./fpm build \
             --compiler gfortran-${{ matrix.gcc-ver }} \
             --c-compiler gcc-${{ matrix.gcc-ver }} \
-            --flag '-O2 -ffast-math -g -ffree-line-length-none -fopenmp'
+            --flag '-O2 -ffast-math -g -ffree-line-length-none'
           sudo ./fpm install --no-rebuild --prefix /usr \
             --compiler gfortran-${{ matrix.gcc-ver }} \
             --c-compiler gcc-${{ matrix.gcc-ver }} \
-            --flag '-O2 -ffast-math -g -ffree-line-length-none -fopenmp'
+            --flag '-O2 -ffast-math -g -ffree-line-length-none'
   
       - name: Download test data
         run: bash scripts/get_test_data.sh
@@ -93,10 +93,10 @@ jobs:
           source /opt/intel/oneapi/setvars.sh
           ./fpm build \
             --compiler ifx --c-compiler icx \
-            --flag '-O3 -fp-model=fast -g -qopenmp -heap-arrays'
+            --flag '-O3 -fp-model=fast -g -heap-arrays'
           sudo ./fpm install --no-rebuild --prefix /usr \
             --compiler ifx --c-compiler icx \
-            --flag '-O3 -fp-model=fast -g -qopenmp -heap-arrays'
+            --flag '-O3 -fp-model=fast -g -heap-arrays'
   
       - name: Download test data
         run: bash scripts/get_test_data.sh
@@ -155,11 +155,11 @@ jobs:
           ./fpm build \
             --compiler flang-new-${{ matrix.llvm-ver }} \
             --c-compiler clang-${{ matrix.llvm-ver }} \
-            --flag '-O3 -ffast-math -g -fopenmp'
+            --flag '-O3 -ffast-math -g'
           sudo ./fpm install --no-rebuild --prefix /usr \
             --compiler flang-new-${{ matrix.llvm-ver }} \
             --c-compiler clang-${{ matrix.llvm-ver }} \
-            --flag '-O3 -ffast-math -g -fopenmp'
+            --flag '-O3 -ffast-math -g'
   
       - name: Download test data
         run: bash scripts/get_test_data.sh

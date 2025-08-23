@@ -20,7 +20,7 @@ WORKDIR /source
 
 ENV VERSION="unknown"
 ENV DEP_PACKAGES="libcfitsio10, libpng16-16, libreadline8t64, libgomp1, libgfortran5"
-ENV FPM_FFLAGS="-O2 -funsafe-math-optimizations -g -fopenmp"
+ENV FPM_FFLAGS="-O2 -funsafe-math-optimizations -g"
 ENV FPM_LDFLAGS=""
 
 RUN mkdir -p /result

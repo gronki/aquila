@@ -1,9 +1,21 @@
 #!/usr/bin/env bash
+set -e
+
+if [ -n "$(git status --porcelain)" ]; then
+    echo "git tree is dirty; commit all changes before the version bump"
+    exit 1
+fi
 
 if [ -z "$1" ]; then
 VERSION_STR=$(date -d '-3hours' +'%y%m%d')
 else
 VERSION_STR=$1
+fi
+
+
+if [ -n "$(git tag -l \"$VERSION_STR\")" ]; then
+    echo "Tag $VERSION_STR already exists."
+    exit 1
 fi
 
 if [ ! -f fpm.toml ]; then
@@ -13,3 +25,5 @@ fi
 
 sed -Ei "s/version =.*$/version = '${VERSION_STR}'/" src/globals/globals.F90
 sed -Ei "s/version =.*$/version = \"${VERSION_STR}\"/" fpm.toml
+
+git add src/globals/globals.F90 fpm.toml

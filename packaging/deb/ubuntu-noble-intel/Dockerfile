@@ -35,7 +35,7 @@ WORKDIR /source
 
 ENV VERSION="unknown"
 ENV DEP_PACKAGES="libcfitsio10, libpng16-16, libreadline8t64"
-ENV FPM_FFLAGS="-O3 -fp-model=fast -g -heap-arrays -qopenmp"
+ENV FPM_FFLAGS="-O3 -fp-model=fast -g -heap-arrays"
 ENV FPM_LDFLAGS="-static-intel -qopenmp-link=static"
 
 RUN mkdir -p /result

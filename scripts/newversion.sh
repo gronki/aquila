@@ -26,4 +26,11 @@ fi
 sed -Ei "s/version =.*$/version = '${VERSION_STR}'/" src/globals/globals.F90
 sed -Ei "s/version =.*$/version = \"${VERSION_STR}\"/" fpm.toml
 
-git add src/globals/globals.F90 fpm.toml
+if [ -z "$(git status --porcelain)" ]; then
+    echo "git does not see any changes; probably version $VERSION_STR already exists:"
+    echo
+    head -n 5 fpm.toml
+    echo
+    grep version src/globals/globals.F90
+    exit 1
+fi

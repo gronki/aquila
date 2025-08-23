@@ -26,9 +26,6 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y gfortran-${{ matrix.gcc-ver }} \
             libcfitsio-dev libpng-dev libgnutls30 libreadline-dev
-          echo "FPM_FC=gfortran-${{ matrix.gcc-ver }}" >> $GITHUB_ENV
-          echo "FPM_CC=gcc-${{ matrix.gcc-ver }}" >> $GITHUB_ENV
-          echo "FPM_CXX=g++-${{ matrix.gcc-ver }}" >> $GITHUB_ENV
 
       - name: Install fpm
         run: |
@@ -39,10 +36,12 @@ jobs:
         run: |
           ./fpm build \
             --compiler gfortran-${{ matrix.gcc-ver }} \
-            --profile release --flag '-g -ffree-line-length-none'
+            --c-compiler gcc-${{ matrix.gcc-ver }} \
+            --flag '-O2 -ffast-math -g -ffree-line-length-none -fopenmp'
           sudo ./fpm install --no-rebuild --prefix /usr \
             --compiler gfortran-${{ matrix.gcc-ver }} \
-            --profile release --flag '-g -ffree-line-length-none'
+            --c-compiler gcc-${{ matrix.gcc-ver }} \
+            --flag '-O2 -ffast-math -g -ffree-line-length-none -fopenmp'
   
       - name: Download test data
         run: bash scripts/get_test_data.sh
@@ -56,93 +55,116 @@ jobs:
           bash ../scripts/test_routine.sh
 
 
-  # oneapi:
-  #   runs-on: ubuntu-24.04
-  #   strategy:
-  #     fail-fast: false
-  #     matrix:
-  #       oneapi-ver: ["2025.1", "2025.0"]
-  #   name: oneapi ${{ matrix.oneapi-ver }}
-  #   steps:
-  #     - name: Checkout code
-  #       uses: actions/checkout@v4
-  #       with:
-  #         submodules: recursive
+  oneapi:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        oneapi-ver: ["2025.2", "2025.1"]
+    name: oneapi ${{ matrix.oneapi-ver }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
-  #     - name: Install oneapi
-  #       run: |
-  #         sudo apt-get update
-  #         sudo apt-get install -y gpg gpg-agent wget git curl gfortran
-  #         wget -O- https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB \
-  #           | gpg --dearmor | sudo tee /usr/share/keyrings/oneapi-archive-keyring.gpg
-  #         echo "deb [signed-by=/usr/share/keyrings/oneapi-archive-keyring.gpg] " \
-  #           " https://apt.repos.intel.com/oneapi all main" \
-  #           | sudo tee /etc/apt/sources.list.d/oneAPI.list
-  #         sudo apt-get update && sudo apt-get install -y --no-install-recommends \
-  #           intel-oneapi-compiler-fortran-${{ matrix.oneapi-ver }} \
-  #           intel-oneapi-compiler-dpcpp-cpp-${{ matrix.oneapi-ver }} 
-  #         echo "FPM_FC=ifx" >> $GITHUB_ENV
-  #         echo "FPM_CC=icx" >> $GITHUB_ENV
-  #         echo "FPM_CXX=icpx" >> $GITHUB_ENV
+      - name: Install oneapi
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gpg gpg-agent wget git curl gfortran \
+            libcfitsio-dev libpng-dev libgnutls30 libreadline-dev
+          wget -O- https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB \
+            | gpg --dearmor | sudo tee /usr/share/keyrings/oneapi-archive-keyring.gpg
+          echo "deb [signed-by=/usr/share/keyrings/oneapi-archive-keyring.gpg] " \
+            " https://apt.repos.intel.com/oneapi all main" \
+            | sudo tee /etc/apt/sources.list.d/oneAPI.list
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends \
+            intel-oneapi-compiler-fortran-${{ matrix.oneapi-ver }} \
+            intel-oneapi-compiler-dpcpp-cpp-${{ matrix.oneapi-ver }} 
 
-  #     - name: Install fpm
-  #       run: |
-  #         curl -L https://github.com/fortran-lang/fpm/releases/download/v0.12.0/fpm-0.12.0.F90 -o fpm.F90
-  #         source /opt/intel/oneapi/setvars.sh
-  #         gfortran -g -O0 fpm.F90 -o fpm
+      - name: Install fpm
+        run: |
+          curl -L https://github.com/fortran-lang/fpm/releases/download/v0.12.0/fpm-0.12.0.F90 -o fpm.F90
+          source /opt/intel/oneapi/setvars.sh
+          gfortran -g -O0 fpm.F90 -o fpm
 
-  #     - name: Run tests (debug)
-  #       run: |
-  #         source /opt/intel/oneapi/setvars.sh
-  #         ./fpm test --profile debug
+      - name: Build and install the app
+        run: |
+          ./fpm build \
+            --compiler ifx --c-compiler icx \
+            --flag '-O3 -fp-model=fast -g -qopenmp'
+          sudo ./fpm install --no-rebuild --prefix /usr \
+            --compiler ifx --c-compiler icx \
+            --flag '-O3 -fp-model=fast -g -qopenmp'
+  
+      - name: Download test data
+        run: bash scripts/get_test_data.sh
 
-  #     - name: Run tests (release)
-  #       run: |
-  #         source /opt/intel/oneapi/setvars.sh
-  #         ./fpm test --profile release --flag -g
+      - name: Run integration test on example data
+        run: |
+          mkdir testrun
+          cd testrun
+          ln -s ../examples
+          ln -s ../aquila_test_data testdata
+          bash ../scripts/test_routine.sh
 
-  # flang:
-  #   runs-on: ubuntu-24.04
-  #   strategy:
-  #     fail-fast: false
-  #     matrix:
-  #       llvm-ver: [19, 20]
+  flang:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        llvm-ver: [20]
 
-  #   name: flang ${{ matrix.llvm-ver }}
-  #   steps:
-  #     - name: Checkout code
-  #       uses: actions/checkout@v4
-  #       with:
-  #         submodules: recursive
+    name: flang ${{ matrix.llvm-ver }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
-  #     - name: Install flang ${{ matrix.llvm-ver }}
-  #       run: |
-  #         export DEBIAN_FRONTEND=noninteractive
-  #         sudo apt-get update
-  #         sudo apt-get install -y --no-install-recommends \
-  #           gnupg \
-  #           lsb-release \
-  #           ca-certificates \
-  #           curl \
-  #           gnupg2 \
-  #           apt-transport-https \
-  #           gfortran
-  #         curl -fsSL https://apt.llvm.org/llvm-snapshot.gpg.key | sudo tee /etc/apt/trusted.gpg.d/llvm.asc >/dev/null
-  #         echo "deb [signed-by=/etc/apt/trusted.gpg.d/llvm.asc] http://apt.llvm.org/noble/ llvm-toolchain-noble-${{ matrix.llvm-ver }} main" \
-  #           | sudo tee /etc/apt/sources.list.d/llvm.list >/dev/null
-  #         sudo apt-get update
-  #         sudo apt-get install -y clang-${{ matrix.llvm-ver }} flang-${{ matrix.llvm-ver }}
-  #         echo "FPM_FC=flang-new-${{ matrix.llvm-ver }}" >> $GITHUB_ENV
-  #         echo "FPM_CC=clang-${{ matrix.llvm-ver }}" >> $GITHUB_ENV
-  #         echo "FPM_CXX=clang-${{ matrix.llvm-ver }}" >> $GITHUB_ENV
+      - name: Install flang ${{ matrix.llvm-ver }}
+        run: |
+          export DEBIAN_FRONTEND=noninteractive
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            gnupg \
+            lsb-release \
+            ca-certificates \
+            curl \
+            gnupg2 \
+            apt-transport-https \
+            gfortran \
+            libcfitsio-dev libpng-dev libgnutls30 libreadline-dev
+          curl -fsSL https://apt.llvm.org/llvm-snapshot.gpg.key | sudo tee /etc/apt/trusted.gpg.d/llvm.asc >/dev/null
+          echo "deb [signed-by=/etc/apt/trusted.gpg.d/llvm.asc] http://apt.llvm.org/noble/ llvm-toolchain-noble-${{ matrix.llvm-ver }} main" \
+            | sudo tee /etc/apt/sources.list.d/llvm.list >/dev/null
+          sudo apt-get update
+          sudo apt-get install -y clang-${{ matrix.llvm-ver }} flang-${{ matrix.llvm-ver }}
 
-  #     - name: Install fpm
-  #       run: |
-  #         curl -L https://github.com/fortran-lang/fpm/releases/download/v0.12.0/fpm-0.12.0.F90 -o fpm.F90
-  #         gfortran -g -O0 fpm.F90 -o fpm
+      - name: Install fpm
+        run: |
+          curl -L https://github.com/fortran-lang/fpm/releases/download/v0.12.0/fpm-0.12.0.F90 -o fpm.F90
+          gfortran -g -O0 fpm.F90 -o fpm
 
-  #     - name: Run tests (debug)
-  #       run: ./fpm test --flag '-g -O0'
 
-  #     - name: Run tests (release)
-  #       run: ./fpm test --flag '-g -O3'
+      - name: Build and install the app
+        run: |
+          ./fpm build \
+            --compiler flang-new-${{ matrix.llvm-ver }} \
+            --c-compiler clang-${{ matrix.llvm-ver }} \
+            --flag '-O3 -ffast-math -g -fopenmp'
+          sudo ./fpm install --no-rebuild --prefix /usr \
+            --compiler flang-new-${{ matrix.llvm-ver }} \
+            --c-compiler clang-${{ matrix.llvm-ver }} \
+            --flag '-O3 -ffast-math -g -fopenmp'
+  
+      - name: Download test data
+        run: bash scripts/get_test_data.sh
+
+      - name: Run integration test on example data
+        run: |
+          mkdir testrun
+          cd testrun
+          ln -s ../examples
+          ln -s ../aquila_test_data testdata
+          bash ../scripts/test_routine.sh

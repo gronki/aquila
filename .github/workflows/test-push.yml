@@ -36,12 +36,16 @@ jobs:
           gfortran-${{ matrix.gcc-ver }} -g -O0 fpm.F90 -o fpm
 
       - name: Build and install the app
-        run: sudo ./fpm install --prefix /usr --profile release --flag '-g -ffree-line-length-none'
+        run: |
+          ./fpm build \
+            --compiler gfortran-${{ matrix.gcc-ver }} \
+            --profile release --flag '-g -ffree-line-length-none'
+          sudo ./fpm install --no-rebuild --prefix /usr \
+            --compiler gfortran-${{ matrix.gcc-ver }} \
+            --profile release --flag '-g -ffree-line-length-none'
   
       - name: Download test data
-        run: |
-          apt-get install -y curl gzip tar
-          bash scripts/get_test_data.sh
+        run: bash scripts/get_test_data.sh
 
       - name: Run integration test on example data
         run: |

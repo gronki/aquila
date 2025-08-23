@@ -31,6 +31,13 @@ if [ -z "$(git status --porcelain)" ]; then
     echo
     head -n 5 fpm.toml
     echo
-    grep version src/globals/globals.F90
+    grep version src/globals/globals.F90 | head -n 1
     exit 1
 fi
+
+git add src/globals/globals.F90 fpm.toml
+git commit -m "Version $VERSION_STR"
+git tag "$VERSION_STR"
+
+git push
+git push --tags

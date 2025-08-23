@@ -90,6 +90,7 @@ jobs:
 
       - name: Build and install the app
         run: |
+          source /opt/intel/oneapi/setvars.sh
           ./fpm build \
             --compiler ifx --c-compiler icx \
             --flag '-O3 -fp-model=fast -g -qopenmp'
@@ -102,6 +103,7 @@ jobs:
 
       - name: Run integration test on example data
         run: |
+          source /opt/intel/oneapi/setvars.sh
           mkdir testrun
           cd testrun
           ln -s ../examples

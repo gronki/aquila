@@ -93,10 +93,10 @@ jobs:
           source /opt/intel/oneapi/setvars.sh
           ./fpm build \
             --compiler ifx --c-compiler icx \
-            --flag '-O3 -fp-model=fast -g -qopenmp'
+            --flag '-O3 -fp-model=fast -g -qopenmp -heap-arrays'
           sudo ./fpm install --no-rebuild --prefix /usr \
             --compiler ifx --c-compiler icx \
-            --flag '-O3 -fp-model=fast -g -qopenmp'
+            --flag '-O3 -fp-model=fast -g -qopenmp -heap-arrays'
   
       - name: Download test data
         run: bash scripts/get_test_data.sh

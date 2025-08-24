@@ -7,8 +7,23 @@ on:
     branches: [master]
 
 jobs:
+  build-fpm:
+    name: Build FPM
+    runs-on: ubuntu-latest
+    steps:
+      - run: sudo apt-get update && sudo apt-get install -y gfortran curl
+      - run: curl -L https://github.com/fortran-lang/fpm/releases/download/v0.12.0/fpm-0.12.0.F90 -o fpm.F90
+      - run: gfortran -O0 -static fpm.F90 -o fpm
+      - name: Upload built fpm
+        uses: actions/upload-artifact@v4
+        with:
+          name: fpm
+          path: fpm
+          retention-days: 2
+
   gfortran:
     runs-on: ubuntu-24.04
+    needs: build-fpm
     strategy:
       fail-fast: false
       matrix:
@@ -24,13 +39,16 @@ jobs:
         run: |
           sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
           sudo apt-get update
-          sudo apt-get install -y gfortran-${{ matrix.gcc-ver }} \
-            libcfitsio-dev libpng-dev libgnutls30 libreadline-dev
+          sudo apt-get install -y gfortran-${{ matrix.gcc-ver }}
 
-      - name: Install fpm
-        run: |
-          curl -L https://github.com/fortran-lang/fpm/releases/download/v0.12.0/fpm-0.12.0.F90 -o fpm.F90
-          gfortran-${{ matrix.gcc-ver }} -g -O0 fpm.F90 -o fpm
+      - name: Install build dependencies
+        run: sudo apt-get install -y libcfitsio-dev libpng-dev libgnutls30 libreadline-dev
+
+      - name: Download fpm
+        uses: actions/download-artifact@v4
+        with:
+          name: fpm
+      - run: chmod +x fpm
 
       - name: Build and install the app
         run: |
@@ -44,7 +62,7 @@ jobs:
             --flag '-O2 -ffast-math -g -ffree-line-length-none'
   
       - name: Download test data
-        run: bash scripts/get_test_data.sh
+        run: scripts/get_test_data.sh
 
       - name: Run integration test on example data
         run: |
@@ -52,11 +70,11 @@ jobs:
           cd testrun
           ln -s ../examples
           ln -s ../aquila_test_data testdata
-          bash ../scripts/test_routine.sh
-
+          ../scripts/test_routine.sh
 
   oneapi:
     runs-on: ubuntu-24.04
+    needs: build-fpm
     strategy:
       fail-fast: false
       matrix:
@@ -71,8 +89,7 @@ jobs:
       - name: Install oneapi
         run: |
           sudo apt-get update
-          sudo apt-get install -y gpg gpg-agent wget git curl gfortran \
-            libcfitsio-dev libpng-dev libgnutls30 libreadline-dev
+          sudo apt-get install -y gpg gpg-agent wget git curl
           wget -O- https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB \
             | gpg --dearmor | sudo tee /usr/share/keyrings/oneapi-archive-keyring.gpg
           echo "deb [signed-by=/usr/share/keyrings/oneapi-archive-keyring.gpg] " \
@@ -82,11 +99,14 @@ jobs:
             intel-oneapi-compiler-fortran-${{ matrix.oneapi-ver }} \
             intel-oneapi-compiler-dpcpp-cpp-${{ matrix.oneapi-ver }} 
 
-      - name: Install fpm
-        run: |
-          curl -L https://github.com/fortran-lang/fpm/releases/download/v0.12.0/fpm-0.12.0.F90 -o fpm.F90
-          source /opt/intel/oneapi/setvars.sh
-          gfortran -g -O0 fpm.F90 -o fpm
+      - name: Install build dependencies
+        run: sudo apt-get install -y libcfitsio-dev libpng-dev libgnutls30 libreadline-dev
+
+      - name: Download fpm
+        uses: actions/download-artifact@v4
+        with:
+          name: fpm
+      - run: chmod +x fpm
 
       - name: Build and install the app
         run: |
@@ -99,7 +119,7 @@ jobs:
             --flag '-O3 -fp-model=fast -g -heap-arrays'
   
       - name: Download test data
-        run: bash scripts/get_test_data.sh
+        run: scripts/get_test_data.sh
 
       - name: Run integration test on example data
         run: |
@@ -108,10 +128,11 @@ jobs:
           cd testrun
           ln -s ../examples
           ln -s ../aquila_test_data testdata
-          bash ../scripts/test_routine.sh
+          ../scripts/test_routine.sh
 
   flang:
     runs-on: ubuntu-24.04
+    needs: build-fpm
     strategy:
       fail-fast: false
       matrix:
@@ -134,9 +155,7 @@ jobs:
             ca-certificates \
             curl \
             gnupg2 \
-            apt-transport-https \
-            gfortran \
-            libcfitsio-dev libpng-dev libgnutls30 libreadline-dev
+            apt-transport-https
           curl -fsSL https://apt.llvm.org/llvm-snapshot.gpg.key | sudo tee /etc/apt/trusted.gpg.d/llvm.asc >/dev/null
           echo "deb [signed-by=/etc/apt/trusted.gpg.d/llvm.asc] http://apt.llvm.org/noble/ llvm-toolchain-noble-${{ matrix.llvm-ver }} main" \
             | sudo tee /etc/apt/sources.list.d/llvm.list >/dev/null
@@ -144,11 +163,14 @@ jobs:
           sudo apt-get install -y clang-${{ matrix.llvm-ver }} flang-${{ matrix.llvm-ver }} \
             libomp-${{ matrix.llvm-ver }}-dev
 
-      - name: Install fpm
-        run: |
-          curl -L https://github.com/fortran-lang/fpm/releases/download/v0.12.0/fpm-0.12.0.F90 -o fpm.F90
-          gfortran -g -O0 fpm.F90 -o fpm
+      - name: Install build dependencies
+        run: sudo apt-get install -y libcfitsio-dev libpng-dev libgnutls30 libreadline-dev
 
+      - name: Download fpm
+        uses: actions/download-artifact@v4
+        with:
+          name: fpm
+      - run: chmod +x fpm
 
       - name: Build and install the app
         run: |
@@ -162,7 +184,7 @@ jobs:
             --flag '-O3 -ffast-math -g'
   
       - name: Download test data
-        run: bash scripts/get_test_data.sh
+        run: scripts/get_test_data.sh
 
       - name: Run integration test on example data
         run: |
@@ -170,4 +192,4 @@ jobs:
           cd testrun
           ln -s ../examples
           ln -s ../aquila_test_data testdata
-          bash ../scripts/test_routine.sh
+          ../scripts/test_routine.sh

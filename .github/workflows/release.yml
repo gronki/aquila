@@ -1,0 +1,157 @@
+name: Make release on tag push and build .deb packages
+
+on:
+  push:
+    tags:
+      - '*'
+
+
+jobs:
+  build-fpm:
+    name: Build FPM
+    runs-on: ubuntu-latest
+    steps:
+      - run: sudo apt-get update && sudo apt-get install -y gfortran curl
+      - run: curl -L https://github.com/fortran-lang/fpm/releases/download/v0.12.0/fpm-0.12.0.F90 -o fpm.F90
+      - run: gfortran -O0 -static fpm.F90 -o fpm
+      - name: Upload built fpm
+        uses: actions/upload-artifact@v4
+        with:
+          name: fpm
+          path: fpm
+          retention-days: 2
+
+  build-deb:
+    name: Build .deb package
+    runs-on: ubuntu-latest
+    needs: build-fpm
+    defaults:
+      run:
+        shell: bash
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu
+            osver: noble
+            compiler: oneapi
+          - os: ubuntu
+            osver: noble
+            compiler: gfortran-14
+    container:
+      image: ${{ matrix.os }}:${{ matrix.osver }}
+
+    steps:
+      - name: Install tools
+        run: apt-get update && apt-get install -y wget git curl
+
+      - name: Checkout (with submodules)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Environment
+        run: echo "PACKAGE_NAME=aquila-${{ github.ref_name }}-${{ matrix.os }}-${{ matrix.osver }}-amd64-${{ matrix.compiler }}" >> "$GITHUB_ENV"
+
+      - name: Install oneapi
+        run: . scripts/actions/${{ matrix.os }}-${{ matrix.osver }}/${{ matrix.compiler }}/setup.sh
+          
+      - name: Install build dependencies
+        run: apt-get install -y libcfitsio-dev libpng-dev libgnutls30 libreadline-dev
+          
+      - name: Download fpm
+        uses: actions/download-artifact@v4
+        with:
+          name: fpm
+      - run: chmod +x fpm
+
+      - name: Build and install the app
+        run: |
+          . scripts/actions/${{ matrix.os }}-${{ matrix.osver }}/${{ matrix.compiler }}/env.sh
+          ./fpm install --prefix ${PWD}/deb-package/${PACKAGE_NAME}/usr
+
+      - name: Create deb package
+        run: |
+          . scripts/actions/${{ matrix.os }}-${{ matrix.osver }}/${{ matrix.compiler }}/env.sh
+          cd deb-package
+          cp -r ../packaging/deb/DEBIAN ${PACKAGE_NAME}/
+          sed -i "s/___VERSION___/${{ github.ref_name }}/g" ${PACKAGE_NAME}/DEBIAN/control
+          sed -i "s/___DEPS___/${DEP_PACKAGES}/g" ${PACKAGE_NAME}/DEBIAN/control
+          sed -i "s/___ARCH___/amd64/g" ${PACKAGE_NAME}/DEBIAN/control
+          dpkg-deb --build ${PACKAGE_NAME}
+  
+      - name: Upload .deb artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: "deb-${{ matrix.os }}-${{ matrix.osver }}-${{ matrix.compiler }}-amd64"
+          path: deb-package/*.deb
+
+  test-deb:
+    name: Test .deb package
+    needs: build-deb
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu
+            osver: noble
+            compiler: oneapi
+          - os: ubuntu
+            osver: noble
+            compiler: gfortran-14
+    container:
+      image: ${{ matrix.os }}:${{ matrix.osver }}
+
+    steps:
+      - name: Install tools
+        run: |
+          apt-get update
+          apt-get install -y wget git curl gzip tar
+          
+      - name: Checkout (with submodules)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Download .deb artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: "deb-${{ matrix.os }}-${{ matrix.osver }}-${{ matrix.compiler }}-amd64"
+
+      - name: Install the package
+        run: |
+          apt update
+          apt-get install -y ./aquila-${{ github.ref_name }}-${{ matrix.os }}-${{ matrix.osver }}-amd64-${{ matrix.compiler }}.deb
+  
+      - name: Download test data
+        run: scripts/get_test_data.sh
+
+      - name: Run integration test on example data
+        run: |
+          mkdir testrun
+          cd testrun
+          ln -s ../examples
+          ln -s ../aquila_test_data testdata
+          ../scripts/test_routine.sh
+
+  release:
+    name: Automated release
+    runs-on: ubuntu-latest
+    needs: test-deb
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: "deb-ubuntu-noble-oneapi-amd64"
+      - uses: actions/download-artifact@v4
+        with:
+          name: "deb-ubuntu-noble-gfortran-14-amd64"
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Version ${{ github.ref_name }}
+          body: Automated release
+          files: "*.deb"

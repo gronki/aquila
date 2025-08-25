@@ -14,7 +14,7 @@ apt-get install -y ./"$PACKAGE_NAME"
 mkdir -p /tmp/test
 cd /tmp/test
 
-ln -s /source/aquila_test_data testdata
+ln -s /source/testdata
 ln -s /source/examples
 
 bash /source/scripts/test_routine.sh

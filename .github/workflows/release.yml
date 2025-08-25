@@ -134,7 +134,7 @@ jobs:
           mkdir testrun
           cd testrun
           ln -s ../examples
-          ln -s ../aquila_test_data testdata
+          ln -s ../testdata
           ../scripts/test_routine.sh
 
   release:

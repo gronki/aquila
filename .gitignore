@@ -9,4 +9,4 @@
 /build
 *.fits
 fpm.F90
-aquila_test_data
+testdata

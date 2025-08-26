@@ -137,7 +137,7 @@ contains
     class(frame_t) :: self
     character(len = *), intent(in) :: fn
     integer, intent(inout), optional :: errno
-    integer :: ftiostat, un, iostat
+    integer :: ftiostat, un, iostat, bufshape(2)
     real(kind=kind(self%data)), allocatable, target :: tmpbuf(:,:)
     real(kind=kind(self%data)), pointer, contiguous :: flatptr(:)
 
@@ -163,8 +163,10 @@ contains
 
     tmpbuf = transpose(self % data)
     flatptr(1:size(tmpbuf)) => tmpbuf
-    call ftphps(un, bitpix(self % data), 2, shape(tmpbuf), ftiostat)
+    bufshape = shape(tmpbuf)
+    call ftphps(un, bitpix(self % data), 2, bufshape, ftiostat)
     call ftppr(un, 1, 1, size(self % data), flatptr, ftiostat)
+    deallocate(tmpbuf)
 
     call ftclos(un, ftiostat)
     call ftfiou(un, ftiostat)

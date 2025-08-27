@@ -241,7 +241,7 @@ subroutine val_add(v1, v2, v, err)
       type is(legacy_frame_value_t)
          v = add__real__frame(v1, v2)
       class default
-         call seterr(err, "arithmetic not allowed on " // v1%to_str())
+         call seterr(err, "arithmetic not allowed on " // v2%to_str())
       end select
    type is(legacy_frame_value_t)
       select type(v2)
@@ -255,7 +255,7 @@ subroutine val_add(v1, v2, v, err)
          end if
          v = add__frame__frame(v1, v2)
       class default
-         call seterr(err, "arithmetic not allowed on " // v1%to_str())
+         call seterr(err, "arithmetic not allowed on " // v2%to_str())
       end select
    class default
       call seterr(err, "arithmetic not allowed on " // v1%to_str())
@@ -276,7 +276,7 @@ subroutine val_sub(v1, v2, v, err)
       type is(legacy_frame_value_t)
          v = sub__real__frame(v1, v2)
       class default
-         call seterr(err, "arithmetic not allowed on " // v1%to_str())
+         call seterr(err, "arithmetic not allowed on " // v2%to_str())
       end select
    type is(legacy_frame_value_t)
       select type(v2)
@@ -290,7 +290,7 @@ subroutine val_sub(v1, v2, v, err)
          end if
          v = sub__frame__frame(v1, v2)
       class default
-         call seterr(err, "arithmetic not allowed on " // v1%to_str())
+         call seterr(err, "arithmetic not allowed on " // v2%to_str())
       end select
    class default
       call seterr(err, "arithmetic not allowed on " // v1%to_str())
@@ -311,7 +311,7 @@ subroutine val_mul(v1, v2, v, err)
       type is(legacy_frame_value_t)
          v = mul__real__frame(v1, v2)
       class default
-         call seterr(err, "arithmetic not allowed on " // v1%to_str())
+         call seterr(err, "arithmetic not allowed on " // v2%to_str())
       end select
    type is(legacy_frame_value_t)
       select type(v2)
@@ -325,7 +325,7 @@ subroutine val_mul(v1, v2, v, err)
          end if
          v = mul__frame__frame(v1, v2)
       class default
-         call seterr(err, "arithmetic not allowed on " // v1%to_str())
+         call seterr(err, "arithmetic not allowed on " // v2%to_str())
       end select
    class default
       call seterr(err, "arithmetic not allowed on " // v1%to_str())
@@ -346,7 +346,7 @@ subroutine val_div(v1, v2, v, err)
       type is(legacy_frame_value_t)
          v = div__real__frame(v1, v2)
       class default
-         call seterr(err, "arithmetic not allowed on " // v1%to_str())
+         call seterr(err, "arithmetic not allowed on " // v2%to_str())
       end select
    type is(legacy_frame_value_t)
       select type(v2)
@@ -360,7 +360,7 @@ subroutine val_div(v1, v2, v, err)
          end if
          v = div__frame__frame(v1, v2)
       class default
-         call seterr(err, "arithmetic not allowed on " // v1%to_str())
+         call seterr(err, "arithmetic not allowed on " // v2%to_str())
       end select
    class default
       call seterr(err, "arithmetic not allowed on " // v1%to_str())

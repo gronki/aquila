@@ -1,6 +1,6 @@
-lights_fn = array("testdata/m94/Light/L/m94_Light_L_600_secs_001.fits", "testdata/m94/Light/L/m94_Light_L_600_secs_002.fits", "testdata/m94/Light/L/m94_Light_L_600_secs_003.fits") 
+lights_fn = array("testdata/m94/Light/L/m94_Light_L_600_secs_001.fits", "testdata/m94/Light/L/m94_Light_L_600_secs_002.fits", "testdata/m94/Light/L/m94_Light_L_600_secs_003.fits", "testdata/m94/Light/L/m94_Light_L_600_secs_004.fits", "testdata/m94/Light/L/m94_Light_L_600_secs_005.fits", "testdata/m94/Light/L/m94_Light_L_600_secs_006.fits", "testdata/m94/Light/L/m94_Light_L_600_secs_007.fits", "testdata/m94/Light/L/m94_Light_L_600_secs_008.fits") 
 lights = load_frame(lights_fn)
-biases = array("testdata/m94/Bias/good_Bias_0.001_secs_001.fits", "testdata/m94/Bias/good_Bias_0.001_secs_002.fits", "testdata/m94/Bias/good_Bias_0.001_secs_003.fits") % load_frame()
+biases = array("testdata/m94/Bias/good_Bias_0.001_secs_001.fits", "testdata/m94/Bias/good_Bias_0.001_secs_002.fits", "testdata/m94/Bias/good_Bias_0.001_secs_003.fits", "testdata/m94/Bias/good_Bias_0.001_secs_004.fits", "testdata/m94/Bias/good_Bias_0.001_secs_005.fits", "testdata/m94/Bias/good_Bias_0.001_secs_006.fits", "testdata/m94/Bias/good_Bias_0.001_secs_007.fits", "testdata/m94/Bias/good_Bias_0.001_secs_008.fits") % load_frame()
 
 bias_master = stack(biases, method: "median", strategy: "bias")
 bias_master % save("bias_new.fits")

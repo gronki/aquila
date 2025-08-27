@@ -15,6 +15,7 @@ type, extends(operation_t) :: load_legacy_frame_op_t
 contains
    procedure, nopass :: name
    procedure, nopass :: get_info
+   procedure, nopass :: is_parallel
    procedure :: exec_one
 end type
 
@@ -47,6 +48,8 @@ subroutine exec_one(op, inputs, output, err)
       return
    end if
 
+   write (*, *) 'read FITS file: ', trim(fn)
+
    call move_alloc(result, output)
 
 end subroutine
@@ -68,5 +71,13 @@ subroutine get_info(argspec, help)
       help = "Loads FITS file into legacy frame object."
 
 end subroutine
+
+pure function is_parallel()
+   !! return true if the operation should be performed
+   !! parallel
+   logical :: is_parallel
+
+   is_parallel = .false.
+end function
 
 end module

@@ -34,11 +34,6 @@ name = "aq2"
 source-dir = "app/aq2"
 main = "aq2.f90"
 
-[[executable]]
-name = "aqconvol"
-source-dir = "app"
-main = "aqconvol.f90"
-
 [dependencies]
 openmp = "*"
 fastconv = {path = "deps/fastconv"}

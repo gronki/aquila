@@ -1,5 +1,5 @@
 name = "aquila"
-version = "250812"
+version = "250829"
 license = "BSD 3-clause"
 author = "Dominik Gronkiewicz"
 maintainer = "gronki@gmail.com"

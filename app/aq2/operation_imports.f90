@@ -4,7 +4,10 @@ use add_op_m, only: add_op_t
 use align_op_m, only: align_op_t
 use asinh_op_m, only: asinh_op_t
 use calibrate_op_m, only: calibrate_op_t
+use convol_op_m, only: convol_op_t
+use deconv_op_m, only: deconv_op_t
 use findstar_op_m, only: findstar_op_t
+use kernel_op_m, only: kernel_op_t
 use load_legacy_frame_op_m, only: load_legacy_frame_op_t
 use lrgb_op_m, only: lrgb_op_t
 use mix_op_m, only: mix_op_t
@@ -21,7 +24,10 @@ call add_operation(db, add_op_t())
 call add_operation(db, align_op_t())
 call add_operation(db, asinh_op_t())
 call add_operation(db, calibrate_op_t())
+call add_operation(db, convol_op_t())
+call add_operation(db, deconv_op_t())
 call add_operation(db, findstar_op_t())
+call add_operation(db, kernel_op_t())
 call add_operation(db, load_legacy_frame_op_t())
 call add_operation(db, lrgb_op_t())
 call add_operation(db, mix_op_t())

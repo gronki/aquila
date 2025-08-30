@@ -57,7 +57,7 @@ end subroutine
 pure function name()
    character(len=32) :: name
 
-   name = "load_frame"
+   name = "frame"
 end function
 
 subroutine get_info(argspec, help)

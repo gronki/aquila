@@ -194,7 +194,8 @@ program aqlrgb
         logical, dimension(:,:), allocatable :: mask, maskbg
         real(fp), dimension(:,:), allocatable :: L
         integer :: i, j
-        real(fp) :: coeff, av, sd, bg_off
+        real(fp) :: coeff, av, sd, bg_off, xsq_sum
+        real(fp), allocatable :: x(:,:), y(:,:)
         real(fp), dimension(nch) :: bg, sg
         real(fp), parameter :: a = 2.0, b = 0.5
 
@@ -246,17 +247,18 @@ program aqlrgb
         end if
 
         if (cfg_equalize) then
-          associate (x => frame_g % data - bg(2), y => frame_r % data - bg(1))
-            coeff = sum(x * y, mask) / sum(x**2, mask)
-            print '("R:G = ", f8.3)', coeff
-            frame_r % data = bg(1) + y / coeff
-          end associate
+          x = frame_g % data - bg(2)
+          xsq_sum = sum(x**2, mask)
 
-          associate (x => frame_g % data - bg(2), y => frame_b % data - bg(3))
-            coeff = sum(x * y, mask) / sum(x**2, mask)
-            print '("B:G = ", f8.3)', coeff
-            frame_b % data = bg(3) + y / coeff
-          end associate
+          y = frame_r % data - bg(1)
+          coeff = sum(x * y, mask) / xsq_sum
+          print '("R:G = ", f8.3)', coeff
+          frame_r % data = bg(1) + y / coeff
+
+          y = frame_b % data - bg(3)
+          coeff = sum(x * y, mask) / xsq_sum
+          print '("B:G = ", f8.3)', coeff
+          frame_b % data = bg(3) + y / coeff
         end if
       end block perform_equalize
     end if
@@ -385,7 +387,7 @@ program aqlrgb
         use png
 
         real(fp) :: vmin, vmax, av, sd
-        real(fp), allocatable :: l(:,:), cube(:,:,:)
+        real(fp), allocatable :: l(:,:), cube(:,:,:), cube2(:,:,:)
 
         allocate(cube(nx, ny, 3))
 
@@ -405,7 +407,8 @@ program aqlrgb
           vmin = av - 1.5 * sd
           vmax = av + 9.5 * sd
 
-          call write_png(outfn, (cube(:,:,1:3) - vmin) / (vmax - vmin))
+          cube2 = (cube(:,:,1:3) - vmin) / (vmax - vmin)
+          call write_png(outfn, cube2)
           call write_fits_3d(replace_extn(outfn, 'fits'), cube(:,:,1:3))
         else
           call write_fits_3d(outfn, cube(:,:,1:3))

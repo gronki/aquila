@@ -279,7 +279,7 @@ program aqstack
         use polygon_matching, only: find_transform_polygons
         type(extended_source_t), dimension(:), allocatable :: lst0, lst
         integer :: i, istart, errno
-        class(transform_xyr_t), allocatable :: tx
+        type(transform_xyr_t) :: tx
         real(fp) :: r0
 
         ! r0 is roughly half of frame's dimension
@@ -344,7 +344,6 @@ program aqstack
             call project_bilinear(tx, frames(i) % data, buffers_to_stack(:,:,i))
           end if
 
-          deallocate(tx)
         end do
         !$omp end parallel do
         call cpu_time(t2)
@@ -357,13 +356,14 @@ program aqstack
         buffers_to_stack(:,:,i) = frames(i) % data
       end do
     end if
-
+print *, 'before norm'
     if (cfg_normalize) then
       call cpu_time(t1)
       call normalize_offset_gain(buffers_to_stack(:, :, 1:nframes), margin)
       call cpu_time(t2)
       print perf_fmt, 'norm', t2 - t1
     end if
+print *, 'before save'
     
     print *
 

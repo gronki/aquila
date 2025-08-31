@@ -1,0 +1,8 @@
+@testbuild
+options install --verbose --prefix testbuild --compiler ifx --flag "-O0 -g -check all -traceback -warn all"
+
+@localbuild
+options build --verbose --compiler ifx --flag "-g1 -traceback -O3 -fp-model=fast -xHost" --link-flag "-static-intel -qopenmp-link=static"
+
+@localinstall
+options install --verbose --compiler ifx --flag "-g1 -traceback -O3 -fp-model=fast -xHost" --link-flag "-static-intel -qopenmp-link=static" --no-rebuild --prefix "/usr/local"

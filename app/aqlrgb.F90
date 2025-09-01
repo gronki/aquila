@@ -175,7 +175,7 @@ program aqlrgb
 
     associate(frame_l => frames(4), frame_r=> frames(1), frame_g => frames(2), frame_b => frames(3))
 
-    call read_fits_naxes(fnames(1), nx, ny)
+    call read_fits_naxes(fnames(1), ny, nx)
     nch = merge(4, 3, is_lrgb)
     
     if (is_lrgb) call frame_l % read_fits(fnames(1))
@@ -200,14 +200,16 @@ program aqlrgb
         real(fp), parameter :: a = 2.0, b = 0.5
 
 
-        allocate(mask(nx, ny), source=.true.)
+        allocate(mask(ny, nx), source=.true.)
         mask(1:margin, :) = .false.
-        mask(nx - margin + 1:, :) = .false.
+        mask(ny - margin + 1:, :) = .false.
         mask(:, 1:margin) = .false.
-        mask(:, ny - margin + 1:) = .false.
-        maskbg = mask
+        mask(:, nx - margin + 1:) = .false.
+        allocate(maskbg, source=mask)
 
         L = Lum(frame_r % data, frame_g % data, frame_b % data)
+        print *, shape(L)
+        print *, shape(maskbg)
 
         call outliers(L, maskbg, 3._fp, 32, av, sd)
         ! maskbg = mask .and. (L < av + 2 * sd)
@@ -360,7 +362,7 @@ program aqlrgb
           x = Lum(frame_r % data, frame_g % data, frame_b % data)
         end if
 
-        call outliers(x(1+margin:ny-margin, 1+margin:ny-margin), 3._fp, 10, av, sd)
+        call outliers(x(1+margin:ny-margin, 1+margin:nx-margin), 3._fp, 10, av, sd)
         b = av - curve_param * sd
         a = curve_param * sd 
 
@@ -389,7 +391,7 @@ program aqlrgb
         real(fp) :: vmin, vmax, av, sd
         real(fp), allocatable :: l(:,:), cube(:,:,:), cube2(:,:,:)
 
-        allocate(cube(nx, ny, 3))
+        allocate(cube(ny, nx, 3))
 
         do ich = 1, 3
           cube(:, :, ich) = frames(ich) % data
@@ -397,9 +399,9 @@ program aqlrgb
 
         if (endswith(outfn, '.png')) then
 
-          l = Lum(frame_r % data(64:nx-64,64:ny-64), &
-          &   frame_g % data(64:nx-64,64:ny-64),     &
-          &   frame_b % data(64:nx-64,64:ny-64))
+          l = Lum(frame_r % data(64:ny-64,64:nx-64), &
+          &   frame_g % data(64:ny-64,64:nx-64),     &
+          &   frame_b % data(64:ny-64,64:nx-64))
           av = sum(l) / size(l)
           sd = sqrt(sum((l - av)**2) / (size(l) - 1))
           deallocate(l)

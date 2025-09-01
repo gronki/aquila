@@ -163,11 +163,11 @@ program aqstack
         end if
 
         if (i == 1) then
-          nx = size(cur_frame % data, 1)
-          ny = size(cur_frame % data, 2)
+          ny = size(cur_frame % data, 1)
+          nx = size(cur_frame % data, 2)
         end if
 
-        if (any(shape(cur_frame % data) /= [nx, ny])) &
+        if (any(shape(cur_frame % data) /= [ny, nx])) &
             error stop "images have different dimensions"
 
         if (allocated(frame_bias % data)) then
@@ -207,7 +207,7 @@ program aqstack
                 end if
                 
                 if (darkopt_sigma > 0) then
-                  allocate(darkopt_msk(nx, ny))
+                  allocate(darkopt_msk(ny, nx))
                   darkopt_msk(:,:) = .true.
                   call outliers(cur_frame % data, darkopt_msk, darkopt_sigma, 10, av, sd)
                   print '(f0.1, "% used for dark optimization")', real(count(darkopt_msk)) / (nx * ny) * 100
@@ -287,10 +287,10 @@ program aqstack
 
         if (cfg_resampling) then
           print '("WARNING ", a)', 'resampling may require a lot of memory'
-          allocate(buffers_to_stack(nint(resample_factor * nx), nint(resample_factor * ny), nframes))
+          allocate(buffers_to_stack(nint(resample_factor * ny), nint(resample_factor * nx), nframes))
           buffers_to_stack(:,:,:) = 0
         else
-          allocate(buffers_to_stack(nx, ny, nframes))
+          allocate(buffers_to_stack(ny, nx, nframes))
         end if
 
         if (ref_fn /= "") then
@@ -351,19 +351,18 @@ program aqstack
 
       end block align_frames
     else
-      allocate(buffers_to_stack(nx, ny, nframes))
+      allocate(buffers_to_stack(ny, nx, nframes))
       do i = 1, nframes
         buffers_to_stack(:,:,i) = frames(i) % data
       end do
     end if
-print *, 'before norm'
+
     if (cfg_normalize) then
       call cpu_time(t1)
       call normalize_offset_gain(buffers_to_stack(:, :, 1:nframes), margin)
       call cpu_time(t2)
       print perf_fmt, 'norm', t2 - t1
     end if
-print *, 'before save'
     
     print *
 

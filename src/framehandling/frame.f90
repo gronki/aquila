@@ -89,7 +89,10 @@ contains
 
     call ftgpv(un, 1, 1, product(sz), 0._fp, flatptr, anyf, ftiostat)
 
-    if (ftiostat == 0) self % data = transpose(tmpbuf)
+    if (ftiostat == 0) then
+      allocate(self % data(sz(2), sz(1)))
+      self % data(:,:) = transpose(tmpbuf)
+    end if
   end subroutine
 
   !----------------------------------------------------------------------------!

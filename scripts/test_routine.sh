@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -e
-set +x
+
+rm -f *.fits *.png
+
+set -x
 
 aqstack bias testdata/m94/Bias/*
 

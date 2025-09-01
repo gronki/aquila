@@ -1,22 +1,22 @@
 @test-ifx-debug
 options install --prefix testbuild
 options --compiler ifx 
-options --flag "-O0 -g3 -check all -traceback -warn all -heap-arrays -pedantic"
+options --flag "-O0 -g -check all -traceback -warn all -fstack-security-check -fstack-protector-all -fno-omit-frame-pointer -pedantic"
 
 @test-ifx-release
 options install --prefix testbuild
 options --compiler ifx 
-options --flag "-O2 -fp-model=fast -g1 -traceback -heap-arrays"
+options --flag "-O3 -fp-model=fast -g1 -traceback"
 
 @test-gfortran-debug
 options install --prefix testbuild
 options --compiler gfortran 
-options --flag "-O0 -g3 -fcheck=all -fbacktrace -Wall -Wextra -pedantic"
+options --flag "-O0 -g -fcheck=all -fbacktrace -Wall -Wextra -pedantic"
 
 @test-gfortran-release
 options install --prefix testbuild
 options --compiler gfortran 
-options --flag "-O2 -ffast-math -g1 -fbacktrace"
+options --flag "-O3 -ffast-math -g1 -fbacktrace"
 
 @localbuild
 options build 

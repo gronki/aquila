@@ -57,7 +57,7 @@ jobs:
         run: |
           FFLAGS="-O0 -g -fbacktrace -fno-omit-frame-pointer -fcheck=all -ffree-line-length-none -fimplicit-none"
           ./fpm clean -all
-          ./fpm build \
+          ./fpm build --verbose \
             --compiler gfortran-${{ matrix.gcc-ver }} \
             --c-compiler gcc-${{ matrix.gcc-ver }} \
             --flag "$FFLAGS"
@@ -66,7 +66,7 @@ jobs:
             --c-compiler gcc-${{ matrix.gcc-ver }} \
             --flag "$FFLAGS"
 
-      - name: Run integration test on example data (debug)
+      - name: Run integration test on example data
         run: |
           mkdir testrun
           cd testrun
@@ -136,10 +136,10 @@ jobs:
 
       - name: Build and install the app
         run: |
-          FFLAGS="-O0 -g -traceback -check all -fstack-security-check -fstack-protector-all -fno-omit-frame-pointer -pedantic"
+          FFLAGS="-O0 -g -traceback -check all -warn all -fstack-security-check -fstack-protector-all -fno-omit-frame-pointer -pedantic"
           source /opt/intel/oneapi/setvars.sh
           ./fpm clean -all
-          ./fpm build \
+          ./fpm build --verbose \
             --compiler ifx --flag "$FFLAGS"
           sudo ./fpm install --no-rebuild --prefix /usr \
             --compiler ifx --flag "$FFLAGS"
@@ -220,7 +220,7 @@ jobs:
       - name: Build and install the app
         run: |
           FFLAGS="-g -O0 -fimplicit-none -pedantic"
-          ./fpm build \
+          ./fpm build --verbose \
             --compiler flang-new-${{ matrix.llvm-ver }} \
             --c-compiler clang-${{ matrix.llvm-ver }} \
             --flag "$FFLAGS"

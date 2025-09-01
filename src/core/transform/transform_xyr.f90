@@ -28,9 +28,6 @@ function transform_xyr_ctor(scale) result(self)
    type(transform_xyr_t) :: self
    real(fp), intent(in), optional :: scale
 
-   allocate(self % vec(3))
-   self % vec(:) = 0
-
    if (present(scale)) self%scale = scale
 end function
 

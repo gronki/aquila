@@ -1,32 +1,45 @@
 @test-ifx-debug
 options install --prefix testbuild
 options --compiler ifx 
-options --flag "-O0 -g -check all -traceback -warn all -fstack-security-check -fstack-protector-all -fno-omit-frame-pointer -pedantic"
+options --verbose
+options --flag "-O0 -g3 -check all -traceback -warn all -fstack-security-check -fstack-protector-all -fno-omit-frame-pointer -fno-inline -pedantic -heap-arrays"
 
 @test-ifx-release
 options install --prefix testbuild
 options --compiler ifx 
-options --flag "-O3 -fp-model=fast -g1 -traceback"
+options --flag "-O3 -fp-model=fast -g1 -traceback -heap-arrays -qopenmp"
 
 @test-gfortran-debug
 options install --prefix testbuild
 options --compiler gfortran 
-options --flag "-O0 -g -fcheck=all -fbacktrace -Wall -Wextra -pedantic"
+options --verbose
+options --flag "-O0 -g3 -ggdb -fcheck=all -fbacktrace -finit-real=snan -finit-integer=-999999 -fno-inline -fno-omit-frame-pointer -fstack-protector-all -Wall -Wextra -Wpedantic -Wconversion -Warray-temporaries"
 
 @test-gfortran-release
 options install --prefix testbuild
 options --compiler gfortran 
-options --flag "-O3 -ffast-math -g1 -fbacktrace"
+options --flag "-O3 -ffast-math -g1 -fbacktrace -fopenmp"
+
+@test-flang-debug
+options install --prefix testbuild
+options --compiler flang-new-20 
+options --verbose
+options --flag "-O0 -g3 -fno-inline -fno-omit-frame-pointer -fstack-protector-all -fsanitize=address,undefined -Wall -Wextra -Wpedantic"
+
+@test-flang-release
+options install --prefix testbuild
+options --compiler flang-new-20 
+options --flag "-O3 -ffast-math -g1 -fbacktrace -fopenmp"
 
 @localbuild
 options build 
 options --compiler ifx 
-options --flag "-g1 -traceback -O3 -fp-model=fast -xHost" 
+options --flag "-g1 -O3 -fp-model=fast -xHost -qopenmp" 
 options --link-flag "-static-intel -qopenmp-link=static"
 
 @localinstall
 options install 
 options --compiler ifx 
-options --flag "-g1 -traceback -O3 -fp-model=fast -xHost" 
+options --flag "-g1 -O3 -fp-model=fast -xHost -qopenmp" 
 options --link-flag "-static-intel -qopenmp-link=static" 
 options --no-rebuild --prefix "/usr/local"

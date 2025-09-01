@@ -66,7 +66,7 @@ contains
     real(fp) :: a, b
     real(fp), allocatable :: imref(:,:), xx(:), yy(:)
     logical, allocatable :: mask(:,:)
-    integer :: i, j, sz(3), nstack
+    integer :: i, j, np, sz(3), nstack
 
     sz = shape(buffer)
     nstack = sz(3)
@@ -88,9 +88,10 @@ contains
     end associate
 
     ! pack it into 1-d array
-    xx = pack(imref, mask)
+    np = count(mask)
+    allocate(xx(np), yy(np))
+    xx(:) = pack(imref, mask)
     deallocate(imref)
-    allocate(yy, mold = xx)
 
     do i = 1, nstack
       yy(:) = pack(buffer(:,:,i), mask)

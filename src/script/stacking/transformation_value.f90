@@ -21,14 +21,12 @@ contains
         class(transformation_value_t), intent(in) :: value
         character(len=128) :: buf
         character(len=:), allocatable :: str
+        integer :: npar
 
-        if (.not. allocated(value%transform%vec)) then
-            str = "T[empty]"
-            return
-        end if
+        npar = value%transform%npar()
 
         associate (v => value%transform%vec)
-            write(buf, "(a, *(f8.3,:,', '))") "T[", v
+            write(buf, "(a, *(f8.3,:,', '))") "T[", v(:npar)
         end associate
 
         str = trim(adjustl(buf)) // "]"

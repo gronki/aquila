@@ -31,7 +31,7 @@ subroutine exec_one(op, inputs, output, err)
 
    character(len=:), allocatable :: fn
    type(legacy_frame_value_t), allocatable, target :: result
-   integer :: nx, ny, errno
+   integer :: errno
    real(kind=img_k), allocatable :: frame
 
    errno = 0

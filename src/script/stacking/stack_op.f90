@@ -36,7 +36,7 @@ subroutine exec_one(op, inputs, output, err)
 
    type(legacy_frame_value_t), allocatable :: result
    character(len=:), allocatable :: method, strategy
-   integer :: n_frames, i, ni, nj
+   integer :: n_frames, i
    real(kind=fp), allocatable :: buffer(:,:,:)
    type(image_frame_t), allocatable :: local_frames(:)
 

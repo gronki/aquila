@@ -5,9 +5,11 @@ implicit none
 private
 public :: transform_t
 
+integer, parameter :: TRANSFORM_MAX_PAR = 16
+
 type, abstract :: transform_t
    real(fp) :: scale = 1
-   real(fp), allocatable :: vec(:)
+   real(fp) :: vec(TRANSFORM_MAX_PAR) = 0
 contains
    procedure(iface_npar), deferred :: npar
    procedure(iface_apply), deferred :: apply

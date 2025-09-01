@@ -31,7 +31,7 @@ program aqstack
   logical :: cfg_temperature_filter = .false.
   real(fp) :: resample_factor = 1.5, cfg_temperature_point = 0, cfg_temperature_tolerance = 0.5
   real(fp) :: hotpixel_threshold_sigma = 5.0, darkopt_sigma = 0.0
-  integer :: margin = 10, margins(2,2) = 0
+  integer :: margin = 10
   real(real64) :: t1, t2
 
   integer :: nframes
@@ -278,7 +278,7 @@ program aqstack
         use new_align
         use polygon_matching, only: find_transform_polygons
         type(extended_source_t), dimension(:), allocatable :: lst0, lst
-        integer :: i, istart, errno
+        integer :: i, istart, errno, npar
         type(transform_xyr_t) :: tx
         real(fp) :: r0
 
@@ -306,7 +306,7 @@ program aqstack
           findstar_initial: block
             type(transform_xyr_t) :: ity
 
-            ity = transform_xyr_t(scale=r0)
+            ity % scale = r0
 
             call register_stars(frames(1) % data, lst0)
 
@@ -320,10 +320,13 @@ program aqstack
           end block findstar_initial
         end if
 
+        npar = tx%npar()
+
         call cpu_time(t1)
         !$omp parallel do private(i, lst, tx) shared(buffers_to_stack)
         do i = istart, nframes
-          tx = transform_xyr_t(scale=r0)
+          tx%vec(:) = 0
+          tx%scale = r0
 
           ! register the stars
           call register_stars(frames(i) % data, lst)
@@ -335,7 +338,7 @@ program aqstack
           !$omp end critical
           
           print '("ALIGN ",a," frame(",i2,") found ",i4," stars")', trim(align_method), i, size(lst)
-          print '(" solution(",i2,") =", *(f8.2))', i, tx % vec
+          print '(" solution(",i2,") =", *(f8.2))', i, tx % vec(:npar)
           print '("margin = ", i0)', margin
           
           if (cfg_resampling) then
@@ -369,7 +372,6 @@ program aqstack
     if (cfg_process_only) then
       save_processed: block
       integer :: i
-      character(len = 256) :: newfn
 
         if (nframes == 1 .and. output_fn /= "") then
           print '(a,a)', 'writing output file: ', trim(output_fn)

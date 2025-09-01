@@ -18,7 +18,7 @@ subroutine align_polygon(xy1, xy2, nstars, nmatches, t)
    real(fp) :: init_dx, init_dy, init_r
 
    call find_transform_polygons(xy1, xy2, nstars, nmatches, init_dx, init_dy, init_r)
-   t%vec = [init_dx, init_dy, init_r * t%scale]
+   t%vec(:3) = [init_dx, init_dy, init_r * t%scale]
 end subroutine
 
 subroutine classic_align(lst0, lst, align_method, r0, tx, errno)
@@ -68,15 +68,9 @@ subroutine align_gravity(xy, xy0, v0, k0)
    real(fp) :: y0_dv(v0%npar()), y0n_dv(v0%npar())
    ! maximum dF/dx at x = k0 / sqrt(2)
 
-   if (.not. allocated(v0 % vec)) then
-      error stop "fatal: transform v0 not initialized"
-   end if
-
    npar = v0%npar()
 
-   ! allocate(y0_dv(npar), y0n_dv(npar))
-
-#   ifdef _DEBUG
+#   ifdef ALIGN_DEBUG
    write (0, '("k0 =", g10.4)') k0
    write (0, '(a4, a7  , a9  , 3a9  )') &
    &     'ii', 'k0', 'lam', 'vec(1)', 'vec(2)', '...'
@@ -92,14 +86,14 @@ subroutine align_gravity(xy, xy0, v0, k0)
       lam = -0.01
 
       call minimize_along_vec(lam, 0.25 * k0)
-      v0 % vec = v0 % vec + y0n_dv * lam
+      v0 % vec(:npar) = v0 % vec(:npar) + y0n_dv * lam
 
-#     ifdef _DEBUG
-      write (0, '(i4, f7.2, f9.4, *(f9.4))') ii, k0, lam, v0 % vec
+#     ifdef ALIGN_DEBUG
+      write (0, '(i4, f7.2, f9.4, *(f9.4))') ii, k0, lam, v0 % vec(:npar)
 #     endif
 
       if ( lam .lt. 0.005 ) then
-#       ifdef _DEBUG
+#       ifdef ALIGN_DEBUG
          write (0,*) ' ---- precision reached'
 #       endif
          exit loop_star_sharpness
@@ -107,7 +101,7 @@ subroutine align_gravity(xy, xy0, v0, k0)
 
       ! k0 = k0 * k0decr
 
-      ! write (0,*) '---------------------------------'
+      write (0,*) '---------------------------------'
    end do loop_star_sharpness
 
 contains
@@ -124,25 +118,25 @@ contains
       allocate(v, source=v0)
       dx = dx_0
 
-#     ifdef _DEBUG
-      ! write (0, '(2A3,A15  , a16, a12 , a20 )') 'ii', 'i', 'x', 'y', 'y_dx', 'vec(n) ...'
+#     ifdef ALIGN_DEBUG
+      write (0, '(2A3,A15  , a16, a12 , a20 )') 'ii', 'i', 'x', 'y', 'y_dx', 'vec(:npar)(n) ...'
 #     endif
 
       loop_scales: do ii = 1, 7
          scan_interval: do i = 1, u
             x = x + dx
 
-            v % vec = v0 % vec + y0n_dv * x
+            v % vec(:npar) = v0 % vec(:npar) + y0n_dv * x
             call comp_ydv(v, y, y_dv)
             y_dx = sum(y_dv * y0n_dv)
 
-#         ifdef _DEBUG
-            ! write (0, '(2I3,F15.8,es16.8,es12.4,*(f10.3))') ii, i, x, y, y_dx, v%vec(1:v%npar())
+#         ifdef ALIGN_DEBUG
+            write (0, '(2I3,F15.8,es16.8,es12.4,*(f10.3))') ii, i, x, y, y_dx, v%vec(:npar)(1:v%npar())
 #         endif
 
             if (y_dx < 0) then
-#           ifdef _DEBUG
-               ! write (0, *) '             < < <'
+#           ifdef ALIGN_DEBUG
+               write (0, *) '             < < <'
 #           endif
                x = x - dx
                dx = dx / u
@@ -151,8 +145,8 @@ contains
          end do scan_interval
       end do loop_scales
 
-#     ifdef _DEBUG
-      ! write (0, *) '  ================='
+#     ifdef ALIGN_DEBUG
+      write (0, *) '  ================='
 #     endif
 
    end subroutine

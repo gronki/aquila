@@ -9,5 +9,6 @@
 *.o
 /build
 *.fits
+*.png
 fpm.F90
 testdata

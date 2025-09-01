@@ -66,13 +66,16 @@ contains
     real(fp) :: a, b
     real(fp), allocatable :: imref(:,:), xx(:), yy(:)
     logical, allocatable :: mask(:,:)
-    integer :: i, sz(3), nstack
+    integer :: i, j, sz(3), nstack
 
     sz = shape(buffer)
     nstack = sz(3)
 
     ! create mean frame to normalize to
-    imref = sum(buffer, 3) / nstack
+    allocate(imref(sz(1), sz(2)))
+    do concurrent (i = 1:sz(1), j = 1:sz(2))
+      imref(i,j) = sum(buffer(i, j, :)) / nstack
+    end do
 
     ! create mask which excludes edges and the brigtenst pixels
     allocate(mask(sz(1), sz(2)))

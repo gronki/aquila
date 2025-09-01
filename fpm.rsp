@@ -1,8 +1,32 @@
-@testbuild
-options install --verbose --prefix testbuild --compiler ifx --flag "-O0 -g -check all -traceback -warn all"
+@test-ifx-debug
+options install --prefix testbuild
+options --compiler ifx 
+options --flag "-O0 -g3 -check all -traceback -warn all -heap-arrays -pedantic"
+
+@test-ifx-release
+options install --prefix testbuild
+options --compiler ifx 
+options --flag "-O2 -fp-model=fast -g1 -traceback -heap-arrays"
+
+@test-gfortran-debug
+options install --prefix testbuild
+options --compiler gfortran 
+options --flag "-O0 -g3 -fcheck=all -fbacktrace -Wall -Wextra -pedantic"
+
+@test-gfortran-release
+options install --prefix testbuild
+options --compiler gfortran 
+options --flag "-O2 -ffast-math -g1 -fbacktrace"
 
 @localbuild
-options build --verbose --compiler ifx --flag "-g1 -traceback -O3 -fp-model=fast -xHost" --link-flag "-static-intel -qopenmp-link=static"
+options build 
+options --compiler ifx 
+options --flag "-g1 -traceback -O3 -fp-model=fast -xHost" 
+options --link-flag "-static-intel -qopenmp-link=static"
 
 @localinstall
-options install --verbose --compiler ifx --flag "-g1 -traceback -O3 -fp-model=fast -xHost" --link-flag "-static-intel -qopenmp-link=static" --no-rebuild --prefix "/usr/local"
+options install 
+options --compiler ifx 
+options --flag "-g1 -traceback -O3 -fp-model=fast -xHost" 
+options --link-flag "-static-intel -qopenmp-link=static" 
+options --no-rebuild --prefix "/usr/local"

@@ -47,7 +47,7 @@ contains
 
     if (status /= 0) then
       if (.not. present(errno)) &
-        error stop "reading FITS file failed: " // trim(fn)
+        error stop "reading FITS file failed: " // fn
       return
     end if
 

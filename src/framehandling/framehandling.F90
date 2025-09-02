@@ -34,7 +34,7 @@ contains
       if (present(errno)) then
         errno = ftiostat; return
       else
-        error stop "error opening FITS file: " // trim(fn)
+        error stop "error opening FITS file: " // fn
       end if
     end if
 
@@ -56,7 +56,7 @@ contains
       if (present(errno)) then
         errno = ftiostat; return
       else
-        error stop "error reading FITS file: " // trim(fn)
+        error stop "error reading FITS file: " // fn
       end if
     end if
   end subroutine

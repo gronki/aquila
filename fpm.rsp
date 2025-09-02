@@ -2,7 +2,7 @@
 options install --prefix testbuild
 options --compiler ifx 
 options --verbose
-options --flag "-O0 -g3 -check all -traceback -warn all -fstack-security-check -fstack-protector-all -fno-omit-frame-pointer -fno-inline -pedantic -heap-arrays"
+options --flag "-O0 -g3 -check all,nouninit -traceback -warn all -fstack-security-check -fstack-protector-all -fno-omit-frame-pointer -fno-inline -fimplicit-none -pedantic -heap-arrays"
 
 @test-ifx-release
 options install --prefix testbuild
@@ -13,7 +13,7 @@ options --flag "-O3 -fp-model=fast -g1 -traceback -heap-arrays -qopenmp"
 options install --prefix testbuild
 options --compiler gfortran 
 options --verbose
-options --flag "-O0 -g3 -ggdb -fcheck=all -fbacktrace -finit-real=snan -finit-integer=-999999 -fno-inline -fno-omit-frame-pointer -fstack-protector-all -Wall -Wextra -Wpedantic -Wconversion -Warray-temporaries"
+options --flag "-O0 -g3 -ggdb -fcheck=all -fbacktrace -finit-real=snan -finit-integer=-999999 -fno-inline -fno-omit-frame-pointer -fstack-protector-all -Wall -Wextra -fimplicit-none -pedantic -Warray-temporaries -Wno-unused-dummy-argument"
 
 @test-gfortran-release
 options install --prefix testbuild

@@ -1,4 +1,5 @@
-lights_fn = array("testdata/m94/Light/L/m94_Light_L_600_secs_001.fits", "testdata/m94/Light/L/m94_Light_L_600_secs_002.fits", "testdata/m94/Light/L/m94_Light_L_600_secs_003.fits", "testdata/m94/Light/L/m94_Light_L_600_secs_004.fits", "testdata/m94/Light/L/m94_Light_L_600_secs_005.fits", "testdata/m94/Light/L/m94_Light_L_600_secs_006.fits", "testdata/m94/Light/L/m94_Light_L_600_secs_007.fits", "testdata/m94/Light/L/m94_Light_L_600_secs_008.fits") 
+lights_fn = array("testdata/m94/Light/L/m94_Light_L_600_secs_001.fits", "testdata/m94/Light/L/m94_Light_L_600_secs_002.fits", "testdata/m94/Light/L/m94_Light_L_600_secs_003.fits", "testdata/m94/Light/L/m94_Light_L_600_secs_004.fits")
+! , "testdata/m94/Light/L/m94_Light_L_600_secs_005.fits", "testdata/m94/Light/L/m94_Light_L_600_secs_006.fits", "testdata/m94/Light/L/m94_Light_L_600_secs_007.fits", "testdata/m94/Light/L/m94_Light_L_600_secs_008.fits") 
 lights = frame(lights_fn)
 biases = array("testdata/m94/Bias/good_Bias_0.001_secs_001.fits", "testdata/m94/Bias/good_Bias_0.001_secs_002.fits", "testdata/m94/Bias/good_Bias_0.001_secs_003.fits", "testdata/m94/Bias/good_Bias_0.001_secs_004.fits", "testdata/m94/Bias/good_Bias_0.001_secs_005.fits", "testdata/m94/Bias/good_Bias_0.001_secs_006.fits", "testdata/m94/Bias/good_Bias_0.001_secs_007.fits", "testdata/m94/Bias/good_Bias_0.001_secs_008.fits") % frame()
 

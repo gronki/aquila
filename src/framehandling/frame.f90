@@ -114,7 +114,7 @@ contains
       if (present(errno)) then
         errno = ftiostat; return
       else
-        error stop "error opening FITS file: " // trim(fn)
+        error stop "error opening FITS file: " // fn
       end if
     end if
 
@@ -129,7 +129,7 @@ contains
       if (present(errno)) then
         errno = ftiostat; return
       else
-        error stop "error reading file: " // trim(fn)
+        error stop "error reading file: " // fn
       end if
     end if
   end subroutine
@@ -147,7 +147,7 @@ contains
     iostat = 0
     open (99, file = fn, status = 'old', iostat = iostat)
     if (iostat == 0) then
-      write (0, '("file ",a," exists, deleting...")') trim(fn)
+      write (0, '("file ",a," exists, deleting...")') fn
       close (99, status = 'delete')
     end if
 
@@ -160,7 +160,7 @@ contains
       if (present(errno)) then
         errno = ftiostat; return
       else
-        error stop "could not create output file: " // trim(fn)
+        error stop "could not create output file: " // fn
       end if
     end if
 
@@ -179,7 +179,7 @@ contains
       if (present(errno)) then
         errno = ftiostat; return
       else
-        error stop "error writing FITS file: " // trim(fn)
+        error stop "error writing FITS file: " // fn
       end if
     end if
   end subroutine

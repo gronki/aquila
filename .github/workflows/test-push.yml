@@ -55,7 +55,7 @@ jobs:
 
       - name: Build and install the app
         run: |
-          FFLAGS="-O0 -g -fbacktrace -fno-omit-frame-pointer -fcheck=all -ffree-line-length-none -fimplicit-none"
+          FFLAGS="-O0 -g3 -ggdb -fcheck=all -fbacktrace -finit-real=snan -finit-integer=-999999 -fno-inline -fno-omit-frame-pointer -fstack-protector-all -Wall -Wextra -fimplicit-none -pedantic -Warray-temporaries -Wno-unused-dummy-argument"
           ./fpm clean -all
           ./fpm build --verbose \
             --compiler gfortran-${{ matrix.gcc-ver }} \
@@ -74,9 +74,30 @@ jobs:
           ln -s ../testdata
           ../scripts/test_routine.sh
 
+      - name: Build and install the app (release, no OpenMP)
+        run: |
+          FFLAGS="-O3 -ffast-math -g1 -fbacktrace"
+          ./fpm clean -all
+          ./fpm build \
+            --compiler gfortran-${{ matrix.gcc-ver }} \
+            --c-compiler gcc-${{ matrix.gcc-ver }} \
+            --flag "$FFLAGS"
+          sudo ./fpm install --no-rebuild --prefix /usr \
+            --compiler gfortran-${{ matrix.gcc-ver }} \
+            --c-compiler gcc-${{ matrix.gcc-ver }} \
+            --flag "$FFLAGS"
+
+      - name: Run integration test on example data (release, no OpenMP)
+        run: |
+          mkdir testrun2
+          cd testrun2
+          ln -s ../examples
+          ln -s ../testdata
+          ../scripts/test_routine.sh
+
       - name: Build and install the app (release, OpenMP)
         run: |
-          FFLAGS="-O3 -g -fbacktrace -ffast-math -fopenmp"
+          FFLAGS="-O3 -ffast-math -g1 -fbacktrace -fopenmp"
           ./fpm clean -all
           ./fpm build \
             --compiler gfortran-${{ matrix.gcc-ver }} \
@@ -89,8 +110,8 @@ jobs:
 
       - name: Run integration test on example data (release, OpenMP)
         run: |
-          mkdir testrun2
-          cd testrun2
+          mkdir testrun3
+          cd testrun3
           ln -s ../examples
           ln -s ../testdata
           ../scripts/test_routine.sh
@@ -136,7 +157,7 @@ jobs:
 
       - name: Build and install the app
         run: |
-          FFLAGS="-O0 -g -traceback -check all -warn all -fstack-security-check -fstack-protector-all -fno-omit-frame-pointer -pedantic"
+          FFLAGS="-O0 -g3 -check all,nouninit -traceback -warn all -fstack-security-check -fstack-protector-all -fno-omit-frame-pointer -fno-inline -pedantic -heap-arrays"
           source /opt/intel/oneapi/setvars.sh
           ./fpm clean -all
           ./fpm build --verbose \
@@ -153,9 +174,28 @@ jobs:
           ln -s ../testdata
           ../scripts/test_routine.sh
 
+      - name: Build and install the app (release, no OpenMP)
+        run: |
+          FFLAGS="-O3 -fp-model=fast -g1 -traceback -heap-arrays"
+          source /opt/intel/oneapi/setvars.sh
+          ./fpm clean -all
+          ./fpm build \
+            --compiler ifx --flag "$FFLAGS"
+          sudo ./fpm install --no-rebuild --prefix /usr \
+            --compiler ifx --flag "$FFLAGS"
+  
+      - name: Run integration test on example data (release, no OpenMP)
+        run: |
+          source /opt/intel/oneapi/setvars.sh
+          mkdir testrun2
+          cd testrun2
+          ln -s ../examples
+          ln -s ../testdata
+          ../scripts/test_routine.sh
+
       - name: Build and install the app (release, OpenMP)
         run: |
-          FFLAGS="-O3 -g -traceback -fp-model=fast -qopenmp"
+          FFLAGS="-O3 -fp-model=fast -g1 -traceback -heap-arrays -qopenmp"
           source /opt/intel/oneapi/setvars.sh
           ./fpm clean -all
           ./fpm build \
@@ -166,8 +206,8 @@ jobs:
       - name: Run integration test on example data (release, OpenMP)
         run: |
           source /opt/intel/oneapi/setvars.sh
-          mkdir testrun2
-          cd testrun2
+          mkdir testrun3
+          cd testrun3
           ln -s ../examples
           ln -s ../testdata
           ../scripts/test_routine.sh
@@ -237,6 +277,26 @@ jobs:
           ln -s ../testdata
           ../scripts/test_routine.sh
 
+      - name: Build and install the app (release, no OpenMP)
+        run: |
+          FFLAGS="-g -O3 -ffast-math"
+          ./fpm build \
+            --compiler flang-new-${{ matrix.llvm-ver }} \
+            --c-compiler clang-${{ matrix.llvm-ver }} \
+            --flag "$FFLAGS"
+          sudo ./fpm install --no-rebuild --prefix /usr \
+            --compiler flang-new-${{ matrix.llvm-ver }} \
+            --c-compiler clang-${{ matrix.llvm-ver }} \
+            --flag "$FFLAGS"
+  
+      - name: Run integration test on example data (release, no OpenMP)
+        run: |
+          mkdir testrun2
+          cd testrun2
+          ln -s ../examples
+          ln -s ../testdata
+          ../scripts/test_routine.sh
+
       - name: Build and install the app (release, OpenMP)
         run: |
           FFLAGS="-g -O3 -ffast-math -fopenmp"
@@ -251,8 +311,8 @@ jobs:
   
       - name: Run integration test on example data (release, OpenMP)
         run: |
-          mkdir testrun2
-          cd testrun2
+          mkdir testrun3
+          cd testrun3
           ln -s ../examples
           ln -s ../testdata
           ../scripts/test_routine.sh

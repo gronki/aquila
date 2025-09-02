@@ -1,4 +1,7 @@
+#!/usr/bin/env bash
 set -e -x
+
+[ -d deps ] || exit 1
 
 function hyperclean {
     fpm clean -all
@@ -13,8 +16,14 @@ function hyperclean {
 
 [ ! -d testdata ] && scripts/get_test_data.sh
 
-export PATH="$(realpath testbuild/bin):$PATH"
-hyperclean && fpm @test-ifx-debug && scripts/test_routine.sh
-hyperclean && fpm @test-ifx-release && scripts/test_routine.sh
-hyperclean && fpm @test-gfortran-debug && scripts/test_routine.sh
-hyperclean && fpm @test-gfortran-release && scripts/test_routine.sh
+hyperclean
+
+fpm @test-${1:-ifx-debug}
+CODE_PATH=$(realpath .)
+export PATH="$CODE_PATH/testbuild/bin:$PATH"
+
+cd $(mktemp -d)
+pwd
+ln -s "$CODE_PATH/examples"
+ln -s "$CODE_PATH/testdata"
+bash "${CODE_PATH}/scripts/test_routine.sh"

@@ -145,7 +145,7 @@ contains
 
   !----------------------------------------------------------------------------!
 
-  elemental subroutine get_raw(self, k, buf, errno)
+  pure subroutine get_raw(self, k, buf, errno)
     class(fhdict), intent(in) :: self
     character(len = *), intent(in) :: k
     character(len = *), intent(inout) :: buf
@@ -165,7 +165,7 @@ contains
     if (present(errno)) then
       errno = -1
     else
-      error stop 'key ' // trim(k) // ' not in the dict'
+      error stop 'key ' // k // ' not in the dict'
     end if
   end subroutine
 
@@ -257,7 +257,7 @@ contains
     if (present(defv)) then
       v = defv
     else
-      error stop 'value of ' // trim(k) // ' not retrieved but no default provided'
+      error stop 'value of ' // k // ' not retrieved but no default provided'
     end if
   end function
 
@@ -303,7 +303,7 @@ contains
     if (present(defv)) then
       v = defv
     else
-      error stop 'value of ' // trim(k) // ' not retrieved but no default provided'
+      error stop 'value of ' // k // ' not retrieved but no default provided'
     end if
   end function
 

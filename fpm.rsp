@@ -18,7 +18,7 @@ options --flag "-O0 -g3 -ggdb -fcheck=all -fbacktrace -finit-real=snan -finit-in
 @test-gfortran-release
 options install --prefix testbuild
 options --compiler gfortran 
-options --flag "-O3 -ffast-math -g1 -fbacktrace -fopenmp"
+options --flag "-O2 -ffast-math -g1 -fbacktrace"
 
 @test-flang-debug
 options install --prefix testbuild

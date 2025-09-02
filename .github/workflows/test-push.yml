@@ -76,7 +76,7 @@ jobs:
 
       - name: Build and install the app (release, no OpenMP)
         run: |
-          FFLAGS="-O3 -ffast-math -g1 -fbacktrace"
+          FFLAGS="-O2 -ffast-math -g1 -fbacktrace"
           ./fpm clean -all
           ./fpm build \
             --compiler gfortran-${{ matrix.gcc-ver }} \
@@ -97,7 +97,7 @@ jobs:
 
       - name: Build and install the app (release, OpenMP)
         run: |
-          FFLAGS="-O3 -ffast-math -g1 -fbacktrace -fopenmp"
+          FFLAGS="-O2 -ffast-math -g1 -fbacktrace -fopenmp"
           ./fpm clean -all
           ./fpm build \
             --compiler gfortran-${{ matrix.gcc-ver }} \

@@ -6,7 +6,7 @@ use value_m
 private
 
 type, extends(value_t) :: starlist_value_t
-   type(extended_source_t), allocatable :: sources(:)
+   type(source_t), allocatable :: sources(:)
 contains
    procedure :: to_str
 end type

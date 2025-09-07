@@ -7,7 +7,7 @@ program aqstack
   use statistics
   use stacking
   use hotpixels
-  use findstar, only: extended_source_t
+  use findstar, only: source_t
   use str_utils_m
   use iso_fortran_env, only: real64, stderr => error_unit
 
@@ -277,7 +277,7 @@ program aqstack
       align_frames: block
         use new_align
         use polygon_matching, only: find_transform_polygons
-        type(extended_source_t), dimension(:), allocatable :: lst0, lst
+        type(source_t), dimension(:), allocatable :: lst0, lst
         integer :: i, istart, errno, npar
         type(transform_xyr_t) :: tx
         real(fp) :: r0

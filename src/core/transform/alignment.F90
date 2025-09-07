@@ -13,7 +13,7 @@ contains
 subroutine align_polygon(xy1, xy2, nstars, nmatches, t)
    use polygon_matching, only: find_transform_polygons
    class(transform_xyr_t), intent(inout) :: t
-   class(source_t), intent(in) :: xy1(:), xy2(:)
+   type(source_t), intent(in) :: xy1(:), xy2(:)
    integer, intent(in) :: nstars, nmatches
    real(fp) :: init_dx, init_dy, init_r
 
@@ -23,7 +23,7 @@ end subroutine
 
 subroutine classic_align(lst0, lst, align_method, r0, tx, errno)
 
-   class(source_t), intent(in) :: lst0(:), lst(:)
+   type(source_t), intent(in) :: lst0(:), lst(:)
    character(len=*), intent(in) :: align_method
    type(transform_xyr_t), intent(inout) :: tx
    integer, intent(out) :: errno
@@ -60,7 +60,7 @@ end subroutine
  !------------------------------------------------------------------------------------!
 
 subroutine align_gravity(xy, xy0, v0, k0)
-   class(source_t), intent(in) :: xy(:), xy0(:)
+   type(source_t), intent(in) :: xy(:), xy0(:)
    class(transform_t), intent(inout) :: v0
    type(source_t) :: xy1(size(xy))
    integer :: ii, nmax, npar

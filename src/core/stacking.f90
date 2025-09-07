@@ -1,7 +1,8 @@
 module stacking
 
   use globals
-  implicit none
+  use iso_c_binding
+  implicit none (type, external)
 
 contains
 
@@ -10,10 +11,10 @@ contains
   subroutine register_stars(im, lst, limit)
     use convolutions, only: convol_fix
     use kernels, only: mexhakrn_alloc
-    use findstar, only: aqfindstar, extended_source_t
+    use findstar, only: aqfindstar, source_t
 
     real(fp), intent(in), contiguous :: im(:,:)
-    type(extended_source_t), intent(out), allocatable :: lst(:)
+    type(source_t), intent(out), allocatable :: lst(:)
     real(fp), allocatable :: im2(:,:), krn(:,:)
     integer, intent(in), optional :: limit
     integer :: nstars
@@ -29,6 +30,30 @@ contains
 
     call convol_fix(im, krn, im2, 'r')
     call aqfindstar(im2, lst, limit = limit_)
+  end subroutine
+
+  subroutine register_stars_f(im, ni, nj, list, limit, rslice, &
+      margin, kernel, nstar) bind(C)
+    use convolutions, only: convol_fix
+    use kernels, only: mexhakrn_alloc
+    use findstar, only: aqfindstar_f, source_t
+
+    integer(c_size_t), intent(in), value :: ni, nj, limit
+    integer(c_int64_t), intent(in), value :: rslice, margin
+    real(fp), dimension(:,:), intent(in) :: im(ni,nj)
+    type(source_t), intent(out) :: list(limit)
+    integer(c_size_t), intent(out) :: nstar
+    real(c_double), intent(in), value :: kernel
+
+    real(fp), dimension(:,:), allocatable :: im2(:,:), krn(:,:)
+
+    krn = mexhakrn_alloc(real(kernel, fp))
+
+    allocate(im2(size(im,1), size(im,2)))
+
+    call convol_fix(im, krn, im2, 'r')
+    call aqfindstar_f(im2, ni, nj, list, limit, rslice, margin, nstar)
+  
   end subroutine
 
   !----------------------------------------------------------------------------!

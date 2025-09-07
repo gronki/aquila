@@ -1,20 +1,15 @@
 module findstar
 
   use globals
+  use iso_c_binding
   implicit none
 
-  type :: point_t
+  type, bind(C) :: source_t
     real(fp) :: x, y
-  end type
-
-  type, extends(point_t) :: source_t
     real(fp) :: flux = 0
-  end type
-
-  type, extends(source_t) :: extended_source_t
-    real(fp) :: rms
-    real(fp) :: deviation_xy
-    real(fp) :: deviation_uv
+    real(fp) :: rms = 0
+    real(fp) :: deviation_xy = 0
+    real(fp) :: deviation_uv = 0
   end type
 
   real(fp), parameter :: max_rms = 12
@@ -70,48 +65,57 @@ contains
   !----------------------------------------------------------------------------!
 
 
-  subroutine aqfindstar(im, list, limit, threshold)
+  subroutine aqfindstar(im, list, limit)
     real(fp), dimension(:,:), intent(in) :: im
-    type(extended_source_t), intent(out), allocatable :: list(:)
-    type(extended_source_t) :: star
-    integer, intent(in), optional :: limit
-    real(fp), intent(in), optional :: threshold
-    integer, parameter :: rslice = 16, margin = 5
+    type(source_t), intent(out), allocatable :: list(:)
+    type(source_t) :: star
+    integer, intent(in) :: limit
+    integer(c_size_t) :: nstar
+    integer(c_int64_t), parameter :: rslice = 16, margin = 5
 
+    allocate(list(limit))
+
+    call aqfindstar_f(im, size(im, 1, c_size_t), size(im, 2, c_size_t), &
+      list, int(limit, c_size_t), rslice, margin, nstar)
+
+    list = list(:nstar)
+  end subroutine
+
+  subroutine aqfindstar_f(im, ni, nj, list, limit, rslice, margin, nstar) bind(C)
+    integer(c_size_t), intent(in), value :: ni, nj, limit
+    integer(c_int64_t), intent(in), value :: rslice, margin
+    real(fp), dimension(:,:), intent(in) :: im(ni,nj)
+    type(source_t), intent(out) :: list(limit)
+    integer(c_size_t), intent(out) :: nstar
+    
+    type(source_t) :: star
     logical, dimension(:,:), allocatable :: mask, master_mask
     real(fp), dimension(:,:), allocatable :: xx, yy
-    integer :: i, j, ni, nj, nx, ny, imax, jmax, xymax(2)
+    integer :: i, j, nx, ny, imax, jmax, xymax(2)
     integer :: ilo, ihi, jlo, jhi
     real(fp) :: sthr
 
-    ni = size(im, 1)
     ny = ni
-    nj = size(im, 2)
     nx = nj
+    nstar = 0
 
     allocate(mask(ni, nj), master_mask(ni, nj))
     allocate(xx(ni, nj), yy(ni, nj))
 
     do concurrent (i = 1:ni, j = 1:nj)
-      call ij_to_xy(real(i, fp), real(j, fp), ni, nj, 1.0_fp, xx(i, j), yy(i, j))
+      call ij_to_xy(real(i, fp), real(j, fp), ny, nx, 1.0_fp, xx(i, j), yy(i, j))
     end do
 
     ! calculate the threshold
     sthr = 0
-    if (present(threshold)) sthr = threshold
     ! we consider only pixels brighter than the threshold and far away from the edge
     master_mask = (im > sthr) &
       .and. abs(xx) < 0.5 * nx - margin  &
       .and. abs(yy) < 0.5 * ny - margin 
 
-    if (allocated(list)) deallocate(list)
-    allocate(list(0))
-
     extract_stars: do
 
-      if (present(limit)) then
-        if (size(list) >= limit) exit extract_stars
-      end if
+      if (nstar >= limit) exit extract_stars
 
       ! if none left, exit
       if (.not. any(master_mask)) exit extract_stars
@@ -139,7 +143,7 @@ contains
         ! make the child mask fill the entire blob
         call fill_mask(c_mask, c_master_mask)
         ! subtract the child mask from the major one
-        c_master_mask = c_master_mask .and. (.not. c_mask)
+        c_master_mask(:,:) = c_master_mask .and. (.not. c_mask)
         ! skip anything which is less than 3x3
         if (count(c_mask) < 8) cycle
 
@@ -157,23 +161,34 @@ contains
         end associate
       end associate
 
-      list = [list, star]
+      nstar = nstar + 1
+      list(nstar) = star
 
     end do extract_stars
 
     block
-      logical :: outlier_mask(size(list))
+      logical, allocatable :: outlier_mask(:)
+      integer(c_size_t) :: nstar_clean, istar
 
-      call cleanup_assymetric_outliers(list, outlier_mask)
+      allocate(outlier_mask(nstar))
+      call cleanup_assymetric_outliers(list(:nstar), outlier_mask(:nstar))
+      
+      nstar_clean = 0
+      do istar = 1, nstar
+        if (.not. outlier_mask(istar)) cycle
+        nstar_clean = nstar_clean + 1
+        if (nstar_clean == istar) cycle
+        list(nstar_clean) = list(istar)
+      end do
+      nstar = nstar_clean
 
-      list = pack(list, outlier_mask)
     end block
 
   end subroutine
 
   subroutine cleanup_assymetric_outliers(list, mask)
 
-      type(extended_source_t), intent(in) :: list(:)
+      type(source_t), intent(in) :: list(:)
       logical, intent(out) :: mask(:)
       real(fp) :: asymmetry(size(list))
       integer :: ix_max

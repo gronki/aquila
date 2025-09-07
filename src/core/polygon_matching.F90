@@ -126,7 +126,7 @@ contains
 
     use iso_fortran_env, only: int64, real64
 
-    class(source_t) :: ls(:)                 ! list of sources
+    type(source_t) :: ls(:)                 ! list of sources
     integer :: nmax                        ! how many sources to analyze
     type(polygon), allocatable :: polys(:) ! output list of polygons
     type(source_t) :: tmp_vertices(num_poly_vertices)
@@ -310,7 +310,7 @@ contains
     ! perfrom the polygon-matching estimation of translation and rotation angle
     ! based on a list of detected sources.
 
-    class(source_t), intent(in) :: ls1(:), ls2(:) ! lists of detected sources
+    type(source_t), intent(in) :: ls1(:), ls2(:) ! lists of detected sources
     integer, intent(in) :: nstars               ! how many stars to use
     integer, intent(in) :: nmatches             ! how many best matches to analyze
     real(real64), intent(out) :: dx, dy, r      ! output translation and rotation angle

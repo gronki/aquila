@@ -13,7 +13,7 @@ program test_matchriangles
   implicit none
 
   character(len=256) :: fn1, fn2
-  type(extended_source_t), allocatable :: ls1(:), ls2(:)
+  type(source_t), allocatable :: ls1(:), ls2(:)
   type(polygon), allocatable :: t1(:), t2(:)
   integer :: nmax = 32
   
@@ -50,11 +50,11 @@ contains
 subroutine register_stars_file(fn, lst)
   use framehandling, only: image_frame_t
   use stacking, only: register_stars
-  use findstar, only: extended_source_t
+  use findstar, only: source_t
 
   character(len=*) :: fn
   type(image_frame_t) :: im
-  type(extended_source_t), allocatable, intent(out) :: lst(:)
+  type(source_t), allocatable, intent(out) :: lst(:)
 
   call im % read_fits(fn)
   call register_stars(im%data, lst)

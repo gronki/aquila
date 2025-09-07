@@ -1,7 +1,7 @@
 program test_legacy_align
 
   use globals
-  use findstar, only: extended_source_t
+  use findstar, only: source_t
   use legacy_align
 
   implicit none
@@ -9,7 +9,7 @@ program test_legacy_align
   integer :: i
   real(fp), allocatable :: im(:,:), imali(:,:,:)
   real(fp), allocatable :: imsta(:,:)
-  type(extended_source_t), dimension(:), allocatable :: lst0, lst
+  type(source_t), dimension(:), allocatable :: lst0, lst
   integer :: bsize, ndim, errno = 0
   logical :: anyf
   integer :: sz(2)
@@ -94,7 +94,7 @@ contains
     use findstar, only: aqfindstar
 
     real(fp), intent(in) :: im(:,:)
-    type(extended_source_t), intent(out), allocatable :: lst(:)
+    type(source_t), intent(out), allocatable :: lst(:)
     real(fp), allocatable :: im2(:,:), krn(:,:)
     integer :: nstars
 

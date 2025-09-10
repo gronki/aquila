@@ -38,7 +38,7 @@ contains
     class(image_frame_t), intent(inout) :: self
     character(len = *), intent(in) :: fn
     integer, intent(inout), optional :: errno
-    integer :: un, status, bsize
+    integer :: status
 
     status = 0
 

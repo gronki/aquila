@@ -105,7 +105,7 @@ contains
         type(c_ptr) :: fptr, png_ptr, info_ptr
         integer(c_int8_t), allocatable, target :: row8(:)
         integer(c_int16_t), allocatable, target :: row16(:)
-        integer :: i, j, nx, ny, nc, bits_
+        integer :: j, nx, ny, nc, bits_
         integer(c_int) :: clrtype
 
         nx = size(im,2)

@@ -22,7 +22,6 @@ contains
     integer, intent(out) :: ni, nj
     integer, intent(inout), optional :: errno
     integer :: sz(2), ndim, bsize, ftiostat, un
-    logical :: anyf
 
     ftiostat = 0
 

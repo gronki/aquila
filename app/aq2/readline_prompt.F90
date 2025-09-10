@@ -47,7 +47,6 @@ subroutine readline_prompt(prompt, line, eof)
    integer(kind=c_size_t) :: nchar
 
    type(c_ptr) :: input
-   character(kind=c_char, len=:), pointer :: f_str
 
    call c_readline_prompt_read(input, nchar)
 
@@ -56,11 +55,12 @@ subroutine readline_prompt(prompt, line, eof)
       return
    end if
 
+   block
 #  ifdef __INTEL_LLVM_COMPILER
+   character(kind=c_char, len=:), pointer :: f_str
    call c_f_strpointer(input, f_str, nchar)
    line = f_str
 #  else
-   block
       character(kind=c_char, len=1), pointer :: f_str_arr(:)
       integer :: i
       call c_f_pointer(input, f_str_arr, [nchar])
@@ -71,8 +71,8 @@ subroutine readline_prompt(prompt, line, eof)
             line(i:i) = " "
          end if
       end do
-   end block
 #  endif
+   end block
 
    eof = .false.
 

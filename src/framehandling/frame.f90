@@ -74,7 +74,7 @@ contains
 
   subroutine read_image_data(self, un, ftiostat)
     class(frame_t), intent(inout) :: self
-    integer :: sz(2), ndim, bsize, ftiostat, un
+    integer :: sz(2), ndim, ftiostat, un
     real(kind=kind(self%data)), allocatable, target :: tmpbuf(:,:)
     real(kind=kind(self%data)), pointer, contiguous :: flatptr(:)
     logical :: anyf

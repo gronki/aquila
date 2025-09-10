@@ -17,7 +17,6 @@ contains
     type(source_t), intent(out), allocatable :: lst(:)
     real(fp), allocatable :: im2(:,:), krn(:,:)
     integer, intent(in), optional :: limit
-    integer :: nstars
     integer :: limit_
 
     limit_ = 256
@@ -137,7 +136,6 @@ contains
     type(image_frame_t), intent(out) :: frame_out
     real(real64) :: t1, t2
     integer :: nstack
-    character(len = 128) :: output_fn_clean
 
     nstack = size(buffer, 3)
 
@@ -269,7 +267,7 @@ contains
     character(len = *) :: kw
     logical :: m(size(frames))
     real :: av
-    integer :: i, errno
+    integer :: i
 
     m(:) = [ (frames(i) % hdr % has_key(kw), i = 1, size(frames)) ]
     if (count(m) > 0) then

@@ -10,8 +10,7 @@ contains
   pure subroutine convol(x,k,y)
     real(fp), dimension(:,:), intent(in), contiguous :: x, k
     real(fp), dimension(:,:), intent(out), contiguous :: y
-    real(fp) :: total
-    integer :: i, j, ri, rj, i1, j1
+    integer :: i, j, ri, rj
 
     if (mod(size(k,1), 2) == 0 .or. mod(size(k,2), 2) == 0)     &
         error stop "kernel must have uneven dimensions"
@@ -31,8 +30,7 @@ contains
     real(fp), dimension(:,:), intent(out), contiguous :: y
     real(fp), dimension(:,:), allocatable :: tmpx
     character(*), intent(in) :: method
-    integer :: ri, rj, i, j, i1, j1
-    real(fp) :: total
+    integer :: ri, rj, i, j
 
     if (mod(size(k,1), 2) == 0 .or. mod(size(k,2), 2) == 0)     &
         error stop "kernel must have uneven dimensions"
@@ -112,8 +110,7 @@ contains
     real(fp), intent(in) :: strength
     integer, intent(in) :: maxiter
     real(fp), dimension(:,:), allocatable :: buf1, buf2, psf_inv
-    real(fp) :: err1, err01, err2, err02
-    integer :: i, imax
+    integer :: i
 
     if (size(im1,1) /= size(im2,1) .or. size(im1,2) /= size(im2,2)) &
       error stop "shape(im1) /= shape(im2)"

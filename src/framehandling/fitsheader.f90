@@ -85,7 +85,6 @@ contains
   pure subroutine add_raw(self, k, v)
     class(fhdict), intent(inout) :: self
     character(len = *), intent(in) :: k, v
-    integer :: i_add
 
     if (k == '') error stop
 
@@ -138,7 +137,6 @@ contains
     class(fhdict), intent(inout) :: self
     character(len = *), intent(in) :: k
     character(len = *), intent(in) :: v
-    character(len=len_val) :: buf
 
     call self % add_raw(k, "'" // trim(v) // "'")
   end subroutine
@@ -362,7 +360,7 @@ contains
     class(fhdict), intent(inout) :: self
     integer, intent(in) :: un
     integer :: status
-    character(len = 256) :: fn, comment
+    character(len = 256) :: comment
     character(len=len_key) :: key
     character(len=len_val) :: val
     integer :: nkeys, ikey

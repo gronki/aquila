@@ -1,8 +1,8 @@
 module legacy_align
 
   use globals
-  use findstar, only: source_t, source_t
-  implicit none
+  use findstar, only: source_t, source_t, ij_to_xy, xy_to_ij
+  implicit none (type, external)
 
 contains
 
@@ -14,7 +14,7 @@ contains
     integer :: ii, i, nmax
     integer, parameter :: i_x = 1, i_y = 2, i_r = 3
     real(fp) :: k0, y0, y0_dv(3), y0n_dv(3), v0(3)
-    real(fp) :: lam, y_dlam, len0, r0
+    real(fp) :: lam, r0
     real(fp) :: x0m, y0m
     real(fp), parameter :: k0min = 0.8, k0decr = 1 / 2**(1.0_fp / 8)
 
@@ -149,7 +149,7 @@ contains
 
     integer   ::  i,  j, ni, nj, i0, j0, ni0, nj0
     integer   :: ki, kj
-    real(fp)  :: i0f, j0f, ri, rj, i1, j1, scale, x, y, x0, y0
+    real(fp)  :: i0f, j0f, ri, rj, scale, x, y, x0, y0
 
     ni = size(im, 1)
     nj = size(im, 2)

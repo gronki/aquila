@@ -131,7 +131,7 @@ contains
     type(polygon), allocatable :: polys(:) ! output list of polygons
     type(source_t) :: tmp_vertices(num_poly_vertices)
 
-    integer :: i, j
+    integer :: i
     integer :: indices(num_poly_vertices)
     integer(int64) :: ncomb, n
     type(polygon_extra) :: tr
@@ -194,7 +194,7 @@ contains
     type(polygon), intent(in) :: t1(:), t2(:)       ! two polygon lists
     type(polygon_match), intent(out) :: matches(:)  ! best polygon matches
 
-    integer :: i, j, k, nmatches_cur, i_worst, nmatches
+    integer :: i, j, nmatches_cur, i_worst, nmatches
     real(real64) :: dv(num_poly_charac_vector), vs, vs_worst
 
     nmatches = size(matches)

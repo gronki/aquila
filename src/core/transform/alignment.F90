@@ -63,7 +63,7 @@ subroutine align_gravity(xy, xy0, v0, k0)
    type(source_t), intent(in) :: xy(:), xy0(:)
    class(transform_t), intent(inout) :: v0
    type(source_t) :: xy1(size(xy))
-   integer :: ii, nmax, npar
+   integer :: ii, npar
    real(fp) :: k0, y0, lam
    real(fp) :: y0_dv(v0%npar()), y0n_dv(v0%npar())
    ! maximum dF/dx at x = k0 / sqrt(2)

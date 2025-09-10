@@ -18,7 +18,7 @@ subroutine project_bilinear(v, im0, im, resample)
 
    integer   ::  i,  j, ni, nj, i0, j0, ni0, nj0
    integer   :: ki, kj
-   real(fp)  :: i0f, j0f, ri, rj, i1, j1, scale, x, y, x0, y0
+   real(fp)  :: i0f, j0f, ri, rj, scale, x, y, x0, y0
 
    ni = size(im, 1)
    nj = size(im, 2)

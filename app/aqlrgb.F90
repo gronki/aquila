@@ -19,7 +19,7 @@ program aqlrgb
   logical :: cfg_transf_lum = .false.
   real(fp) :: smooth_fwhm = 2.0, curve_param = 3.
         real(fp) :: sharpen_strngth = 0.5, sharpen_fwhm = 1.3
-        integer :: nx, ny, nc
+        integer :: i, nx, ny
 
   call greeting('aq' // cf('l','1') // cf('r','1;91') // cf('g','1;92') // cf('b','1;94'))
 
@@ -193,7 +193,6 @@ program aqlrgb
         use ieee_arithmetic, only: ieee_is_normal
         logical, dimension(:,:), allocatable :: mask, maskbg
         real(fp), dimension(:,:), allocatable :: L
-        integer :: i, j
         real(fp) :: coeff, av, sd, bg_off, xsq_sum
         real(fp), allocatable :: x(:,:), y(:,:)
         real(fp), dimension(nch) :: bg, sg
@@ -295,7 +294,6 @@ program aqlrgb
         use deconvolutions, only: deconvol_lr
 
         real(fp), allocatable :: krn(:,:), lum2(:,:)
-        integer :: i
 
         if (.not. allocated(frame_l % data)) then
           frame_l%data = Lum(frame_r % data, frame_g % data, frame_b % data)

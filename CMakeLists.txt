@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(aquila LANGUAGES Fortran C)
+project(aquila LANGUAGES Fortran C CXX)
 enable_testing()
 
 add_subdirectory(deps/task-dispatch)
@@ -26,6 +26,7 @@ file(GLOB_RECURSE SRC_SOURCES CONFIGURE_DEPENDS
     src/utils/*.F90
     src/utils/*.c
 )
+add_library(aquilalib STATIC ${SRC_SOURCES})
 
 file(GLOB_RECURSE SCRIPT_SOURCES CONFIGURE_DEPENDS
     src/script/*.f90
@@ -34,18 +35,20 @@ file(GLOB_RECURSE SCRIPT_SOURCES CONFIGURE_DEPENDS
 )
 
 add_executable(aq2 app/aq2/aq2.f90 app/aq2/operation_imports.f90 
-    app/aq2/readline_binding.c app/aq2/readline_prompt.F90 
-    ${SRC_SOURCES} ${SCRIPT_SOURCES})
+    app/aq2/readline_binding.c app/aq2/readline_prompt.F90 ${SCRIPT_SOURCES})
+target_link_libraries(aq2 PRIVATE aquilalib)
 target_link_libraries(aq2 PRIVATE task_dispatch_static)
 target_link_libraries(aq2 PRIVATE PNG::PNG)
 target_link_libraries(aq2 PRIVATE ${CFITSIO_LIBRARY})
 target_link_libraries(aq2 PRIVATE ${READLINE_LIBRARY})
 
-add_executable(aqstack app/aqstack.f90  ${SRC_SOURCES})
+add_executable(aqstack app/aqstack.f90)
+target_link_libraries(aqstack PRIVATE aquilalib)
 target_link_libraries(aqstack PRIVATE PNG::PNG)
 target_link_libraries(aqstack PRIVATE ${CFITSIO_LIBRARY})
 
-add_executable(aqlrgb app/aqlrgb.F90  ${SRC_SOURCES})
+add_executable(aqlrgb app/aqlrgb.F90)
+target_link_libraries(aqlrgb PRIVATE aquilalib)
 target_link_libraries(aqlrgb PRIVATE PNG::PNG)
 target_link_libraries(aqlrgb PRIVATE ${CFITSIO_LIBRARY})
 
@@ -66,6 +69,17 @@ endif()
 set(CMAKE_Fortran_FLAGS_DEBUG "${DEBUG_FLAGS}" CACHE STRING "Debug flags" FORCE)
 set(CMAKE_Fortran_FLAGS_RELEASE "${RELEASE_FLAGS}" CACHE STRING "Release flags" FORCE)
 
+file(GLOB_RECURSE AQNEW_SOURCES CONFIGURE_DEPENDS
+    src_cpp/lib/*.f90
+    src_cpp/lib/*.F90
+    src_cpp/lib/*.c
+    src_cpp/lib/*.cpp
+    src_cpp/lib/*.h
+)
+add_library(aqnew STATIC ${AQNEW_SOURCES})
+
+add_executable(aqneo src_cpp/aqneo/aqneo.cpp)
+target_link_libraries(aqneo aqnew)
 
 # target_link_libraries(aq2 PRIVATE fastconv_static)
 # file(GLOB TEST_SOURCES CONFIGURE_DEPENDS test/*.f90 test/*.F90)

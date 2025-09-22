@@ -110,6 +110,7 @@ contains
     real(fp), intent(in) :: strength
     integer, intent(in) :: maxiter
     real(fp), dimension(:,:), allocatable :: buf1, buf2, psf_inv
+    real(fp) :: err1, err2, err01, err02
     integer :: i
 
     if (size(im1,1) /= size(im2,1) .or. size(im1,2) /= size(im2,2)) &

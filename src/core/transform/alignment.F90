@@ -34,11 +34,11 @@ subroutine classic_align(lst0, lst, align_method, r0, tx, errno)
    select case (align_method)
 
    case ('polygon')
-     call align_polygon(lst0, lst, 30, 12, tx)
+     call align_polygon(lst0, lst, 36, 256, tx)
      
    case ('gravity')
      ! find an initial estimate for a transform
-     call align_polygon(lst0, lst, 24, 8, tx)
+     call align_polygon(lst0, lst, 36, 256, tx)
      ! fine-tune the transform between frames
      call align_gravity(lst0, lst, tx, 2.0_fp)
 
@@ -70,7 +70,7 @@ subroutine align_gravity(xy, xy0, v0, k0)
 
    npar = v0%npar()
 
-#   ifdef ALIGN_DEBUG
+#   ifdef _DEBUG
    write (0, '("k0 =", g10.4)') k0
    write (0, '(a4, a7  , a9  , 3a9  )') &
    &     'ii', 'k0', 'lam', 'vec(1)', 'vec(2)', '...'
@@ -88,12 +88,12 @@ subroutine align_gravity(xy, xy0, v0, k0)
       call minimize_along_vec(lam, 0.25 * k0)
       v0 % vec(:npar) = v0 % vec(:npar) + y0n_dv * lam
 
-#     ifdef ALIGN_DEBUG
+#     ifdef _DEBUG
       write (0, '(i4, f7.2, f9.4, *(f9.4))') ii, k0, lam, v0 % vec(:npar)
 #     endif
 
       if ( lam .lt. 0.005 ) then
-#       ifdef ALIGN_DEBUG
+#       ifdef _DEBUG
          write (0,*) ' ---- precision reached'
 #       endif
          exit loop_star_sharpness
@@ -118,7 +118,7 @@ contains
       allocate(v, source=v0)
       dx = dx_0
 
-#     ifdef ALIGN_DEBUG
+#     ifdef _DEBUG
       write (0, '(2A3,A15  , a16, a12 , a20 )') 'ii', 'i', 'x', 'y', 'y_dx', 'vec(:npar)(n) ...'
 #     endif
 
@@ -130,12 +130,12 @@ contains
             call comp_ydv(v, y, y_dv)
             y_dx = sum(y_dv * y0n_dv)
 
-#         ifdef ALIGN_DEBUG
-            write (0, '(2I3,F15.8,es16.8,es12.4,*(f10.3))') ii, i, x, y, y_dx, v%vec(:npar)(1:v%npar())
+#         ifdef _DEBUG
+            write (0, '(2I3,F15.8,es16.8,es12.4,*(f10.3))') ii, i, x, y, y_dx, v%vec(:npar)
 #         endif
 
             if (y_dx < 0) then
-#           ifdef ALIGN_DEBUG
+#           ifdef _DEBUG
                write (0, *) '             < < <'
 #           endif
                x = x - dx
@@ -145,7 +145,7 @@ contains
          end do scan_interval
       end do loop_scales
 
-#     ifdef ALIGN_DEBUG
+#     ifdef _DEBUG
       write (0, *) '  ================='
 #     endif
 

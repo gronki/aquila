@@ -34,12 +34,12 @@ options --flag "-O3 -ffast-math -g1 -fbacktrace -fopenmp"
 @localbuild
 options build 
 options --compiler ifx 
-options --flag "-g1 -O3 -fp-model=fast -xHost -qopenmp" 
+options --flag "-g1 -O3 -qopenmp -heap-arrays -D_DEBUG" 
 options --link-flag "-static-intel -qopenmp-link=static"
 
 @localinstall
 options install 
 options --compiler ifx 
-options --flag "-g1 -O3 -fp-model=fast -xHost -qopenmp" 
+options --flag "-g1 -O3 -qopenmp -heap-arrays -D_DEBUG" 
 options --link-flag "-static-intel -qopenmp-link=static" 
 options --no-rebuild --prefix "/usr/local"

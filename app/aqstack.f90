@@ -16,7 +16,7 @@ program aqstack
   implicit none
 
   ! allowed values: average, median, sigclip
-  character(len = 32) :: method = "average", strategy = "", align_method = "polygon"
+  character(len = 32) :: method = "average", strategy = "", align_method = "gravity"
   character(len = 256) :: output_fn = "", ref_fn = "", &
         bias_fn = "", dark_fn = "", flat_fn = ""
   character(len = 64) :: output_suff = ""
@@ -29,6 +29,7 @@ program aqstack
   logical :: cfg_dark_is_dirty = .false.
   logical :: cfg_resampling = .false.
   logical :: cfg_temperature_filter = .false.
+  logical :: cfg_is_cfa = .false.
   real(fp) :: resample_factor = 1.5, cfg_temperature_point = 0, cfg_temperature_tolerance = 0.5
   real(fp) :: hotpixel_threshold_sigma = 5.0, darkopt_sigma = 0.0
   integer :: margin = 10
@@ -598,6 +599,12 @@ contains
         cfg_dark_is_dirty = .true.
       case ("-no-dirty-dark")
         cfg_dark_is_dirty = .false.
+
+      case("-cfa")
+        cfg_is_cfa = .true.
+
+      case("-verbose")
+        cfg_verbose = .true.
 
       case ("-h", "-help")
         call print_help(); stop

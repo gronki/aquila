@@ -140,7 +140,7 @@ contains
     real(fp), allocatable :: k(:,:)
     integer :: n
 
-    n = nint(7.0 * fwhm / fwhm_over_sigma)
+    n = nint(9.0 * fwhm / fwhm_over_sigma)
     if (mod(n, 2) == 0) n = n + 1
     n = max(n, 3)
 

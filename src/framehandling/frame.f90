@@ -29,6 +29,8 @@ module frame_m
     module procedure :: frame_t_ctor_file
   end interface
 
+  public :: write_fits_quick
+
 contains
 
   !----------------------------------------------------------------------------!
@@ -169,6 +171,56 @@ contains
     bufshape = shape(tmpbuf)
     call ftphps(un, bitpix(self % data), 2, bufshape, ftiostat)
     call ftppr(un, 1, 1, size(self % data), flatptr, ftiostat)
+    deallocate(tmpbuf)
+
+    call ftclos(un, ftiostat)
+    call ftfiou(un, ftiostat)
+
+    if (ftiostat /= 0) then
+      call ftrprt("stderr", ftiostat)
+      if (present(errno)) then
+        errno = ftiostat; return
+      else
+        error stop "error writing FITS file: " // fn
+      end if
+    end if
+  end subroutine
+
+  !----------------------------------------------------------------------------!
+
+  subroutine write_fits_quick(fn, buf, errno)
+    character(len = *), intent(in) :: fn
+    integer, intent(inout), optional :: errno
+    integer :: ftiostat, un, iostat, bufshape(2)
+    real(fp) :: buf(:,:)
+    real(kind=fp), allocatable, target :: tmpbuf(:,:)
+    real(kind=fp), pointer, contiguous :: flatptr(:)
+
+    iostat = 0
+    open (99, file = fn, status = 'old', iostat = iostat)
+    if (iostat == 0) then
+      write (0, '("file ",a," exists, deleting...")') fn
+      close (99, status = 'delete')
+    end if
+
+    ftiostat = 0
+    call ftgiou(un, ftiostat)
+    call ftdkinit(un, fn, 1, ftiostat)
+
+    if (ftiostat /= 0) then
+      call ftrprt("stderr", ftiostat)
+      if (present(errno)) then
+        errno = ftiostat; return
+      else
+        error stop "could not create output file: " // fn
+      end if
+    end if
+
+    tmpbuf = transpose(buf)
+    flatptr(1:size(tmpbuf)) => tmpbuf
+    bufshape = shape(tmpbuf)
+    call ftphps(un, bitpix(buf), 2, bufshape, ftiostat)
+    call ftppr(un, 1, 1, size(buf), flatptr, ftiostat)
     deallocate(tmpbuf)
 
     call ftclos(un, ftiostat)

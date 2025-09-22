@@ -1,10 +1,11 @@
 module globals
 
+  use iso_c_binding
   use iso_fortran_env, stderr => error_unit, stdout => output_unit
 
   implicit none
 
-  integer, parameter :: fp = real64
+  integer, parameter :: fp = c_double
 
   character(len = *), parameter :: hlp_fmt = '(a25, 2x, a)', hlp_fmtc = '(27x, a)'
   character(len = *), parameter :: fmthlp = '(a25, 2x, a, :/, *(27x, a, :/))'

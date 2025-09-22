@@ -77,7 +77,7 @@ subroutine get_info(argspec, help)
       argspec = [ &
       arg_entry_t(pos=1, name="lst"), &
       arg_entry_t(pos=2, name="ref"), &
-      arg_entry_t(pos=3, name="method", default=str_value("polygon")) ]
+      arg_entry_t(pos=3, name="method", default=str_value("gravity")) ]
 
    if (present(help)) &
       help = "Find transformation between two lists of stars"

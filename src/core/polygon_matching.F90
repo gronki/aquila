@@ -149,11 +149,11 @@ contains
     ncomb = product([( int(nmax - (i - 1), kind(ncomb)), i = 1, num_poly_vertices )]) &
           / product([( i, i = 1, num_poly_vertices )])
 
-#   ifdef _DEBUG
+if (cfg_verbose) then
       print *, 'n_corners =', num_poly_vertices
       print *, 'nmax =', nmax
       print *, 'ncomb =', ncomb
-#   endif
+end if
 
     allocate(polys(ncomb))
 
@@ -297,7 +297,7 @@ contains
 
     match_result%passed = ( match_result%cosine_score > 0.999 ) .and. ( match_result%varxy < 1._fp )
 
-#       ifdef _DEBUG
+if (cfg_verbose) then
 print *, ' ------ POSSIBLE MATCH ------ '
 do j = 1, num_poly_vertices
         print '(2i8,2x,"(",2f10.2,")",3x,"(",2f10.2,")")', i, j, match%t1%vertices(j)%x, match%t1%vertices(j)%y, &
@@ -317,7 +317,7 @@ do j = 1, num_poly_vertices
     if (match_result%passed) then
       print *, '     MATCH APPROVED '
     end if
-#       endif
+end if
   end subroutine
 
   !--------------------------------------------------------------------------!
@@ -340,18 +340,18 @@ do j = 1, num_poly_vertices
     sinrotav = sigclip2(results%sinrotav, 3.0_real64)
     angrotav = atan2(sinrotav, cosrotav)
 
-#   ifdef _DEBUG
+if (cfg_verbose) then
     print *, "Matches = ", nmatches
     print *, "cosrotav =", cosrotav
     print *, "sinrotav =", sinrotav
-#   endif
+end if
 
     transxav = sigclip2(results%transxav, 3.0_real64)
     transyav = sigclip2(results%transyav, 3.0_real64)
     
-#   ifdef _DEBUG
+if (cfg_verbose) then
     print '("AVG", 3x, "X=", f9.1, 3x, "Y=", f9.1, 3x, "a=", f9.1)', transxAv, transyav, angrotav*57.3
-#   endif
+end if
 
   end subroutine process_best_matches
 

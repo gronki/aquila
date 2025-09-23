@@ -7,9 +7,6 @@ contains
 
   !----------------------------------------------------------------------------!
 
-# ifndef _DEBUG
-  pure &
-# endif
   subroutine find_hot(im, sigma_max, hot_mask)
     use statistics, only: outliers, avsd
 
@@ -22,14 +19,14 @@ contains
     hot_mask(:,:) = .true.
     call outliers(im, hot_mask, 3.0_fp, 4, av, sd)
 
-#   ifdef _DEBUG
+if (cfg_verbose) then
     write (*, '("#", a5, a8)') 'kap', 'nhot'
     do i = 0, 12
       sg = i * 1.0_fp
       hot_mask = im > av + sg * sd
       write (*, '(f6.1, i8)') sg, count(hot_mask)
     end do
-#   endif
+end if
 
     sg = sigma_max
     hot_mask = im > av + sg * sd
@@ -69,9 +66,7 @@ contains
   end subroutine
 
   !----------------------------------------------------------------------------!
-#ifndef _DEBUG
-  pure &
-#endif
+
   subroutine optimize_dark_frame(light, dark, xlo0, xhi0, xm, msk)
     real(fp), intent(IN) :: light(:,:), dark(:,:)
     logical, intent(in), optional :: msk(:,:)
@@ -106,9 +101,9 @@ contains
       xm = (xlo + xhi) / 2
       ym = F(xm)
 
-#     ifdef _DEBUG
+if (cfg_verbose) then
       print '(a, 3(f12.4,e11.3))', 'darkopt', xlo, ylo, xm, ym, xhi, yhi
-#     endif
+endif
 
       if (ylo * ym <= 0) then
         xhi = xm

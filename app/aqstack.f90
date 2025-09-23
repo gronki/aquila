@@ -669,6 +669,7 @@ contains
     &     'SIGMA=0 forces to use all pixels {def.: OFF}'
     print fmthlp,  '[-no]-dirty-dark', 'subtract bias from dark (only if not done before!)', &
     &     '{def.: OFF}'
+    print fmthlp,  '-verbose', 'verbose output'
   end subroutine print_help
 
   !----------------------------------------------------------------------------!

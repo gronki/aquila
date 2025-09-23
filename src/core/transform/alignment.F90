@@ -70,11 +70,11 @@ subroutine align_gravity(xy, xy0, v0, k0)
 
    npar = v0%npar()
 
-#   ifdef _DEBUG
+if (cfg_verbose) then
    write (0, '("k0 =", g10.4)') k0
    write (0, '(a4, a7  , a9  , 3a9  )') &
    &     'ii', 'k0', 'lam', 'vec(1)', 'vec(2)', '...'
-#   endif
+end if
 
    loop_star_sharpness: do ii = 1, 10
 
@@ -88,14 +88,14 @@ subroutine align_gravity(xy, xy0, v0, k0)
       call minimize_along_vec(lam, 0.25 * k0)
       v0 % vec(:npar) = v0 % vec(:npar) + y0n_dv * lam
 
-#     ifdef _DEBUG
+if (cfg_verbose) then
       write (0, '(i4, f7.2, f9.4, *(f9.4))') ii, k0, lam, v0 % vec(:npar)
-#     endif
+end if
 
       if ( lam .lt. 0.005 ) then
-#       ifdef _DEBUG
+if (cfg_verbose) then
          write (0,*) ' ---- precision reached'
-#       endif
+end if
          exit loop_star_sharpness
       end if
 
@@ -118,9 +118,9 @@ contains
       allocate(v, source=v0)
       dx = dx_0
 
-#     ifdef _DEBUG
+if (cfg_verbose) then
       write (0, '(2A3,A15  , a16, a12 , a20 )') 'ii', 'i', 'x', 'y', 'y_dx', 'vec(:npar)(n) ...'
-#     endif
+end if
 
       loop_scales: do ii = 1, 7
          scan_interval: do i = 1, u
@@ -130,14 +130,14 @@ contains
             call comp_ydv(v, y, y_dv)
             y_dx = sum(y_dv * y0n_dv)
 
-#         ifdef _DEBUG
+if (cfg_verbose) then
             write (0, '(2I3,F15.8,es16.8,es12.4,*(f10.3))') ii, i, x, y, y_dx, v%vec(:npar)
-#         endif
+end if
 
             if (y_dx < 0) then
-#           ifdef _DEBUG
+if (cfg_verbose) then
                write (0, *) '             < < <'
-#           endif
+end if
                x = x - dx
                dx = dx / u
                exit scan_interval
@@ -145,9 +145,9 @@ contains
          end do scan_interval
       end do loop_scales
 
-#     ifdef _DEBUG
+if (cfg_verbose) then
       write (0, *) '  ================='
-#     endif
+end if
 
    end subroutine
 

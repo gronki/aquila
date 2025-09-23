@@ -81,15 +81,25 @@ contains
     allocate(master_mask(size(im,1), size(im,2)))
 
     call fix_hot_median(im, im2)
-    call write_fits_quick("im2.fits", im2)    
+    
+#   ifdef _DEBUG
+    call write_fits_quick("findstar_im2.fits", im2)  
+#   endif  
+
     call convol_fix(im2, krn, im3, 'r')
     where (im3 < 0) im3 = 0
-    call write_fits_quick("im3.fits", im3)    
+
+#   ifdef _DEBUG
+    call write_fits_quick("findstar_im3.fits", im3)    
+#   endif  
 
     sd = sqrt(sum(im3**2) / size(im3))
-    where (im3 < 0) im3 = 0
     master_mask(:,:) = (im3 > sd) !.and. (im < 0.9 * maxval(im))
-    call write_fits_quick("mask.fits", merge(im, 0.0_fp, master_mask))    
+
+#   ifdef _DEBUG
+    call write_fits_quick("findstar_mask.fits", merge(im, 0.0_fp, master_mask))    
+#   endif
+
     call aqfindstar(im3, master_mask, ni, nj, list, limit, rslice, margin, nstar)
   
   end subroutine

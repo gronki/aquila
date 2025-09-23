@@ -303,8 +303,8 @@ do j = 1, num_poly_vertices
         print '(2i8,2x,"(",2f10.2,")",3x,"(",2f10.2,")")', i, j, match%t1%vertices(j)%x, match%t1%vertices(j)%y, &
         match%t2%vertices(j)%x, match%t2%vertices(j)%y
       end do
-      PRINT '(" ch(A)=/", *(f10.2), :, "/")', match%t1%characteristic
-      PRINT '(" ch(B)=/", *(f10.2), :, "/")', match%t2%characteristic
+      PRINT '(" ch(A)=/", *(f10.2))', match%t1%characteristic
+      PRINT '(" ch(B)=/", *(f10.2))', match%t2%characteristic
       
         ! print '(a, 3f7.2, a)', 'rotation = ', atan2(sinrot(k,:), cosrot(k,:)), ' deg'
       print '(a, 3x, *(f8.2))', 'X=', match_Result%transx(:)

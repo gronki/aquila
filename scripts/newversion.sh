@@ -32,7 +32,12 @@ if [ -z "$(git status --porcelain)" ]; then
     head -n 5 fpm.toml
     echo
     grep version src/globals/globals.F90 | head -n 1
-    exit 1
+    echo "Do you want to continue? (y/n)"
+    read ANS
+    case "$ANS" in
+        [yY]) ;;
+        *) exit 1 ;;
+    esac
 fi
 
 git add src/globals/globals.F90 fpm.toml

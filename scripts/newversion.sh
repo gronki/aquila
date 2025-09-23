@@ -40,8 +40,11 @@ if [ -z "$(git status --porcelain)" ]; then
     esac
 fi
 
-git add src/globals/globals.F90 fpm.toml
-git commit -m "Version $VERSION_STR"
+(
+    git add src/globals/globals.F90 fpm.toml
+    git commit -m "Version $VERSION_STR"
+) || echo "no changes to add"
+
 git tag "$VERSION_STR"
 
 git push

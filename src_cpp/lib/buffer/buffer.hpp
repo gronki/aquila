@@ -2,13 +2,12 @@
 
 #include <vector>
 #include <set>
-#include <check.h>
+#include <check.hpp>
 #include <concepts>
 #include <iostream>
 #include <iomanip>
 #include <stacktrace>
 
-#include "check.h"
 
 using Index = int64_t;
 inline Index wrap_idx(Index i, std::size_t idxmax)

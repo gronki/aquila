@@ -2,14 +2,22 @@ cmake_minimum_required(VERSION 3.16)
 project(aquila LANGUAGES Fortran C CXX)
 enable_testing()
 
+set(CMAKE_C_FLAGS_DEBUG   "-g3 -O0 -Wall")
+set(CMAKE_C_FLAGS_RELEASE "-Ofast -DNDEBUG -g1")
+set(CMAKE_CXX_FLAGS_DEBUG   "-g3 -O0 -Wall")
+set(CMAKE_CXX_FLAGS_RELEASE "-Ofast -DNDEBUG -g1")
+set(CMAKE_Fortran_FLAGS_DEBUG   "-g3 -O0 -fcheck=all -D_DEBUG")
+set(CMAKE_Fortran_FLAGS_RELEASE "-Ofast -DNDEBUG -g1")
+
 add_subdirectory(deps/task-dispatch)
-# add_subdirectory(deps/fastconv)
 
 find_package(PNG REQUIRED)
 find_library(CFITSIO_LIBRARY cfitsio)
 find_library(READLINE_LIBRARY readline)
 
-file(GLOB_RECURSE SRC_SOURCES CONFIGURE_DEPENDS
+include_directories(src_cpp/global)
+
+file(GLOB_RECURSE AQUILA_SOURCES CONFIGURE_DEPENDS
     src/core/*.f90
     src/core/*.F90
     src/core/*.c
@@ -25,8 +33,14 @@ file(GLOB_RECURSE SRC_SOURCES CONFIGURE_DEPENDS
     src/utils/*.f90
     src/utils/*.F90
     src/utils/*.c
+    src/c_binding/*.hpp
 )
-add_library(aquilalib STATIC ${SRC_SOURCES})
+add_library(aquilalib STATIC ${AQUILA_SOURCES})
+target_include_directories(aquilalib PUBLIC src/c_binding)
+
+link_libraries(aquilalib)
+link_libraries(${CFITSIO_LIBRARY})
+link_libraries(PNG::PNG)
 
 file(GLOB_RECURSE SCRIPT_SOURCES CONFIGURE_DEPENDS
     src/script/*.f90
@@ -34,52 +48,27 @@ file(GLOB_RECURSE SCRIPT_SOURCES CONFIGURE_DEPENDS
     src/script/*.c
 )
 
+add_executable(aqstack app/aqstack.f90)
+add_executable(aqlrgb app/aqlrgb.F90)
+
 add_executable(aq2 app/aq2/aq2.f90 app/aq2/operation_imports.f90 
     app/aq2/readline_binding.c app/aq2/readline_prompt.F90 ${SCRIPT_SOURCES})
-target_link_libraries(aq2 PRIVATE aquilalib)
 target_link_libraries(aq2 PRIVATE task_dispatch_static)
-target_link_libraries(aq2 PRIVATE PNG::PNG)
-target_link_libraries(aq2 PRIVATE ${CFITSIO_LIBRARY})
 target_link_libraries(aq2 PRIVATE ${READLINE_LIBRARY})
-
-add_executable(aqstack app/aqstack.f90)
-target_link_libraries(aqstack PRIVATE aquilalib)
-target_link_libraries(aqstack PRIVATE PNG::PNG)
-target_link_libraries(aqstack PRIVATE ${CFITSIO_LIBRARY})
-
-add_executable(aqlrgb app/aqlrgb.F90)
-target_link_libraries(aqlrgb PRIVATE aquilalib)
-target_link_libraries(aqlrgb PRIVATE PNG::PNG)
-target_link_libraries(aqlrgb PRIVATE ${CFITSIO_LIBRARY})
-
-option(ENABLE_OPENMP "Enable OpenMP support" ON)
-
-# Check the compiler
-if(CMAKE_Fortran_COMPILER_ID MATCHES "GNU|Clang")
-    # GCC or Clang
-    set(DEBUG_FLAGS "-g -O0 -Wall -Wextra -Wno-unused-dummy-argument -Wno-compare-reals -Wno-conversion -fcheck=all -fbacktrace -pedantic")
-    set(RELEASE_FLAGS "-O3 -march=native -funsafe-math-optimizations")
-elseif(CMAKE_Fortran_COMPILER_ID MATCHES "Intel")
-    # Intel Fortran
-    set(DEBUG_FLAGS "-g -O0 -traceback -check=all,nouninit -pedantic")
-    set(RELEASE_FLAGS "-O3 -xHost")
-endif()
-
-# Apply flags depending on build type
-set(CMAKE_Fortran_FLAGS_DEBUG "${DEBUG_FLAGS}" CACHE STRING "Debug flags" FORCE)
-set(CMAKE_Fortran_FLAGS_RELEASE "${RELEASE_FLAGS}" CACHE STRING "Release flags" FORCE)
 
 file(GLOB_RECURSE AQNEW_SOURCES CONFIGURE_DEPENDS
     src_cpp/lib/*.f90
     src_cpp/lib/*.F90
-    src_cpp/lib/*.c
     src_cpp/lib/*.cpp
-    src_cpp/lib/*.h
+    src_cpp/lib/*.hpp
 )
 add_library(aqnew STATIC ${AQNEW_SOURCES})
+target_include_directories(aqnew PUBLIC src_cpp/lib/buffer)
 
-add_executable(aqneo src_cpp/aqneo/aqneo.cpp)
-target_link_libraries(aqneo aqnew)
+link_libraries(aqnew)
+
+add_executable(aqneo src_cpp/app/aqneo.cpp)
+add_executable(aqfindstar src_cpp/app/aqfindstar.cpp)
 
 # target_link_libraries(aq2 PRIVATE fastconv_static)
 # file(GLOB TEST_SOURCES CONFIGURE_DEPENDS test/*.f90 test/*.F90)

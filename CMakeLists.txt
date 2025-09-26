@@ -3,11 +3,11 @@ project(aquila LANGUAGES Fortran C CXX)
 enable_testing()
 
 set(CMAKE_C_FLAGS_DEBUG   "-g3 -O0 -Wall")
-set(CMAKE_C_FLAGS_RELEASE "-Ofast -DNDEBUG -g1")
+set(CMAKE_C_FLAGS_RELEASE "-Ofast -march=native -fopenmp-simd -DNDEBUG -g1")
 set(CMAKE_CXX_FLAGS_DEBUG   "-g3 -O0 -Wall")
-set(CMAKE_CXX_FLAGS_RELEASE "-Ofast -DNDEBUG -g1")
+set(CMAKE_CXX_FLAGS_RELEASE "-Ofast -march=native -fopenmp-simd -DNDEBUG -g1")
 set(CMAKE_Fortran_FLAGS_DEBUG   "-g3 -O0 -fcheck=all -D_DEBUG")
-set(CMAKE_Fortran_FLAGS_RELEASE "-Ofast -DNDEBUG -g1")
+set(CMAKE_Fortran_FLAGS_RELEASE "-Ofast -march=native -fopenmp-simd -DNDEBUG -g1")
 
 add_subdirectory(deps/task-dispatch)
 

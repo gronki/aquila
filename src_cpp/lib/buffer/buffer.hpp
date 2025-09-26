@@ -7,7 +7,7 @@
 #include <iostream>
 #include <iomanip>
 #include <stacktrace>
-
+#include <functional>
 
 using Index = int64_t;
 inline Index wrap_idx(Index i, std::size_t idxmax)
@@ -69,8 +69,8 @@ public:
     T *data() noexcept { return buffer.data(); }
     const T *data() const noexcept { return buffer.data(); }
 
-    std::size_t vecs() const noexcept { return ny; }
-    std::size_t nvec() const noexcept { return nx; }
+    Index vecs() const noexcept { return ny; }
+    Index nvec() const noexcept { return nx; }
 
     T *vec(Index ivec) noexcept
     {
@@ -170,8 +170,8 @@ public:
         return (ny == buf_ny) && (off_y == 0);
     }
 
-    std::size_t vecs() const noexcept { return ny; }
-    std::size_t nvec() const noexcept { return nx; }
+    Index vecs() const noexcept { return ny; }
+    Index nvec() const noexcept { return nx; }
     T *vec(Index ivec) noexcept
     {
         check(ivec < vecs());
@@ -280,4 +280,79 @@ std::ostream &operator<<(std::ostream &os, const View<U> &buf)
         std::cout << std::endl;
     }
     return os;
+}
+
+template <typename T, typename F>
+inline auto elementwise(const View<T> &one, F f)
+{
+    Index nx = one.cols();
+    Index ny = one.rows();
+
+    using U = decltype(f(std::declval<T>()));
+    Buffer<U> result(nx, ny);
+
+    for (Index ivec = 0; ivec < one.vecs(); ivec++)
+    {
+        const T *__restrict one_vec = one.vec(ivec);
+        U *__restrict result_vec = result.vec(ivec);
+#pragma omp simd
+        for (Index lvec = 0; lvec < one.nvec(); lvec++)
+        {
+            result_vec[lvec] = f(one_vec[lvec]);
+        }
+    }
+    return result;
+}
+
+template <typename T, typename U, typename F>
+inline auto elementwise(const View<T> &one, const View<U> &other, F f)
+{
+    Index nx = one.cols();
+    Index ny = one.rows();
+    check(nx == other.cols());
+    check(ny == other.rows());
+
+    using V = decltype(f(std::declval<T>(), std::declval<U>()));
+    Buffer<V> result(nx, ny);
+
+    for (Index ivec = 0; ivec < one.vecs(); ivec++)
+    {
+        const T *__restrict one_vec = one.vec(ivec);
+        const U *__restrict other_vec = other.vec(ivec);
+        V *__restrict result_vec = result.vec(ivec);
+#pragma omp simd
+        for (Index lvec = 0; lvec < one.nvec(); lvec++)
+        {
+            result_vec[lvec] = f(one_vec[lvec], other_vec[lvec]);
+        }
+    }
+    return result;
+}
+
+template <typename T, typename U, typename V, typename F>
+inline auto elementwise(const View<T> &one, const View<U> &other, const View<V> &onemore, F f)
+{
+    Index nx = one.cols();
+    Index ny = one.rows();
+    check(nx == other.cols());
+    check(ny == other.rows());
+    check(nx == onemore.cols());
+    check(ny == onemore.rows());
+
+    using W = decltype(f(std::declval<T>(), std::declval<U>(), std::declval<V>()));
+    Buffer<W> result(nx, ny);
+
+    for (Index ivec = 0; ivec < one.vecs(); ivec++)
+    {
+        const T *__restrict one_vec = one.vec(ivec);
+        const U *__restrict other_vec = other.vec(ivec);
+        const V *__restrict onemore_vec = onemore.vec(ivec);
+        W *__restrict result_vec = result.vec(ivec);
+#pragma omp simd
+        for (Index lvec = 0; lvec < one.nvec(); lvec++)
+        {
+            result_vec[lvec] = f(one_vec[lvec], other_vec[lvec], onemore_vec[lvec]);
+        }
+    }
+    return result;
 }

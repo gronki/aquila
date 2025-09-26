@@ -5,18 +5,25 @@
 
 using namespace aquila;
 
-int main(int argc, char** argv) {
+int main(int argc, char **argv)
+{
     source_t src[100];
 
     Buffer<Real> buf(300, 300);
 
     buf.view(10, 20, 10, 20) = 1;
 
+    Buffer<Real> buf2{elementwise(buf.view(), [](Real x) -> Real
+                                        { if (x > 0) return x; 
+                                            return static_cast<Real>(0); })};
+
+    Buffer<Real> buf3{elementwise(buf.view(), buf2.view(), [](Real x, Real y) -> Real
+                                        { return x + y * y + (x > y ? x : y); })};
+
     Int nstar;
 
     register_stars_f(buf.data(), buf.rows(), buf.cols(), src, 100,
-        33, 33, 2.0, &nstar);
+                     33, 33, 2.0, &nstar);
 
     std::cout << nstar << std::endl;
-
 }

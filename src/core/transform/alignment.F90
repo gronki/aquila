@@ -34,11 +34,11 @@ subroutine classic_align(lst0, lst, align_method, r0, tx, errno)
    select case (align_method)
 
    case ('polygon')
-     call align_polygon(lst0, lst, 36, 256, tx)
+     call align_polygon(lst0, lst, 32, 256, tx)
      
    case ('gravity')
      ! find an initial estimate for a transform
-     call align_polygon(lst0, lst, 36, 256, tx)
+     call align_polygon(lst0, lst, 32, 256, tx)
      ! fine-tune the transform between frames
      call align_gravity(lst0, lst, tx, 2.0_fp)
 

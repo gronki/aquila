@@ -2,18 +2,27 @@ cmake_minimum_required(VERSION 3.16)
 project(aquila LANGUAGES Fortran C CXX)
 enable_testing()
 
-set(CMAKE_C_FLAGS_DEBUG   "-g3 -O0 -Wall")
-set(CMAKE_C_FLAGS_RELEASE "-Ofast -march=native -fopenmp-simd -DNDEBUG -g1")
-set(CMAKE_CXX_FLAGS_DEBUG   "-g3 -O0 -Wall")
-set(CMAKE_CXX_FLAGS_RELEASE "-Ofast -march=native -fopenmp-simd -DNDEBUG -g1")
-set(CMAKE_Fortran_FLAGS_DEBUG   "-g3 -O0 -fcheck=all -D_DEBUG")
-set(CMAKE_Fortran_FLAGS_RELEASE "-Ofast -march=native -fopenmp-simd -DNDEBUG -g1")
+find_package(PkgConfig REQUIRED)
+
+option(OPENMP "enable OpenMP parallelism" On)
+if(${OPENMP})
+set(OPENMP_FLAGS "-fopenmp")
+else()
+set(OPENMP_FLAGS "")
+endif()
+
+set(CMAKE_C_FLAGS_DEBUG   "-g3 -O0 -Wall ${OPENMP_FLAGS}")
+set(CMAKE_C_FLAGS_RELEASE "-O3 -ffast-math -march=native -fopenmp-simd -DNDEBUG -g1 ${OPENMP_FLAGS}")
+set(CMAKE_CXX_FLAGS_DEBUG   "-g3 -O0 -Wall ${OPENMP_FLAGS}")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -ffast-math -march=native -fopenmp-simd -DNDEBUG -g1 ${OPENMP_FLAGS}")
+set(CMAKE_Fortran_FLAGS_DEBUG   "-g3 -O0 -fcheck=all ${OPENMP_FLAGS}")
+set(CMAKE_Fortran_FLAGS_RELEASE "-O3 -ffast-math -march=native -fopenmp-simd -DNDEBUG -g1 ${OPENMP_FLAGS}")
 
 add_subdirectory(deps/task-dispatch)
 
 find_package(PNG REQUIRED)
-find_library(CFITSIO_LIBRARY cfitsio)
-find_library(READLINE_LIBRARY readline)
+pkg_check_modules(CFITSIO REQUIRED cfitsio)
+pkg_check_modules(READLINE REQUIRED readline)
 
 include_directories(src_cpp/global)
 
@@ -39,7 +48,9 @@ add_library(aquilalib STATIC ${AQUILA_SOURCES})
 target_include_directories(aquilalib PUBLIC src/c_binding)
 
 link_libraries(aquilalib)
-link_libraries(${CFITSIO_LIBRARY})
+link_libraries(${CFITSIO_LIBRARIES})
+include_directories(${CFITSIO_INCLUDE_DIRS})
+add_compile_options(${CFITSIO_CFLAGS_OTHER})
 link_libraries(PNG::PNG)
 
 file(GLOB_RECURSE SCRIPT_SOURCES CONFIGURE_DEPENDS
@@ -54,7 +65,9 @@ add_executable(aqlrgb app/aqlrgb.F90)
 add_executable(aq2 app/aq2/aq2.f90 app/aq2/operation_imports.f90 
     app/aq2/readline_binding.c app/aq2/readline_prompt.F90 ${SCRIPT_SOURCES})
 target_link_libraries(aq2 PRIVATE task_dispatch_static)
-target_link_libraries(aq2 PRIVATE ${READLINE_LIBRARY})
+target_link_libraries(aq2 PRIVATE ${READLINE_LIBRARIES})
+
+install(TARGETS aqstack aqlrgb aq2 DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
 
 file(GLOB_RECURSE AQNEW_SOURCES CONFIGURE_DEPENDS
     src_cpp/lib/*.f90
@@ -63,12 +76,12 @@ file(GLOB_RECURSE AQNEW_SOURCES CONFIGURE_DEPENDS
     src_cpp/lib/*.hpp
 )
 add_library(aqnew STATIC ${AQNEW_SOURCES})
-target_include_directories(aqnew PUBLIC src_cpp/lib/buffer)
-
+target_include_directories(aqnew PUBLIC src_cpp/lib/buffer src_cpp/lib/io)
 link_libraries(aqnew)
 
 add_executable(aqneo src_cpp/app/aqneo.cpp)
 add_executable(aqfindstar src_cpp/app/aqfindstar.cpp)
+install(TARGETS aqneo aqfindstar DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
 
 # target_link_libraries(aq2 PRIVATE fastconv_static)
 # file(GLOB TEST_SOURCES CONFIGURE_DEPENDS test/*.f90 test/*.F90)

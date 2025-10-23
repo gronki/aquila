@@ -24,6 +24,7 @@ namespace aquila
         Int margin = 32;
         Int min_star_pixels = 8;
         Real blur_radius = 2.3;
+        Real thresh_sd = 2.;
         int rejection = FINDSTAR_REJECTION_ABSOLUTE;
         Real max_rms = 12.;
     };

@@ -1,6 +1,7 @@
 
 #include <aquila.hpp>
 #include <iostream>
+#include <iomanip>
 #include <buffer.hpp>
 #include <fits.hpp>
 #include <cmath>
@@ -30,7 +31,19 @@ int main(int argc, char **argv)
         for (Int i = 0; i < nstar; i++)
         {
             const auto &star = src[i];
-            std::cout << star.ix << ", " << star.iy << std::endl;
+            std::cout
+                << std::fixed << std::setprecision(2)
+                << std::setw(12)
+                << star.ix
+                << std::setw(12)
+                << star.iy
+                << std::setw(12)
+                << star.flux
+                << std::setw(12)
+                << star.rms
+                << std::setw(12)
+                << star.asymmetry
+                << std::endl;
         }
     }
     catch (std::runtime_error e)

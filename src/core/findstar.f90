@@ -14,6 +14,7 @@ module findstar
     integer(c_int64_t) :: margin = 32
     integer(c_int64_t) :: min_star_pixels = 8
     real(c_double) :: blur_radius = 2.3
+    real(c_double) :: thresh_sd = 2.
     integer(c_int) :: rejection = findstar_rejection_absolute
     real(c_double) :: max_rms = 12.
   end type
@@ -327,8 +328,8 @@ contains
       call convol_fix(im2, krn, im3, 'r')
       where (im3 < 0) im3 = 0
   
-      sd = sqrt(sum(im3**2) / size(im3))
-      master_mask(:,:) = (im3 > 0.)
+      sd = sum(abs(im3)) / size(im3)
+      master_mask(:,:) = (im3 > param%thresh_sd * sd)
       call mask_margins_c(master_mask, ni, nj, param%margin)
   
       call aqfindstar(im3, master_mask, ni, nj, list, limit, param, nstar)

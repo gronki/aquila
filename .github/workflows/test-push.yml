@@ -104,7 +104,6 @@ jobs:
 
   oneapi:
     runs-on: ubuntu-24.04
-    needs: build-fpm
     strategy:
       fail-fast: false
       matrix:
@@ -218,7 +217,6 @@ jobs:
 
   flang:
     runs-on: ubuntu-24.04
-    needs: build-fpm
     strategy:
       fail-fast: false
       matrix:

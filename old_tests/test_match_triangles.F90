@@ -50,7 +50,7 @@ contains
 subroutine register_stars_file(fn, lst)
   use framehandling, only: image_frame_t
   use stacking, only: register_stars
-  use findstar, only: source_t
+  use source_m, only: source_t
 
   character(len=*) :: fn
   type(image_frame_t) :: im

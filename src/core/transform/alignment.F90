@@ -1,6 +1,6 @@
 module alignment_m
 
-use findstar, only: source_t
+use source_m, only: source_t
 use globals
 use transform_m
 use transform_xyr_m
@@ -34,11 +34,11 @@ subroutine classic_align(lst0, lst, align_method, r0, tx, errno)
    select case (align_method)
 
    case ('polygon')
-     call align_polygon(lst0, lst, 32, 256, tx)
+     call align_polygon(lst0, lst, 30, 12, tx)
      
    case ('gravity')
      ! find an initial estimate for a transform
-     call align_polygon(lst0, lst, 32, 256, tx)
+     call align_polygon(lst0, lst, 24, 8, tx)
      ! fine-tune the transform between frames
      call align_gravity(lst0, lst, tx, 2.0_fp)
 
@@ -70,11 +70,9 @@ subroutine align_gravity(xy, xy0, v0, k0)
 
    npar = v0%npar()
 
-if (cfg_verbose) then
-   write (0, '("k0 =", g10.4)') k0
-   write (0, '(a4, a7  , a9  , 3a9  )') &
+   if (cfg_verbose) write (0, '("k0 =", g10.4)') k0
+   if (cfg_verbose) write (0, '(a4, a7  , a9  , 3a9  )') &
    &     'ii', 'k0', 'lam', 'vec(1)', 'vec(2)', '...'
-end if
 
    loop_star_sharpness: do ii = 1, 10
 
@@ -88,20 +86,16 @@ end if
       call minimize_along_vec(lam, 0.25 * k0)
       v0 % vec(:npar) = v0 % vec(:npar) + y0n_dv * lam
 
-if (cfg_verbose) then
-      write (0, '(i4, f7.2, f9.4, *(f9.4))') ii, k0, lam, v0 % vec(:npar)
-end if
+      if (cfg_verbose) write (0, '(i4, f7.2, f9.4, *(f9.4))') ii, k0, lam, v0 % vec(:npar)
 
       if ( lam .lt. 0.005 ) then
-if (cfg_verbose) then
-         write (0,*) ' ---- precision reached'
-end if
+         if (cfg_verbose) write (0,*) ' ---- precision reached'
          exit loop_star_sharpness
       end if
 
       ! k0 = k0 * k0decr
 
-      write (0,*) '---------------------------------'
+      if (cfg_verbose) write (0,*) '---------------------------------'
    end do loop_star_sharpness
 
 contains
@@ -118,9 +112,7 @@ contains
       allocate(v, source=v0)
       dx = dx_0
 
-if (cfg_verbose) then
-      write (0, '(2A3,A15  , a16, a12 , a20 )') 'ii', 'i', 'x', 'y', 'y_dx', 'vec(:npar)(n) ...'
-end if
+      if (cfg_verbose) write (0, '(2A3,A15  , a16, a12 , a20 )') 'ii', 'i', 'x', 'y', 'y_dx', 'vec(:npar)(n) ...'
 
       loop_scales: do ii = 1, 7
          scan_interval: do i = 1, u
@@ -130,14 +122,10 @@ end if
             call comp_ydv(v, y, y_dv)
             y_dx = sum(y_dv * y0n_dv)
 
-if (cfg_verbose) then
-            write (0, '(2I3,F15.8,es16.8,es12.4,*(f10.3))') ii, i, x, y, y_dx, v%vec(:npar)
-end if
+            if (cfg_verbose) write (0, '(2I3,F15.8,es16.8,es12.4,*(f10.3))') ii, i, x, y, y_dx, v%vec(:npar)
 
             if (y_dx < 0) then
-if (cfg_verbose) then
-               write (0, *) '             < < <'
-end if
+               if (cfg_verbose) write (0, *) '             < < <'
                x = x - dx
                dx = dx / u
                exit scan_interval
@@ -145,9 +133,7 @@ end if
          end do scan_interval
       end do loop_scales
 
-if (cfg_verbose) then
-      write (0, *) '  ================='
-end if
+      if (cfg_verbose) write (0, *) '  ================='
 
    end subroutine
 

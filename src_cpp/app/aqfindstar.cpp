@@ -22,14 +22,15 @@ int main(int argc, char **argv)
         auto buf = read_fits(argv[1]);
 
         Int nstar;
-        source_t src[100];
-        register_stars_f(buf.data(), buf.rows(), buf.cols(), src, 100,
-                         33, 33, 2.0, &nstar);
+        const Int max_stars = 256;
+        source_t src[max_stars];
+        findstar_param_t param;
+        register_stars_f(buf.data(), buf.rows(), buf.cols(), src, max_stars, &param, &nstar);
         cout << nstar << endl;
         for (Int i = 0; i < nstar; i++)
         {
             const auto &star = src[i];
-            std::cout << star.x << ", " << star.y << std::endl;
+            std::cout << star.ix << ", " << star.iy << std::endl;
         }
     }
     catch (std::runtime_error e)
@@ -37,5 +38,4 @@ int main(int argc, char **argv)
         cerr << "error: " << e.what() << endl;
         exit(1);
     }
-
 }

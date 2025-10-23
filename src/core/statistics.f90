@@ -297,23 +297,26 @@ contains
 
   !----------------------------------------------------------------------------!
 
-  pure function sigclip2(x, kap) result(xm)
+  pure function sigclip2(x, kap) result(av)
     real(fp), intent(in) :: x(:), kap
-    real(fp) :: xm, av, sd
+    real(fp) :: av, sd
     logical :: msk(size(x))
     integer :: i, imax
 
-    call avsd(x, av, sd); xm = av
+    call avsd(x, av, sd)
     msk(:) = .true.
 
     reject: do i = 1, size(x) - 2
       imax = maxloc(abs(x - av), 1, msk)
       msk(imax) = .false.
       call avsd(x, msk, av, sd)
-      if (abs(x(imax) - av) <= kap * sd) exit reject
-      xm = av
+      if (abs(x(imax) - av) <= kap * sd) then
+         msk(imax) = .true.
+         exit reject
+      end if
     end do reject
-  end function
+    call avsd(x, msk, av, sd)
+    end function
 
   !----------------------------------------------------------------------------!
 

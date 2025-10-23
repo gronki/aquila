@@ -1,7 +1,7 @@
 module legacy_align
 
   use globals
-  use findstar, only: source_t, source_t, ij_to_xy, xy_to_ij
+  use source_m, only: source_t, source_t, ij_to_xy, xy_to_ij
   implicit none (type, external)
 
 contains

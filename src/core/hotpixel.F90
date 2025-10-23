@@ -166,4 +166,29 @@ endif
 
   !----------------------------------------------------------------------------!
 
+  subroutine fix_hot_median(im, im2)
+    real(fp) :: im(:,:), im2(:,:), av, sd
+    integer :: i, j, i1, i2, j1, j2, n1, n2
+
+    n1 = size(im, 1)
+    n2 = size(im, 2)
+
+    do concurrent(i = 1:n1, j=1:n2)
+      if (i == 1 .or. i == n1 .or. j == 1 .or. j == n2) then
+        im2(i,j) = im(i,j)
+        cycle
+      end if
+      av = im(i-1, j-1) + im(i, j-1)  + im(i+1, j-1) &
+      &  + im(i-1, j  )               + im(i+1, j  ) &
+      &  + im(i-1, j+1) + im(i, j+1)  + im(i+1, j+1)
+      av = av / 8
+      sd = im(i-1, j-1)**2 + im(i, j-1)**2  + im(i+1, j-1)**2 &
+      &  + im(i-1, j  )**2                  + im(i+1, j  )**2 &
+      &  + im(i-1, j+1)**2 + im(i, j+1)**2  + im(i+1, j+1)**2
+      sd = sd / 8
+      sd = sqrt(max(0._fp, sd - av * av)) 
+      im2(i,j) = merge(im(i, j), av, im(i,j) < av + 3 * sd)
+    end do
+  end subroutine
+
 end module

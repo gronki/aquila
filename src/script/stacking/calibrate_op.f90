@@ -9,7 +9,7 @@ use image_frame_m
 use input_args_m
 use framehandling
 use starlist_value_m
-use stacking, only: register_stars
+use findstar, only: register_stars
 use statistics
 
 implicit none (type, external)

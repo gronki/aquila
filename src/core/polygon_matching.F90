@@ -2,7 +2,7 @@ module polygon_matching
 
   use globals
   use iso_fortran_env, only: real64, int64
-  use findstar, only: source_t
+  use source_m, only: source_t
   implicit none
 
   ! number of polygon vertices

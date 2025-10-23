@@ -6,103 +6,6 @@ module stacking
 
 contains
 
-  !----------------------------------------------------------------------------!
-
-  subroutine register_stars(im, list, limit)
-    use convolutions, only: convol_fix
-    use kernels, only: mexhakrn_alloc
-    use findstar, only: aqfindstar, source_t
-
-    real(fp), intent(in), contiguous :: im(:,:)
-    type(source_t), intent(out), allocatable :: list(:)
-    real(fp), allocatable :: im2(:,:), krn(:,:)
-    integer, intent(in), optional :: limit
-    integer(c_int64_t) :: limit_, nstar
-    integer(c_int64_t), parameter :: rslice = 32, margin = 5
-
-    limit_ = 1024
-    if (present(limit)) limit_ = limit
-    
-    allocate(list(limit_))
-    call register_stars_f(im, size(im, 1, c_size_t), size(im, 2, c_size_t), list, limit_, rslice, &
-      margin, 2._c_double, nstar)
-
-    list = list(:nstar)
-  end subroutine
-
-  subroutine fix_hot_median(im, im2)
-    real(fp) :: im(:,:), im2(:,:), av, sd
-    integer :: i, j, i1, i2, j1, j2, n1, n2
-
-    n1 = size(im, 1)
-    n2 = size(im, 2)
-
-    do concurrent(i = 1:n1, j=1:n2)
-      if (i == 1 .or. i == n1 .or. j == 1 .or. j == n2) then
-        im2(i,j) = im(i,j)
-        cycle
-      end if
-      av = im(i-1, j-1) + im(i, j-1)  + im(i+1, j-1) &
-      &  + im(i-1, j  )               + im(i+1, j  ) &
-      &  + im(i-1, j+1) + im(i, j+1)  + im(i+1, j+1)
-      av = av / 8
-      sd = im(i-1, j-1)**2 + im(i, j-1)**2  + im(i+1, j-1)**2 &
-      &  + im(i-1, j  )**2                  + im(i+1, j  )**2 &
-      &  + im(i-1, j+1)**2 + im(i, j+1)**2  + im(i+1, j+1)**2
-      sd = sd / 8
-      sd = sqrt(max(0._fp, sd - av * av)) 
-      im2(i,j) = merge(im(i, j), av, im(i,j) < av + 3 * sd)
-    end do
-  end subroutine
-
-  subroutine register_stars_f(im, ni, nj, list, limit, rslice, &
-      margin, kernel, nstar) bind(C)
-    use convolutions, only: convol_fix
-    use kernels, only: mexhakrn_alloc, gausskrn_alloc
-    use findstar, only: aqfindstar, source_t
-    use frame_m, only: write_fits_quick
-    use statistics, only: avsd
-
-    integer(c_int64_t), intent(in), value :: ni, nj, limit
-    integer(c_int64_t), intent(in), value :: rslice, margin
-    real(fp), dimension(:,:), intent(in) :: im(ni,nj)
-    type(source_t), intent(out) :: list(limit)
-    integer(c_int64_t), intent(out) :: nstar
-    real(c_double), intent(in), value :: kernel
-    logical(c_bool), allocatable :: master_mask(:,:)
-    real(fp) :: av, sd
-
-    real(fp), dimension(:,:), allocatable :: im2(:,:), im3(:,:), krn(:,:)
-
-    krn =  mexhakrn_alloc(real(kernel, fp)) !+ 0.5 * gausskrn_alloc(real(kernel, fp))
-
-    allocate(im2(size(im,1), size(im,2)))
-    allocate(im3(size(im,1), size(im,2)))
-    allocate(master_mask(size(im,1), size(im,2)))
-
-    call fix_hot_median(im, im2)
-    
-#   ifdef _DEBUG
-    call write_fits_quick("findstar_im2.fits", im2)  
-#   endif  
-
-    call convol_fix(im2, krn, im3, 'r')
-    where (im3 < 0) im3 = 0
-
-#   ifdef _DEBUG
-    call write_fits_quick("findstar_im3.fits", im3)    
-#   endif  
-
-    sd = sqrt(sum(im3**2) / size(im3))
-    master_mask(:,:) = (im3 > sd) !.and. (im < 0.9 * maxval(im))
-
-#   ifdef _DEBUG
-    call write_fits_quick("findstar_mask.fits", merge(im, 0.0_fp, master_mask))    
-#   endif
-
-    call aqfindstar(im3, master_mask, ni, nj, list, limit, rslice, margin, nstar)
-  
-  end subroutine
 
   !----------------------------------------------------------------------------!
 
@@ -130,13 +33,39 @@ contains
 
   !----------------------------------------------------------------------------!
 
+  subroutine mask_margins(mask, margin)
+    logical, intent(inout) :: mask(:,:)
+    integer :: margin, i, j, ni, nj
+    if (margin == 0) return
+    if (margin < 0) error stop "margin < 0"
+    ni = size(mask, 1)
+    nj = size(mask, 2)
+    mask(:min(margin, ni), :) = .false.
+    mask(max(ni - margin + 1, 1), :) = .false.
+    mask(:, :min(margin, nj)) = .false.
+    mask(:, max(nj - margin + 1, 1):) = .false.
+  end subroutine
+
+  subroutine mask_margins_c(mask, ni, nj, margin) bind(C, name="mask_margins")
+    logical(c_bool), intent(inout) :: mask(:,:)
+    integer(c_int64_t) :: ni, nj, margin, i, j
+    if (margin == 0) return
+    if (margin < 0) error stop "margin < 0"
+    mask(:min(margin, ni), :) = .false.
+    mask(max(ni - margin + 1, 1), :) = .false.
+    mask(:, :min(margin, nj)) = .false.
+    mask(:, max(nj - margin + 1, 1):) = .false.
+  end subroutine
+
+  !----------------------------------------------------------------------------!
+
   subroutine normalize_offset_gain(buffer, margin)
-    use statistics, only: linfit
+    use statistics, only: linfit, outliers_2d_mask
 
     real(fp), intent(inout) :: buffer(:,:,:)
     integer, intent(in) :: margin
     
-    real(fp) :: a, b
+    real(fp) :: a, b, av, sd
     real(fp), allocatable :: imref(:,:), xx(:), yy(:)
     logical, allocatable :: mask(:,:)
     integer :: i, j, np, sz(3), nstack
@@ -152,13 +81,10 @@ contains
 
     ! create mask which excludes edges and the brigtenst pixels
     allocate(mask(sz(1), sz(2)))
-    associate (m => margin)
-      associate (imc => imref(1+m : sz(1)-m, 1+m : sz(2)-m))
-        mask = imref < (minval(imc) + maxval(imc)) / 2
-      end associate
-      mask(:m, :) = .false.; mask(sz(1)-m+1:, :) = .false.
-      mask(:, :m) = .false.; mask(:, sz(2)-m+1:) = .false.
-    end associate
+    mask(:,:) = .true.
+    call mask_margins(mask, margin)
+    ! call outliers_2d_mask(imref, mask, 3.0_fp, 10, av, sd)
+    mask(:,:) = mask .and. imref < (minval(imref, mask=mask) + maxval(imref, mask=mask)) / 2
 
     ! pack it into 1-d array
     np = count(mask)

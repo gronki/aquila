@@ -9,7 +9,6 @@ use image_frame_m
 use input_args_m
 use framehandling
 use starlist_value_m
-use stacking, only: register_stars
 use transformation_value_m
 use projection_m
 use legacy_frame_value_m

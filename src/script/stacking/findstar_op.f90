@@ -10,7 +10,6 @@ use input_args_m
 use framehandling
 use starlist_value_m
 use findstar
-use stacking, only: register_stars
 
 implicit none (type, external)
 private

@@ -1,6 +1,6 @@
 module projection_m
 
-use findstar, only: xy_to_ij, ij_to_xy
+use source_m
 use globals
 use transform_m
 use transform_xyr_m

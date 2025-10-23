@@ -2,20 +2,21 @@ module findstar
 
   use globals
   use iso_c_binding
+  use hotpixels, only: fix_hot_median
+  use stacking, only: mask_margins, mask_margins_c
+  use source_m
   implicit none
 
-  integer, parameter :: n_source_moments = 3
+  integer(c_int), parameter :: findstar_rejection_absolute = 1, findstar_rejection_relative = 2
 
-  type, bind(C) :: source_t
-    real(fp) :: x, y
-    real(fp) :: flux = 0
-    real(fp) :: rms = 0
-    real(fp) :: moments(n_source_moments)
+  type, bind(C) :: findstar_param_t
+    integer(c_int64_t) :: rslice = 16
+    integer(c_int64_t) :: margin = 32
+    integer(c_int64_t) :: min_star_pixels = 8
+    real(c_double) :: blur_radius = 2.3
+    integer(c_int) :: rejection = findstar_rejection_absolute
+    real(c_double) :: max_rms = 12.
   end type
-
-  real(fp), parameter :: max_rms = 12
-
-  private :: cleanup_assymetric_outliers, fill_mask
 
 contains
 
@@ -41,60 +42,28 @@ contains
 
   !----------------------------------------------------------------------------!
 
-  elemental subroutine ij_to_xy(i, j, ni, nj, scale, x, y)
-    real(fp), intent(in) :: i, j, scale
-    integer, intent(in) :: ni, nj
-    real(fp), intent(out) :: x, y
-
-    x =   (j - 0.5_fp * (nj + 1)) / scale
-    y = - (i - 0.5_fp * (ni + 1)) / scale
-
-  end subroutine
-
-  !----------------------------------------------------------------------------!
-
-  elemental subroutine xy_to_ij(x, y, ni, nj, scale, i, j)
-    real(fp), intent(in) :: x, y, scale
-    integer, intent(in) :: ni, nj
-    real(fp), intent(out) :: i, j
-
-    j =   x * scale + 0.5_fp * (nj + 1)
-    i = - y * scale + 0.5_fp * (ni + 1)
-
-  end subroutine
-
-  !----------------------------------------------------------------------------!
-
-  subroutine aqfindstar(im, master_mask, ni, nj, list, limit, rslice, margin, nstar) bind(C)
+  subroutine aqfindstar(im, master_mask, ni, nj, list, limit, param, nstar) bind(C)
     integer(c_int64_t), intent(in), value :: ni, nj, limit
-    integer(c_int64_t), intent(in), value :: rslice, margin
+    type(findstar_param_t) :: param
     real(fp), dimension(:,:), intent(in) :: im(ni,nj)
-    logical(c_bool) :: master_mask(:,:)
+    logical(c_bool), intent(inout) :: master_mask(:,:)
     type(source_t), intent(out) :: list(limit)
     integer(c_int64_t), intent(out) :: nstar
     
     type(source_t) :: star
     logical(c_bool), dimension(:,:), allocatable :: mask
     real(fp), dimension(:,:), allocatable :: xx, yy
-    integer :: i, j, nx, ny, imax, jmax, xymax(2)
+    integer :: i, j, imax, jmax, xymax(2)
     integer :: ilo, ihi, jlo, jhi
 
-    ny = ni
-    nx = nj
     nstar = 0
 
     allocate(mask(ni, nj))
     allocate(xx(ni, nj), yy(ni, nj))
 
     do concurrent (i = 1:ni, j = 1:nj)
-      call ij_to_xy(real(i, fp), real(j, fp), ny, nx, 1.0_fp, xx(i, j), yy(i, j))
+      call ij_to_xy(real(i, fp), real(j, fp), int(ni), int(nj), 1.0_fp, xx(i, j), yy(i, j))
     end do
-
-    ! calculate the threshold
-    ! we consider only pixels brighter than the threshold and far away from the edge
-    master_mask = master_mask &
-      .and. abs(xx) < 0.5 * nx - margin  &
-      .and. abs(yy) < 0.5 * ny - margin 
 
     extract_stars: do
 
@@ -113,10 +82,10 @@ contains
       mask(imax, jmax) = .true.
 
       ! crop the image to save processing power
-      ilo = max(imax - rslice, 1)
-      ihi = min(imax + rslice, ni)
-      jlo = max(jmax - rslice, 1)
-      jhi = min(jmax + rslice, nj)
+      ilo = max(imax - param%rslice, 1)
+      ihi = min(imax + param%rslice, ni)
+      jlo = max(jmax - param%rslice, 1)
+      jhi = min(jmax + param%rslice, nj)
       
       associate (c_mask => mask(ilo:ihi, jlo:jhi), &
             c_master_mask => master_mask(ilo:ihi, jlo:jhi), &
@@ -136,15 +105,17 @@ contains
           cy = sum(c_im * c_yy, c_mask) / flx
 
           
-          if (rms > max_rms) cycle extract_stars
+          rms = sqrt(sum(c_im * ((c_xx - cx)**2 + (c_yy - cy)**2), c_mask) / flx)
+          if (rms > param%max_rms) cycle extract_stars
             
-            rms = sqrt(sum(c_im * ((c_xx - cx)**2 + (c_yy - cy)**2), c_mask) / flx)
-            star % moments(1) = sum(c_im * (c_xx - cx) * (c_yy - cy), c_mask) / (flx * rms**2)
-            star % moments(2) = sum(c_im * ((c_xx - cx)**2 - (c_yy - cy)**2) / 2, c_mask) / (flx * rms**2)
-            star % moments(3) = sum(c_im * ((c_xx - cx)**2 + (c_yy - cy)**2)**2, mask=c_mask) / (flx * rms**4)
-
+            star % asymmetry_xy = sum(c_im * (c_xx - cx) * (c_yy - cy), c_mask) / (flx * rms**2)
+            star % asymmetry_uv = sum(c_im * ((c_xx - cx)**2 - (c_yy - cy)**2) / 2, c_mask) / (flx * rms**2)
+            star % asymmetry = sqrt(star%asymmetry_xy**2 + star%asymmetry_uv**2)
+            star % kurtosis = sum(c_im * ((c_xx - cx)**2 + (c_yy - cy)**2)**2, mask=c_mask) / (flx * rms**4)
           end associate
       end associate
+
+      call xy_to_ij(star % x, star % y, int(ni), int(nj), 1.0_fp, star % iy, star % ix)
 
       nstar = nstar + 1
       list(nstar) = star
@@ -156,13 +127,23 @@ contains
       integer(c_size_t) :: nstar_clean, istar
 
       allocate(outlier_mask(nstar))
-      call cleanup_assymetric_outliers(list(:nstar), outlier_mask(:nstar))
+
+      select case (param%rejection)
+      case (findstar_rejection_absolute)
+        call cleanup_assymetric_outliers_absolute(list(:nstar), outlier_mask(:nstar))
+      case (findstar_rejection_relative)
+        call cleanup_assymetric_outliers_relative(list(:nstar), outlier_mask(:nstar))
+      case default
+        error stop "param rejection value incorrect"
+      end select
 
       if (cfg_verbose) then
         print '(a)', "*** STAR LIST *** "
         do i = 1, nstar
-          print '(i5, 2f8.2, e10.2, 4f8.2, A3)', i, list(i)%x, list(i)%y, list(i)%flux, &
-            list(i)%rms, list(i)%moments, merge(' ', 'X', outlier_mask(i))
+          print '(i5, 2f8.2, 1x, 2f8.2, 2x, e10.2, f8.2, 1x, 2f8.2, A3)', &
+            i, list(i)%x, list(i)%y, list(i)%ix, list(i)%iy, &
+            list(i)%flux, list(i)%rms, list(i)%asymmetry, list(i)%kurtosis, &
+            merge(' ', 'X', outlier_mask(i))
         end do
       end if
       
@@ -179,16 +160,23 @@ contains
 
   end subroutine
 
-  subroutine cleanup_assymetric_outliers(list, mask)
+  !----------------------------------------------------------------------------!
+
+  subroutine cleanup_assymetric_outliers_relative(list, mask)
 
       type(source_t), intent(in) :: list(:)
       logical(c_bool), intent(out) :: mask(:)
       logical(c_bool), allocatable :: new_mask(:)
+      real(fp), allocatable :: moments(:,:)
       integer :: n_star
       integer :: i
       character(*), parameter :: fmt1 = '("iter =", i3, 3x, "asymm = ", f5.3, 3x, "max = ", f5.3)'
 
       n_star = size(list)
+      allocate(moments(n_star, 3))
+      moments(:,1) = list%asymmetry_uv
+      moments(:,2) = list%asymmetry_xy
+      moments(:,3) = list%kurtosis
 
       if (cfg_verbose) write (0, *) '-- OUTLIER CLEANUP'
 
@@ -198,21 +186,27 @@ contains
 
       remove_outliers: do i = 1, n_star
 
-        call asymmetry_test(list, mask, new_mask)
+        call asymmetry_test(list, moments, mask, new_mask)
+
+        if (cfg_verbose) write (0, '(a,i0,a,i0,a,i0)') 'stars accepted in iteration ', i, &
+          ': ', count(new_mask), "/", size(new_mask)
         if (all(mask .eqv. new_mask)) return
 
         mask(:) = new_mask(:)
 
       end do remove_outliers
 
-    end subroutine cleanup_assymetric_outliers
+    end subroutine
 
-    subroutine asymmetry_test(list, mask, mask_out)
+  !----------------------------------------------------------------------------!
+
+    subroutine asymmetry_test(list, moments, mask, mask_out)
 
       type(source_t) :: list(:)
       logical(c_bool) :: mask(:), mask_out(:)
+      real(fp) :: moments(:,:)
       integer :: n_star, n_star_mask
-      real(fp) :: asymmetry_av(n_source_moments), asymmetry_sd(n_source_moments), asymmetry_av_dev
+      real(fp) :: asymmetry_av(size(moments, 2)), asymmetry_sd(size(moments, 2)), asymmetry_av_dev
       real(fp), allocatable :: asymmetry_dev(:)
       integer :: i
 
@@ -226,21 +220,119 @@ contains
 
       allocate(asymmetry_dev(n_star), source=0._fp)
 
-      do i = 1, n_source_moments
-        asymmetry_av(i) = sum(list % moments(i), mask) / n_star_mask
-        asymmetry_sd(i) = sqrt(sum((list % moments(i) - asymmetry_av(i))**2, mask) / n_star_mask)
-        asymmetry_dev(:) = asymmetry_dev(:) + ((list%moments(i) - asymmetry_av(i)) / asymmetry_sd(i))**2
+      do i = 1, size(moments, 2)
+        asymmetry_av(i) = sum(moments(:,i), mask) / n_star_mask
+        asymmetry_sd(i) = sqrt(sum((moments(:,i) - asymmetry_av(i))**2, mask) / n_star_mask)
+        asymmetry_dev(:) = asymmetry_dev(:) + ((moments(:,i) - asymmetry_av(i)) / asymmetry_sd(i))**2
       end do
 
-      asymmetry_dev(:) = sqrt(asymmetry_dev(:) / n_source_moments)
+      asymmetry_dev(:) = sqrt(asymmetry_dev(:) / size(moments, 2))
 
       if (cfg_verbose) then
-        print '(a, i5, a, i5, a, *(f10.3,"+-",f10.3,:,", "))', "average asymmetry: ", n_star_mask, "/", n_star,&
-         ":   ", (asymmetry_av(i), asymmetry_sd(i), i = 1, n_source_moments)
+        print '(a, i5, a, i5, a, *(f10.3,"+-",f10.3,:,", "))', &
+          "average asymmetry: ", n_star_mask, "/", n_star,&
+          ":   ", (asymmetry_av(i), asymmetry_sd(i), i = 1, size(moments, 2))
       end if
       
       mask_out(:) = asymmetry_dev < 2.5
 
+    end subroutine
+
+  !----------------------------------------------------------------------------!
+
+    subroutine cleanup_assymetric_outliers_absolute(list, mask)
+      logical(c_bool) :: mask(:)
+      type(source_t) :: list(:)
+      integer :: ix_max
+      real(fp) :: deviation
+      integer :: i
+      character(*), parameter :: fmt1 = '("iter =", i3, 3x, "asymm = ", f5.3, 3x, "max = ", f5.3)'
+
+      if (cfg_verbose) write (0, *) '-- OUTLIER CLEANUP'
+
+      mask(:) = .true.
+
+      remove_outliers: do i = 1, size(list)
+
+        ! localize the largest element in the array and remove it
+        ix_max = maxloc(list % asymmetry, 1, mask)
+        mask(ix_max) = .false.
+
+        ! compute the deviation (ideally, asymmetry = 0)
+        deviation = sqrt(sum(list % asymmetry**2, mask) / (count(mask) - 1))
+
+        if (cfg_verbose) write (0, fmt1) i, list(ix_max)%asymmetry, 3 * deviation
+
+        ! if not an outlier, set back to true and exit the loop
+        if (list(ix_max)%asymmetry <= 3 * deviation) then
+          if (cfg_verbose) write (0, *) '-- outlier cleanup finished'
+          mask(ix_max) = .true.
+          exit remove_outliers
+        end if
+
+      end do remove_outliers
+
+
+    end subroutine
+
+
+
+  !----------------------------------------------------------------------------!
+
+    subroutine register_stars(im, list, limit)
+      use convolutions, only: convol_fix
+      use kernels, only: mexhakrn_alloc
+  
+      real(fp), intent(in), contiguous :: im(:,:)
+      type(source_t), intent(out), allocatable :: list(:)
+      real(fp), allocatable :: im2(:,:), krn(:,:)
+      integer, intent(in), optional :: limit
+      integer(c_int64_t) :: limit_, nstar
+      integer(c_int64_t), parameter :: rslice = 32, margin = 5
+      type(findstar_param_t) :: param
+  
+      limit_ = 256
+      if (present(limit)) limit_ = limit
+      
+      allocate(list(limit_))
+      call register_stars_f(im, size(im, 1, c_size_t), size(im, 2, c_size_t), list, limit_, param, nstar)
+  
+      list = list(:nstar)
+    end subroutine
+  
+  !----------------------------------------------------------------------------!
+
+    subroutine register_stars_f(im, ni, nj, list, limit, param, nstar) bind(C)
+      use convolutions, only: convol_fix
+      use kernels, only: mexhakrn_alloc, gausskrn_alloc
+      use statistics, only: avsd
+  
+      integer(c_int64_t), intent(in), value :: ni, nj, limit
+      type(findstar_param_t) :: param
+      real(fp), dimension(:,:), intent(in) :: im(ni,nj)
+      type(source_t), intent(out) :: list(limit)
+      integer(c_int64_t), intent(out) :: nstar
+      logical(c_bool), allocatable :: master_mask(:,:)
+      real(fp) :: av, sd
+  
+      real(fp), dimension(:,:), allocatable :: im2(:,:), im3(:,:), krn(:,:)
+  
+      krn = mexhakrn_alloc(real(param%blur_radius, fp))
+  
+      allocate(im2(size(im,1), size(im,2)))
+      allocate(im3(size(im,1), size(im,2)))
+      allocate(master_mask(size(im,1), size(im,2)))
+  
+      call fix_hot_median(im, im2)
+      call convol_fix(im2, krn, im3, 'r')
+      where (im3 < 0) im3 = 0
+  
+      sd = sqrt(sum(im3**2) / size(im3))
+      master_mask(:,:) = (im3 > 0.)
+      call mask_margins_c(master_mask, ni, nj, param%margin)
+  
+      call aqfindstar(im3, master_mask, ni, nj, list, limit, param, nstar)
+    
     end subroutine
 
 end module findstar

@@ -1,7 +1,7 @@
 program test_legacy_align
 
   use globals
-  use findstar, only: source_t
+  use source_m, only: source_t
   use legacy_align
 
   implicit none

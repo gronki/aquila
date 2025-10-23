@@ -10,7 +10,7 @@ use input_args_m
 use framehandling
 use starlist_value_m
 use new_align
-use stacking, only: register_stars
+use findstar, only: register_stars
 use transformation_value_m
 use alignment_m
 

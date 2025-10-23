@@ -7,7 +7,7 @@ program aqstack
   use statistics
   use stacking
   use hotpixels
-  use findstar, only: source_t
+  use findstar
   use str_utils_m
   use iso_fortran_env, only: real64, stderr => error_unit
 
@@ -336,11 +336,11 @@ program aqstack
           
           !$omp critical
           margin = max(margin, check_corners(tx, nx, ny) + 2)
-          !$omp end critical
           
           print '("ALIGN ",a," frame(",i2,") found ",i4," stars")', trim(align_method), i, size(lst)
           print '(" solution(",i2,") =", *(f8.2))', i, tx % vec(:npar)
           print '("margin = ", i0)', margin
+          !$omp end critical
           
           if (cfg_resampling) then
             call project_bilinear(tx, frames(i) % data, buffers_to_stack(:,:,i), resample_factor)
@@ -363,7 +363,8 @@ program aqstack
 
     if (cfg_normalize) then
       call cpu_time(t1)
-      call normalize_offset_gain(buffers_to_stack(:, :, 1:nframes), margin)
+      call normalize_offset_gain(buffers_to_stack(:, :, 1:nframes), &
+        ceiling(margin * merge(resample_factor, 1.0_fp, cfg_resampling)))
       call cpu_time(t2)
       print perf_fmt, 'norm', t2 - t1
     end if

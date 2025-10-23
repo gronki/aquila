@@ -2,7 +2,7 @@ program test_align_2
 
   use new_align
   use globals
-  use findstar, only: source_t
+  use source_m, only: source_t
 
   implicit none
 

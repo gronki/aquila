@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
 project(aquila LANGUAGES Fortran C CXX)
 enable_testing()
+include(GNUInstallDirs)
 
 find_package(PkgConfig REQUIRED)
 
@@ -16,6 +17,11 @@ add_subdirectory(deps/task-dispatch)
 find_package(PNG REQUIRED)
 pkg_check_modules(CFITSIO REQUIRED cfitsio)
 pkg_check_modules(READLINE REQUIRED readline)
+
+link_libraries(${CFITSIO_LIBRARIES})
+include_directories(${CFITSIO_INCLUDE_DIRS})
+add_compile_options(${CFITSIO_CFLAGS_OTHER})
+link_libraries(PNG::PNG)
 
 include_directories(src_cpp/global)
 
@@ -37,14 +43,15 @@ file(GLOB_RECURSE AQUILA_SOURCES CONFIGURE_DEPENDS
     src/utils/*.c
     src/c_binding/*.hpp
 )
-add_library(aquilalib STATIC ${AQUILA_SOURCES})
-target_include_directories(aquilalib PUBLIC src/c_binding)
 
-link_libraries(aquilalib)
-link_libraries(${CFITSIO_LIBRARIES})
-include_directories(${CFITSIO_INCLUDE_DIRS})
-add_compile_options(${CFITSIO_CFLAGS_OTHER})
-link_libraries(PNG::PNG)
+add_library(aquila SHARED ${AQUILA_SOURCES})
+target_include_directories(aquila PUBLIC src/c_binding)
+install(TARGETS aquila DESTINATION ${CMAKE_INSTALL_LIBDIR})
+install(FILES src/c_binding/aquila.hpp DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+
+add_library(aquila_static STATIC ${AQUILA_SOURCES})
+target_include_directories(aquila_static PUBLIC src/c_binding)
+link_libraries(aquila_static)
 
 file(GLOB_RECURSE SCRIPT_SOURCES CONFIGURE_DEPENDS
     src/script/*.f90
@@ -60,7 +67,7 @@ add_executable(aq2 app/aq2/aq2.f90 app/aq2/operation_imports.f90
 target_link_libraries(aq2 PRIVATE task_dispatch_static)
 target_link_libraries(aq2 PRIVATE ${READLINE_LIBRARIES})
 
-install(TARGETS aqstack aqlrgb aq2 DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
+install(TARGETS aqstack aqlrgb aq2 DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 file(GLOB_RECURSE AQNEW_SOURCES CONFIGURE_DEPENDS
     src_cpp/lib/*.f90
@@ -74,7 +81,7 @@ link_libraries(aqnew)
 
 add_executable(aqneo src_cpp/app/aqneo.cpp)
 add_executable(aqfindstar src_cpp/app/aqfindstar.cpp)
-install(TARGETS aqneo aqfindstar DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
+install(TARGETS aqneo aqfindstar DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 # target_link_libraries(aq2 PRIVATE fastconv_static)
 # file(GLOB TEST_SOURCES CONFIGURE_DEPENDS test/*.f90 test/*.F90)

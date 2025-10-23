@@ -4,19 +4,12 @@ enable_testing()
 
 find_package(PkgConfig REQUIRED)
 
-option(OPENMP "enable OpenMP parallelism" On)
-if(${OPENMP})
-set(OPENMP_FLAGS "-fopenmp")
-else()
-set(OPENMP_FLAGS "")
-endif()
-
-set(CMAKE_C_FLAGS_DEBUG   "-g3 -O0 -Wall ${OPENMP_FLAGS}")
-set(CMAKE_C_FLAGS_RELEASE "-O3 -ffast-math -march=native -fopenmp-simd -DNDEBUG -g1 ${OPENMP_FLAGS}")
-set(CMAKE_CXX_FLAGS_DEBUG   "-g3 -O0 -Wall ${OPENMP_FLAGS}")
-set(CMAKE_CXX_FLAGS_RELEASE "-O3 -ffast-math -march=native -fopenmp-simd -DNDEBUG -g1 ${OPENMP_FLAGS}")
-set(CMAKE_Fortran_FLAGS_DEBUG   "-g3 -O0 -fcheck=all ${OPENMP_FLAGS}")
-set(CMAKE_Fortran_FLAGS_RELEASE "-O3 -ffast-math -march=native -fopenmp-simd -DNDEBUG -g1 ${OPENMP_FLAGS}")
+set(CMAKE_C_FLAGS_DEBUG   "-g3 -O0 -Wall")
+set(CMAKE_C_FLAGS_RELEASE "-O3 -ffast-math -march=native -fopenmp -DNDEBUG -g1")
+set(CMAKE_CXX_FLAGS_DEBUG   "-g3 -O0 -Wall")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -ffast-math -march=native -fopenmp -DNDEBUG -g1")
+set(CMAKE_Fortran_FLAGS_DEBUG   "-g3 -O0 -fcheck=all")
+set(CMAKE_Fortran_FLAGS_RELEASE "-O3 -ffast-math -march=native -fopenmp -DNDEBUG -g1")
 
 add_subdirectory(deps/task-dispatch)
 

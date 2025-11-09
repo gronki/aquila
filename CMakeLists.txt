@@ -5,6 +5,10 @@ include(GNUInstallDirs)
 
 find_package(PkgConfig REQUIRED)
 
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE Debug CACHE STRING "Choose the type of build." FORCE)
+endif()
+
 set(CMAKE_C_FLAGS_DEBUG   "-g3 -O0 -Wall")
 set(CMAKE_C_FLAGS_RELEASE "-O3 -ffast-math -march=native -fopenmp -DNDEBUG -g1")
 set(CMAKE_CXX_FLAGS_DEBUG   "-g3 -O0 -Wall")
@@ -76,19 +80,18 @@ file(GLOB_RECURSE AQNEW_SOURCES CONFIGURE_DEPENDS
     src_cpp/lib/*.hpp
 )
 add_library(aqnew STATIC ${AQNEW_SOURCES})
-target_include_directories(aqnew PUBLIC src_cpp/lib/buffer src_cpp/lib/io)
+target_include_directories(aqnew PUBLIC 
+    src_cpp/lib/buffer src_cpp/lib/io src_cpp/lib/interpreter)
 link_libraries(aqnew)
 
 add_executable(aqneo src_cpp/app/aqneo.cpp)
 add_executable(aqfindstar src_cpp/app/aqfindstar.cpp)
 install(TARGETS aqneo aqfindstar DESTINATION ${CMAKE_INSTALL_BINDIR})
 
-# target_link_libraries(aq2 PRIVATE fastconv_static)
-# file(GLOB TEST_SOURCES CONFIGURE_DEPENDS test/*.f90 test/*.F90)
+file(GLOB TEST_SOURCES CONFIGURE_DEPENDS test/*.cpp)
 
-# foreach(test_src ${TEST_SOURCES})
-#     get_filename_component(test_name ${test_src} NAME_WE)
-#     add_executable(${test_name} ${test_src} test/utils/assert.f90)
-#     target_link_libraries(${test_name} PRIVATE task_dispatch_static)
-#     add_test(NAME ${test_name} COMMAND ${test_name})
-# endforeach()
+foreach(test_src ${TEST_SOURCES})
+    get_filename_component(test_name ${test_src} NAME_WE)
+    add_executable(${test_name} ${test_src})
+    add_test(NAME ${test_name} COMMAND ${test_name})
+endforeach()

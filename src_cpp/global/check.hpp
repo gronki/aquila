@@ -5,13 +5,18 @@
 #ifndef NDEBUG
 #define check(cond) run_check(cond, (#cond), __FILE__, __LINE__)
 #else
-#define check \
-    {         \
+#define check                                                                          \
+    {                                                                                  \
     }
 #endif
 
-inline void run_check(bool condition, const std::string &condition_str,
-                      const std::string &sourcefile, long int line)
+namespace aquila
+{
+
+inline void run_check(bool condition,
+                      const std::string& condition_str,
+                      const std::string& sourcefile,
+                      long int line)
 {
     if (condition)
         return;
@@ -19,4 +24,6 @@ inline void run_check(bool condition, const std::string &condition_str,
               << "Runtime check failed: " << condition_str << std::endl
               << std::flush;
     exit(1);
+}
+
 }

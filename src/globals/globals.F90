@@ -4,8 +4,11 @@ module globals
   use iso_fortran_env, stderr => error_unit, stdout => output_unit
 
   implicit none
-
+# ifdef SINGLE
+  integer, parameter :: fp = c_float
+# else
   integer, parameter :: fp = c_double
+# endif
 
   character(len = *), parameter :: hlp_fmt = '(a25, 2x, a)', hlp_fmtc = '(27x, a)'
   character(len = *), parameter :: fmthlp = '(a25, 2x, a, :/, *(27x, a, :/))'

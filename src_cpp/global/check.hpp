@@ -3,19 +3,19 @@
 #include <iostream>
 
 #ifndef NDEBUG
-#define check(cond) run_check(cond, (#cond), __FILE__, __LINE__)
+#    define check(cond) run_check(cond, (#cond), __FILE__, __LINE__)
 #else
-#define check                                                                          \
-    {                                                                                  \
-    }
+#    define check                                                              \
+        {                                                                      \
+        }
 #endif
 
 namespace aquila
 {
 
 inline void run_check(bool condition,
-                      const std::string& condition_str,
-                      const std::string& sourcefile,
+                      const std::string &condition_str,
+                      const std::string &sourcefile,
                       long int line)
 {
     if (condition)
@@ -26,4 +26,4 @@ inline void run_check(bool condition,
     exit(1);
 }
 
-}
+} // namespace aquila

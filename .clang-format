@@ -2,19 +2,34 @@ BasedOnStyle: LLVM
 UseTab: Never
 IndentWidth: 4
 TabWidth: 4
+AccessModifierOffset: -4
+
+PointerAlignment: Right
+ReferenceAlignment: Right
+
+ColumnLimit: 80
+
 BreakBeforeBraces: Allman
 AllowShortIfStatementsOnASingleLine: false
 AllowShortFunctionsOnASingleLine: Inline
 AllowShortBlocksOnASingleLine: false
-IndentCaseLabels: false
-ColumnLimit: 88
-AccessModifierOffset: -4
-NamespaceIndentation: None
-FixNamespaceComments: false
-PointerAlignment: Left
-ReferenceAlignment: Left
-SeparateNamespaceBlocks: Always
 AlwaysBreakTemplateDeclarations: true
+
+IndentCaseLabels: false
+
+IndentPPDirectives: AfterHash
+
+NamespaceIndentation: None
+FixNamespaceComments: true
+SeparateNamespaceBlocks: Always
+
 BinPackArguments: false
 BinPackParameters: false
-PenaltyExcessCharacter: 100
+
+PenaltyBreakBeforeFirstCallParameter: 100 # default: 19
+PenaltyBreakAssignment: 1000 # default: 2
+PenaltyBreakBeforeBinaryOperators: 1 # default 50
+PenaltyBreakAfterReturnType: 60 # default: 60
+PenaltyReturnTypeOnItsOwnLine: 200 # default: 200
+PenaltyBreakString: 1 # default: 1000
+PenaltyExcessCharacter: 5 # default: 100

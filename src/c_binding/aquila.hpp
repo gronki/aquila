@@ -31,13 +31,13 @@ struct findstar_param_t
 
 extern "C"
 {
-    void register_stars_f(Real* image,
+    void register_stars_f(Real *image,
                           Int ni,
                           Int nj,
-                          source_t* list,
+                          source_t *list,
                           Int limit,
-                          const findstar_param_t* param,
-                          Int* nstar);
+                          const findstar_param_t *param,
+                          Int *nstar);
 };
 
-};
+}; // namespace aquila

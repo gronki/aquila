@@ -38,25 +38,25 @@ public:
         std::fill(buffer.begin(), buffer.end(), value);
     }
 
-    Buffer(const View<T>& view) : nx(view.nx), ny(view.ny)
+    Buffer(const View<T> &view) : nx(view.nx), ny(view.ny)
     {
         buffer.resize(nx * ny);
         for (Int ivec = 0; ivec < view.vecs(); ivec++)
         {
-            const T* srcrow = view.vec(ivec);
-            T* dstrow = vec(ivec);
+            const T *srcrow = view.vec(ivec);
+            T *dstrow = vec(ivec);
             std::copy(srcrow, srcrow + view.nvec(), dstrow);
         }
     }
 
-    T& operator[](const Int i) noexcept
+    T &operator[](const Int i) noexcept
     {
         check(i >= 0);
         check(i < buffer.size());
         return buffer[i];
     }
 
-    const T& operator[](const Int i) const noexcept
+    const T &operator[](const Int i) const noexcept
     {
         check(i >= 0);
         check(i < buffer.size());
@@ -66,19 +66,19 @@ public:
     Int cols() const noexcept { return nx; }
     Int rows() const noexcept { return ny; }
     Int size() const noexcept { return nx * ny; }
-    T* data() noexcept { return buffer.data(); }
-    const T* data() const noexcept { return buffer.data(); }
+    T *data() noexcept { return buffer.data(); }
+    const T *data() const noexcept { return buffer.data(); }
 
     Int vecs() const noexcept { return nx; }
     Int nvec() const noexcept { return ny; }
 
-    T* vec(Int ivec) noexcept
+    T *vec(Int ivec) noexcept
     {
         check(ivec >= 0);
         check(ivec < vecs());
         return buffer.data() + nvec() * ivec;
     }
-    const T* vec(Int ivec) const noexcept
+    const T *vec(Int ivec) const noexcept
     {
         check(ivec >= 0);
         check(ivec < vecs());
@@ -97,33 +97,36 @@ public:
 template <typename T>
 class View
 {
-    Buffer<T>* buf = nullptr;
+    Buffer<T> *buf = nullptr;
     const Int off_x, off_y, nx, ny, buf_nx, buf_ny;
 
 public:
-    View(Buffer<T>& buf)
+    View(Buffer<T> &buf)
         : buf(&buf), off_x(0), off_y(0), nx(buf.nx), buf_nx(buf.nx), ny(buf.ny),
           buf_ny(buf.ny)
     {
     }
 
-    View(Buffer<T>& buf, Int ix_lo, Int ix_hi, Int iy_lo, Int iy_hi)
-        : buf(&buf), buf_nx(buf.nx), buf_ny(buf.ny), off_x(wrap_idx(ix_lo, buf.cols())),
-          off_y(wrap_idx(iy_lo, buf.rows())), nx(wrap_idx(ix_hi, buf.cols()) - off_x),
+    View(Buffer<T> &buf, Int ix_lo, Int ix_hi, Int iy_lo, Int iy_hi)
+        : buf(&buf), buf_nx(buf.nx), buf_ny(buf.ny),
+          off_x(wrap_idx(ix_lo, buf.cols())), off_y(wrap_idx(iy_lo, buf.rows())),
+          nx(wrap_idx(ix_hi, buf.cols()) - off_x),
           ny(wrap_idx(iy_hi, buf.rows()) - off_y)
     {
 #ifndef NDEBUG
-        std::cout << "requested slice " << ix_lo << ":" << ix_hi << " " << iy_lo << ":"
-                  << iy_hi << " pointing at " << off_x << ":" << off_x + nx << " "
-                  << off_y << ":" << off_y + ny << " (" << nx << "x" << ny << ")"
-                  << " from frame " << buf.cols() << "x" << buf.rows() << std::endl;
+        std::cout << "requested slice " << ix_lo << ":" << ix_hi << " " << iy_lo
+                  << ":" << iy_hi << " pointing at " << off_x << ":"
+                  << off_x + nx << " " << off_y << ":" << off_y + ny << " ("
+                  << nx << "x" << ny << ")"
+                  << " from frame " << buf.cols() << "x" << buf.rows()
+                  << std::endl;
 #endif
 
         check(nx > 0);
         check(ny > 0);
     }
 
-    View(View<T>& view, Int ix_lo, Int ix_hi, Int iy_lo, Int iy_hi)
+    View(View<T> &view, Int ix_lo, Int ix_hi, Int iy_lo, Int iy_hi)
         : buf(view.buf), buf_nx(view.buf_nx), buf_ny(view.buf_ny),
           off_x(view.off_x + wrap_idx(ix_lo, view.cols())),
           off_y(view.off_y + wrap_idx(iy_lo, view.rows())),
@@ -131,17 +134,19 @@ public:
           ny(wrap_idx(iy_hi, view.rows()) - wrap_idx(iy_lo, view.rows()))
     {
 #ifndef NDEBUG
-        std::cout << "requested slice " << ix_lo << ":" << ix_hi << " " << iy_lo << ":"
-                  << iy_hi << " pointing at " << off_x << ":" << off_x + nx << " "
-                  << off_y << ":" << off_y + ny << " (" << nx << "x" << ny << ")"
-                  << " from frame " << view.buf_nx << "x" << view.buf_ny << std::endl;
+        std::cout << "requested slice " << ix_lo << ":" << ix_hi << " " << iy_lo
+                  << ":" << iy_hi << " pointing at " << off_x << ":"
+                  << off_x + nx << " " << off_y << ":" << off_y + ny << " ("
+                  << nx << "x" << ny << ")"
+                  << " from frame " << view.buf_nx << "x" << view.buf_ny
+                  << std::endl;
 #endif
 
         check(nx > 0);
         check(ny > 0);
     }
 
-    T& operator()(const Int ix, const Int iy) noexcept
+    T &operator()(const Int ix, const Int iy) noexcept
     {
         check(ix >= 0);
         check(ix < nx);
@@ -150,7 +155,7 @@ public:
         return buf->buffer[buf_ny * (ix + off_x) + (iy + off_y)];
     }
 
-    const T& operator()(const Int ix, const Int iy) const noexcept
+    const T &operator()(const Int ix, const Int iy) const noexcept
     {
         check(ix >= 0);
         check(ix < nx);
@@ -162,39 +167,42 @@ public:
     Int cols() const noexcept { return nx; }
     Int rows() const noexcept { return ny; }
     Int size() const noexcept { return nx * ny; }
-    bool is_contiguous() const noexcept { return (ny == buf_ny) && (off_y == 0); }
+    bool is_contiguous() const noexcept
+    {
+        return (ny == buf_ny) && (off_y == 0);
+    }
 
     Int vecs() const noexcept { return nx; }
     Int nvec() const noexcept { return ny; }
-    T* vec(Int ivec) noexcept
+    T *vec(Int ivec) noexcept
     {
         check(ivec < vecs());
         return &(buf->buffer[off_y + buf_ny * (ivec + off_x)]);
     }
-    const T* vec(Int ivec) const noexcept
+    const T *vec(Int ivec) const noexcept
     {
         check(ivec < vecs());
         return &(buf->buffer[off_y + buf_ny * (ivec + off_x)]);
     }
 
-    View<T>& operator=(T val)
+    View<T> &operator=(T val)
     {
         for (Int irow = 0; irow < vecs(); irow++)
         {
-            T* onerow = vec(irow);
+            T *onerow = vec(irow);
             std::fill(onerow, onerow + nvec(), val);
         }
         return *this;
     }
 
-    View<T>& operator=(const View<T>& other)
+    View<T> &operator=(const View<T> &other)
     {
         check(rows() == other.rows());
         check(cols() == other.cols());
         for (Int irow = 0; irow < vecs(); irow++)
         {
-            T* myrow = vec(irow);
-            const T* otherrow = other.vec(irow);
+            T *myrow = vec(irow);
+            const T *otherrow = other.vec(irow);
             std::copy(otherrow, otherrow + nvec(), myrow);
         }
         return *this;
@@ -207,11 +215,11 @@ public:
 
     friend class Buffer<T>;
     template <typename U>
-    friend std::ostream& operator<<(std::ostream& os, const View<U>& buf);
+    friend std::ostream &operator<<(std::ostream &os, const View<U> &buf);
 };
 
 template <typename U>
-std::ostream& operator<<(std::ostream& os, const View<U>& buf)
+std::ostream &operator<<(std::ostream &os, const View<U> &buf)
 {
     for (Int nj = 0; nj < buf.rows(); nj++)
     {
@@ -225,7 +233,7 @@ std::ostream& operator<<(std::ostream& os, const View<U>& buf)
 }
 
 template <typename T, typename F>
-inline auto apply(const View<T>& one, F f)
+inline auto apply(const View<T> &one, F f)
 {
     Int nx = one.cols();
     Int ny = one.rows();
@@ -235,8 +243,8 @@ inline auto apply(const View<T>& one, F f)
 
     for (Int ivec = 0; ivec < one.vecs(); ivec++)
     {
-        const T* __restrict one_vec = one.vec(ivec);
-        U* __restrict result_vec = result.vec(ivec);
+        const T *__restrict one_vec = one.vec(ivec);
+        U *__restrict result_vec = result.vec(ivec);
 #pragma omp simd
         for (Int lvec = 0; lvec < one.nvec(); lvec++)
         {
@@ -247,7 +255,7 @@ inline auto apply(const View<T>& one, F f)
 }
 
 template <typename T, typename U, typename F>
-inline auto apply(const View<T>& one, const View<U>& other, F f)
+inline auto apply(const View<T> &one, const View<U> &other, F f)
 {
     Int nx = one.cols();
     Int ny = one.rows();
@@ -259,9 +267,9 @@ inline auto apply(const View<T>& one, const View<U>& other, F f)
 
     for (Int ivec = 0; ivec < one.vecs(); ivec++)
     {
-        const T* __restrict one_vec = one.vec(ivec);
-        const U* __restrict other_vec = other.vec(ivec);
-        V* __restrict result_vec = result.vec(ivec);
+        const T *__restrict one_vec = one.vec(ivec);
+        const U *__restrict other_vec = other.vec(ivec);
+        V *__restrict result_vec = result.vec(ivec);
 #pragma omp simd
         for (Int lvec = 0; lvec < one.nvec(); lvec++)
         {
@@ -272,7 +280,7 @@ inline auto apply(const View<T>& one, const View<U>& other, F f)
 }
 
 template <typename T, typename U, typename V, typename F>
-inline auto apply(const View<T>& one, const View<U>& other, const View<V>& onemore, F f)
+inline auto apply(const View<T> &one, const View<U> &other, const View<V> &onemore, F f)
 {
     Int nx = one.cols();
     Int ny = one.rows();
@@ -286,10 +294,10 @@ inline auto apply(const View<T>& one, const View<U>& other, const View<V>& onemo
 
     for (Int ivec = 0; ivec < one.vecs(); ivec++)
     {
-        const T* __restrict one_vec = one.vec(ivec);
-        const U* __restrict other_vec = other.vec(ivec);
-        const V* __restrict onemore_vec = onemore.vec(ivec);
-        W* __restrict result_vec = result.vec(ivec);
+        const T *__restrict one_vec = one.vec(ivec);
+        const U *__restrict other_vec = other.vec(ivec);
+        const V *__restrict onemore_vec = onemore.vec(ivec);
+        W *__restrict result_vec = result.vec(ivec);
 #pragma omp simd
         for (Int lvec = 0; lvec < one.nvec(); lvec++)
         {
@@ -299,4 +307,4 @@ inline auto apply(const View<T>& one, const View<U>& other, const View<V>& onemo
     return result;
 }
 
-}
+} // namespace aquila

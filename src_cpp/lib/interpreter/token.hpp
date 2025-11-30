@@ -4,6 +4,9 @@
 namespace aquila::parser
 {
 
+using TokenChar = char;
+using TokenStr = std::basic_string<TokenChar>;
+
 enum class TokenType
 {
     DELIM,
@@ -20,16 +23,16 @@ struct TokenLoc
 
 struct Token
 {
-    Token(TokenType type, const String& value, const TokenLoc& loc = {})
+    Token(TokenType type, const TokenStr &value = "", const TokenLoc &loc = {})
         : type(type), value(value), loc(loc)
     {
     }
 
     TokenType type;
-    String value;
+    TokenStr value;
     TokenLoc loc;
 
-    inline bool operator==(const Token& other) const
+    inline bool operator==(const Token &other) const
     {
         if (type != other.type)
             return false;
@@ -38,7 +41,7 @@ struct Token
         return value == other.value;
     }
 
-    inline bool operator!=(const Token& other) const
+    inline bool operator!=(const Token &other) const
     {
         return !(*this == other);
     }

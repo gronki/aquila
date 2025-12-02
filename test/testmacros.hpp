@@ -1,23 +1,45 @@
 #include <iostream>
-#include <sstream>
 #include <stdexcept>
 #include <string>
 
-inline std::string _build_err_msg(const std::string &cond,
-                                  const std::string &file,
-                                  int line)
-{
-    std::stringstream ss;
-    ss << "Check failed (" << file << ":" << line << ")" << std::endl
-       << "\t" << cond;
-    return ss.str();
-}
+#define REQUIRE(cond)                                                          \
+    do                                                                         \
+    {                                                                          \
+        if (!(cond))                                                           \
+        {                                                                      \
+            std::stringstream ss;                                              \
+            ss << "Check failed (" << file << ":" << line << ")" << std::endl  \
+               << "     | " << cond;                                           \
+            throw std::runtime_error(ss.str());                                \
+        }                                                                      \
+    } while (false)
 
-#define REQUIRE(cond)                                                            \
-    do                                                                           \
-    {                                                                            \
-        if (!(cond))                                                             \
-            throw std::runtime_error(_build_err_msg(#cond, __FILE__, __LINE__)); \
+#define REQUIRE_EQ(a, b)                                                       \
+    do                                                                         \
+    {                                                                          \
+        if (!((a) == (b)))                                                     \
+        {                                                                      \
+            std::stringstream ss;                                              \
+            ss << "Check failed (" << __FILE__ << ":" << __LINE__ << ")"       \
+               << std::endl                                                    \
+               << "     | " << #a << " == " << #b << std::endl                 \
+               << " but | " << (a) << " != " << (b) << std::endl;              \
+            throw std::runtime_error(ss.str());                                \
+        }                                                                      \
+    } while (false)
+
+#define REQUIRE_NEQ(a, b)                                                      \
+    do                                                                         \
+    {                                                                          \
+        if ((a) == (b))                                                        \
+        {                                                                      \
+            std::stringstream ss;                                              \
+            ss << "Check failed (" << __FILE__ << ":" << __LINE__ << ")"       \
+               << std::endl                                                    \
+               << "     | " << #a << " != " << #b << std::endl                 \
+               << " but | " << (a) << " == " << (a) << std::endl;              \
+            throw std::runtime_error(ss.str());                                \
+        }                                                                      \
     } while (false)
 
 #define RUN(test)                                                              \

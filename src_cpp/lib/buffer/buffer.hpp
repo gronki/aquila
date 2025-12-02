@@ -1,14 +1,15 @@
 #pragma once
 
-#include <check.hpp>
 #include <concepts>
 #include <functional>
 #include <iomanip>
 #include <iostream>
 #include <set>
 #include <stacktrace>
-#include <types.hpp>
 #include <vector>
+
+#include "../../global/check.hpp"
+#include "../../global/types.hpp"
 
 namespace aquila
 {

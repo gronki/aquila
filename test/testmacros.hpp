@@ -1,6 +1,6 @@
 #include <iostream>
+#include <sstream>
 #include <stdexcept>
-#include <string>
 
 #define REQUIRE(cond)                                                          \
     do                                                                         \

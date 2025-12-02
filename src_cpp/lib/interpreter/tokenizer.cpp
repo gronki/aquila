@@ -1,6 +1,8 @@
-#include "tokenizer.hpp"
-#include "characters.hpp"
+#include <sstream>
 #include <stdexcept>
+
+#include "characters.hpp"
+#include "tokenizer.hpp"
 
 #ifndef NDEBUG
 #    include <iostream>
@@ -8,7 +10,6 @@
 
 using namespace aquila;
 using namespace aquila::parser;
-using TokenStringStream = std::basic_stringstream<TokenChar>;
 
 void Tokenizer::skip_whitespace()
 {
@@ -40,7 +41,7 @@ void Tokenizer::throw_error(const std::string &message)
 
 TokenStr Tokenizer::consume_until(ConsumeCondition consume_condition)
 {
-    TokenStringStream ss;
+    std::basic_stringstream<TokenChar> ss;
     while (!is_end())
     {
         TokenChar ch = get_char();

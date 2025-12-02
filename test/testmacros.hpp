@@ -48,10 +48,11 @@
         try                                                                    \
         {                                                                      \
             (test)();                                                          \
+            std::cout << "PASS " << #test << std::endl;                        \
         }                                                                      \
         catch (const std::runtime_error &e)                                    \
         {                                                                      \
-            std::cerr << "FAIL (" << #test << "): " << e.what() << std::endl;  \
+            std::cerr << "FAIL " << #test << ": " << e.what() << std::endl;    \
             failed += 1;                                                       \
         }                                                                      \
     } while (false)

@@ -108,4 +108,5 @@ Token Tokenizer::next_token_()
     }
 
     throw_error("error tokenizing expression");
+    return Token(TokenType::END); // to silence warning
 }

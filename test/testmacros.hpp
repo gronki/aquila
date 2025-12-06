@@ -2,14 +2,24 @@
 #include <sstream>
 #include <stdexcept>
 
+#define UNREACHABLE(messg)                                                        \
+    do                                                                            \
+    {                                                                             \
+        std::stringstream ss;                                                     \
+        ss << "Check failed (" << __FILE__ << ":" << __LINE__ << ")" << std::endl \
+           << "     | " << (messg);                                                \
+        throw std::runtime_error(ss.str());                                       \
+    } while (false)
+
 #define REQUIRE(cond)                                                          \
     do                                                                         \
     {                                                                          \
         if (!(cond))                                                           \
         {                                                                      \
             std::stringstream ss;                                              \
-            ss << "Check failed (" << file << ":" << line << ")" << std::endl  \
-               << "     | " << cond;                                           \
+            ss << "Check failed (" << __FILE__ << ":" << __LINE__ << ")"       \
+               << std::endl                                                    \
+               << "     | " << (cond);                                         \
             throw std::runtime_error(ss.str());                                \
         }                                                                      \
     } while (false)

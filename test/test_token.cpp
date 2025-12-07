@@ -4,14 +4,14 @@
 
 using namespace aquila::parser;
 
-void test_comparison()
+TEST(comparison)
 {
     REQUIRE_EQ(Token(TokenType::IDENT, "a"), Token(TokenType::IDENT, "a"));
     REQUIRE_NEQ(Token(TokenType::STR_LITERAL, "a"), Token(TokenType::IDENT, "a"));
     REQUIRE_NEQ(Token(TokenType::IDENT, "a"), Token(TokenType::IDENT, "b"));
 }
 
-void test1()
+TEST(test1)
 {
     Tokenizer tokenizer("  y= ff(a, b) ");
 
@@ -26,7 +26,7 @@ void test1()
     REQUIRE_EQ(tokenizer.next_token(), Token(TokenType::END));
 }
 
-void test2()
+TEST(test2)
 {
     Tokenizer tokenizer(R"( f(3.0, 4, image("file.fits")) )");
 
@@ -44,7 +44,7 @@ void test2()
     REQUIRE_EQ(tokenizer.next_token(), Token(TokenType::END));
 }
 
-void test3()
+TEST(test3)
 {
     Tokenizer tokenizer("  ");
     REQUIRE_EQ(tokenizer.next_token(), Token(TokenType::END));
@@ -53,10 +53,7 @@ void test3()
 int main(int argc, char** argv)
 {
     int failed = 0;
-    RUN(test_comparison);
-    RUN(test1);
-    RUN(test2);
-    RUN(test3);
+    RUN_ALL(failed);
     std::cout << "failed tests: " << failed << std::endl;
     return failed != 0;
 }

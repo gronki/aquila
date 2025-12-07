@@ -9,12 +9,14 @@ if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Debug CACHE STRING "Choose the type of build." FORCE)
 endif()
 
-set(CMAKE_C_FLAGS_DEBUG   "-g3 -O0 -Wall -Wextra -Wpedantic -Werror=return-type -Werror=uninitialized -Werror=maybe-uninitialized -Werror=delete-incomplete -Wnon-virtual-dtor")
+set(CMAKE_C_FLAGS_DEBUG   "-g3 -O0 -fsanitize=address,undefined -Wall -Wextra -Wpedantic -Werror=return-type -Werror=uninitialized -Werror=maybe-uninitialized -Werror=delete-incomplete -Wnon-virtual-dtor -Wno-unused-parameter")
 set(CMAKE_C_FLAGS_RELEASE "-O3 -ffast-math -march=native -fopenmp -DNDEBUG -g1")
-set(CMAKE_CXX_FLAGS_DEBUG   "-g3 -O0 -Wall -Wextra -Wpedantic -Werror=return-type -Werror=uninitialized -Werror=maybe-uninitialized -Werror=delete-incomplete -Wnon-virtual-dtor")
+set(CMAKE_CXX_FLAGS_DEBUG   "-g3 -O0 -fsanitize=address,undefined -Wall -Wextra -Wpedantic -Werror=return-type -Werror=uninitialized -Werror=maybe-uninitialized -Werror=delete-incomplete -Wnon-virtual-dtor -Wno-unused-parameter")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -ffast-math -march=native -fopenmp -DNDEBUG -g1")
-set(CMAKE_Fortran_FLAGS_DEBUG   "-g3 -O0 -fcheck=all -Wall -Wextra")
+set(CMAKE_Fortran_FLAGS_DEBUG   "-g3 -O0 -fcheck=all -Wall -Wextra -Wno-unused-dummy-argument")
 set(CMAKE_Fortran_FLAGS_RELEASE "-O3 -ffast-math -march=native -fopenmp -DNDEBUG -g1")
+set(CMAKE_EXE_LINKER_FLAGS_DEBUG "-fsanitize=address,undefined")
+set(CMAKE_SHARED_LINKER_FLAGS_DEBUG "-fsanitize=address,undefined")
 
 add_subdirectory(deps/task-dispatch)
 

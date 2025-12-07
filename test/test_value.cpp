@@ -4,7 +4,7 @@
 using namespace aquila;
 using namespace aquila::parser;
 
-void test_simple()
+TEST(simple)
 {
     IntValue iv1{4}, iv2{4}, iv3{5};
 
@@ -19,7 +19,7 @@ void test_simple()
     std::cout << iv3 << std::endl;
 }
 
-void test_seq()
+TEST(seq)
 {
     IntValue iv1{4}, iv2{4}, iv3{5};
     ValuePtrVector vv;
@@ -48,8 +48,7 @@ void test_seq()
 int main(int argc, char **argv)
 {
     int failed = 0;
-    RUN(test_simple);
-    RUN(test_seq);
+    RUN_ALL(failed);
     std::cout << "failed tests: " << failed << std::endl;
     return failed != 0;
 }

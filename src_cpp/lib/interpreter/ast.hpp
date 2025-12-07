@@ -17,7 +17,7 @@ struct AstNode
 
 struct AstValueNode : public AstNode
 {
-    std::unique_ptr<Value> constant;
+    std::unique_ptr<AnySimpleValue> constant;
 };
 
 struct AstRefNode : public AstNode

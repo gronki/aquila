@@ -45,6 +45,32 @@ TEST(seq)
     std::cout << sv2 << std::endl;
 }
 
+TEST(dyn_compare)
+{
+    RealValue rv{1};
+    IntValue iv{1};
+
+    AnySimpleValue &ref_rv = rv;
+    AnySimpleValue &ref_iv = iv;
+
+    REQUIRE(ref_rv.dyn_compare(ref_rv));
+    REQUIRE(rv.dyn_compare(ref_rv));
+    REQUIRE(ref_rv.dyn_compare(rv));
+    REQUIRE(!ref_rv.dyn_compare(ref_iv));
+    REQUIRE(!rv.dyn_compare(ref_iv));
+    REQUIRE(!ref_rv.dyn_compare(iv));
+
+    REQUIRE_NEQ(rv, iv);
+    REQUIRE_EQ(rv, ref_rv);
+    REQUIRE_EQ(RealValue(1.0), ref_rv);
+    REQUIRE_EQ(RealValue(1.0), rv);
+    REQUIRE_NEQ(RealValue(1.0), ref_iv);
+    REQUIRE_NEQ(RealValue(1.0), iv);
+    REQUIRE_EQ(iv, ref_iv);
+    REQUIRE_NEQ(rv, ref_iv);
+    REQUIRE_NEQ(ref_rv, ref_iv);
+}
+
 int main(int argc, char **argv)
 {
     int failed = 0;

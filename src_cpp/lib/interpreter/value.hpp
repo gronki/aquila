@@ -3,6 +3,7 @@
 #include <iostream>
 #include <memory>
 #include <ostream>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -21,14 +22,30 @@ struct Value
     virtual void write(std::ostream &os) const = 0;
 };
 
-std::ostream &operator<<(std::ostream &os, const Value &v)
+inline std::ostream &operator<<(std::ostream &os, const Value &v)
 {
     v.write(os);
     return os;
 }
 
+struct AnySimpleValue : public Value
+{
+public:
+    virtual bool dyn_compare(const AnySimpleValue &other) const = 0;
+
+    friend bool operator==(const AnySimpleValue &a, const AnySimpleValue &b)
+    {
+        return a.dyn_compare(b);
+    }
+
+    friend bool operator!=(const AnySimpleValue &a, const AnySimpleValue &b)
+    {
+        return !a.dyn_compare(b);
+    }
+};
+
 template <typename T>
-struct SimpleValue : public Value
+struct SimpleValue : public AnySimpleValue
 {
     T value;
 
@@ -50,6 +67,22 @@ struct SimpleValue : public Value
     friend bool operator!=(const SimpleValue<T> &a, const SimpleValue<T> &b)
     {
         return a.value != b.value;
+    }
+
+    virtual bool dyn_compare(const AnySimpleValue &other) const
+    {
+        std::cout << "Dynamic compare called between " << *this << " and "
+                  << other << std::endl;
+        try
+        {
+            const SimpleValue<T>
+                &other_sametype = dynamic_cast<const SimpleValue<T> &>(other);
+            return other_sametype.value == value;
+        }
+        catch (const std::bad_cast &ex)
+        {
+            return false;
+        }
     }
 };
 

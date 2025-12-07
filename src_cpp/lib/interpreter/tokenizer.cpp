@@ -8,8 +8,8 @@
 #    include <iostream>
 #endif
 
-using namespace aquila;
-using namespace aquila::parser;
+namespace aquila::interpreter
+{
 
 void Tokenizer::skip_whitespace()
 {
@@ -110,3 +110,21 @@ Token Tokenizer::next_token_()
     throw_error("error tokenizing expression");
     return Token(TokenType::END); // to silence warning
 }
+
+std::vector<Token> tokenize(const TokenStr &buffer, Int start_line)
+{
+    Tokenizer tokenizer(buffer, start_line);
+    std::vector<Token> tokens;
+    bool is_end = false;
+
+    do
+    {
+        Token t = tokenizer.next_token();
+        is_end = t.type == TokenType::END;
+        tokens.push_back(std::move(t));
+    } while (!is_end);
+
+    return tokens;
+}
+
+} // namespace aquila::interpreter

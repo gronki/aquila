@@ -2,7 +2,7 @@
 
 #include "token.hpp"
 
-namespace aquila::parser
+namespace aquila::interpreter
 {
 
 constexpr TokenChar CHAIN_CALL_DELIM = '%';

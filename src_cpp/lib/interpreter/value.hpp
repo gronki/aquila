@@ -8,7 +8,7 @@
 
 #include "../../global/types.hpp"
 
-namespace aquila::parser
+namespace aquila::interpreter
 {
 
 struct Value
@@ -108,4 +108,4 @@ struct SequenceValue : public Value
     }
 };
 
-} // namespace aquila::parser
+} // namespace aquila::interpreter

@@ -5,7 +5,7 @@
 #include <ostream>
 #include <stdexcept>
 
-namespace aquila::parser
+namespace aquila::interpreter
 {
 
 using TokenChar = char;
@@ -81,4 +81,4 @@ inline std::ostream &operator<<(std::ostream &os, Token t)
     return os;
 }
 
-} // namespace aquila::parser
+} // namespace aquila::interpreter

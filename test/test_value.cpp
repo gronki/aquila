@@ -2,7 +2,7 @@
 #include "testmacros.hpp"
 
 using namespace aquila;
-using namespace aquila::parser;
+using namespace aquila::interpreter;
 
 TEST(simple)
 {

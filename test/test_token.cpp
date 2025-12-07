@@ -2,7 +2,7 @@
 #include "../src_cpp/lib/interpreter/tokenizer.hpp"
 #include "testmacros.hpp"
 
-using namespace aquila::parser;
+using namespace aquila::interpreter;
 
 TEST(comparison)
 {
@@ -48,6 +48,17 @@ TEST(test3)
 {
     Tokenizer tokenizer("  ");
     REQUIRE_EQ(tokenizer.next_token(), Token(TokenType::END));
+}
+
+TEST(into_array)
+{
+    std::vector<Token> tokens = tokenize("f(x)");
+    REQUIRE_EQ(tokens.size(), 5);
+    REQUIRE_EQ(tokens[0], Token(TokenType::IDENT, "f"));
+    REQUIRE_EQ(tokens[1], Token(TokenType::DELIM, "("));
+    REQUIRE_EQ(tokens[2], Token(TokenType::IDENT, "x"));
+    REQUIRE_EQ(tokens[3], Token(TokenType::DELIM, ")"));
+    REQUIRE_EQ(tokens[4], Token(TokenType::END));
 }
 
 int main(int argc, char** argv)

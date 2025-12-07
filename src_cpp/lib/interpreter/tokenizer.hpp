@@ -1,11 +1,12 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
 #include "../../global/types.hpp"
 #include "token.hpp"
 
-namespace aquila::parser
+namespace aquila::interpreter
 {
 
 using ConsumeCondition = bool (*)(TokenChar);
@@ -33,4 +34,6 @@ public:
     Token next_token();
 };
 
-} // namespace aquila::parser
+std::vector<Token> tokenize(const TokenStr &buffer, Int start_line = 1);
+
+} // namespace aquila::interpreter

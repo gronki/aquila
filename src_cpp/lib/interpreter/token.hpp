@@ -1,8 +1,10 @@
 #pragma once
 
 #include "../../global/types.hpp"
+#include <iostream>
 #include <map>
 #include <ostream>
+#include <sstream>
 #include <stdexcept>
 
 namespace aquila::interpreter
@@ -20,12 +22,11 @@ enum class TokenType
     END,
 };
 
-const std::map<TokenType, std::string> TOKENTYPE_STR{
-    {TokenType::DELIM, "DELIM"},
-    {TokenType::IDENT, "IDENT"},
-    {TokenType::NUM_LITERAL, "NUM_LITERAL"},
-    {TokenType::STR_LITERAL, "STR_LITERAL"},
-    {TokenType::END, "END"}};
+const std::map<TokenType, std::string> TOKENTYPE_STR{{TokenType::DELIM, "DELIM"},
+                                                     {TokenType::IDENT, "IDENT"},
+                                                     {TokenType::NUM_LITERAL, "NUM_LITERAL"},
+                                                     {TokenType::STR_LITERAL, "STR_LITERAL"},
+                                                     {TokenType::END, "END"}};
 
 struct TokenLoc
 {
@@ -40,6 +41,10 @@ struct Token
         : type(type), value(value), loc(loc)
     {
     }
+    Token(TokenType type, TokenChar value, const TokenLoc &loc = {})
+        : type(type), value(TokenStr(1, value)), loc(loc)
+    {
+    }
     Token(TokenType type, const TokenLoc &loc = {}) : type(type), loc(loc)
     {
         if (type != TokenType::END)
@@ -50,7 +55,7 @@ struct Token
     TokenStr value;
     TokenLoc loc;
 
-    inline bool operator==(const Token &other) const
+    bool operator==(const Token &other) const
     {
         if (type != other.type)
             return false;
@@ -59,26 +64,29 @@ struct Token
         return value == other.value;
     }
 
-    inline bool operator!=(const Token &other) const
+    bool operator!=(const Token &other) const { return !(*this == other); }
+
+    friend std::ostream &operator<<(std::ostream &os, const Token &t)
     {
-        return !(*this == other);
+        if (t.type != TokenType::END)
+        {
+            os << "Token(" << TOKENTYPE_STR.at(t.type) << ", value=\"" << t.value
+               << "\", pos=" << t.loc.offset << ")";
+        }
+        else
+        {
+            os << "Token(" << TOKENTYPE_STR.at(t.type) << ", pos=" << t.loc.offset << ")";
+        }
+
+        return os;
+    }
+
+    std::string str() const
+    {
+        std::stringstream ss;
+        ss << *this;
+        return ss.str();
     }
 };
-
-inline std::ostream &operator<<(std::ostream &os, Token t)
-{
-    if (t.type != TokenType::END)
-    {
-        os << "Token(" << TOKENTYPE_STR.at(t.type) << ", value=\"" << t.value
-           << "\", pos=" << t.loc.offset << ")";
-    }
-    else
-    {
-        os << "Token(" << TOKENTYPE_STR.at(t.type) << ", pos=" << t.loc.offset
-           << ")";
-    }
-
-    return os;
-}
 
 } // namespace aquila::interpreter

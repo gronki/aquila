@@ -82,16 +82,16 @@ static std::vector<__TestBase *> __tests;
     } while (false)
 
 #define TEST(name)                                                             \
-    class name##_test_cls : public __TestBase                                  \
+    class name##__test_cls__ : public __TestBase                               \
     {                                                                          \
     public:                                                                    \
-        name##_test_cls() : __TestBase(#name) { __tests.push_back(this); }     \
+        name##__test_cls__() : __TestBase(#name) { __tests.push_back(this); }  \
         void run() const override;                                             \
     };                                                                         \
-    static const name##_test_cls name##_test_obj;                              \
-    inline void name##_test_cls::run() const
+    const name##__test_cls__ name##__test_obj__;                               \
+    void name##__test_cls__::run() const
 
-#define RUN_ALL(failed)                                                        \
+#define RUN_ALL(num_failed)                                                    \
     do                                                                         \
     {                                                                          \
         for (const __TestBase *test : __tests)                                 \
@@ -100,13 +100,15 @@ static std::vector<__TestBase *> __tests;
             {                                                                  \
                 std::cout << "running test: " << test->getname() << std::endl; \
                 test->run();                                                   \
-                std::cout << "PASS " << test->getname() << std::endl;          \
+                std::cout << "  *** PASS " << test->getname() << " ***"        \
+                          << std::endl;                                        \
             }                                                                  \
             catch (const std::runtime_error &e)                                \
             {                                                                  \
-                std::cerr << "FAIL " << test->getname() << ": " << e.what()    \
-                          << std::endl;                                        \
-                (failed) += 1;                                                 \
+                std::cerr << "  *** FAIL " << test->getname() << " *** "       \
+                          << std::endl                                         \
+                          << e.what() << std::endl;                            \
+                (num_failed) += 1;                                             \
             }                                                                  \
         }                                                                      \
     } while (false)

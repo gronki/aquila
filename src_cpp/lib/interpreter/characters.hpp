@@ -5,8 +5,8 @@
 namespace aquila::interpreter
 {
 
-constexpr TokenChar CHAIN_CALL_DELIM = '%';
-constexpr TokenChar KWARG_DELIM = ':';
+static constexpr TokenChar CHAIN_CALL_DELIM = '.';
+static constexpr TokenChar KWARG_DELIM = ':';
 
 inline bool is_whitespace(TokenChar ch)
 {

@@ -61,7 +61,22 @@ TEST(into_array)
     REQUIRE_EQ(tokens[4], Token(TokenType::END));
 }
 
-int main(int argc, char** argv)
+TEST(lazy)
+{
+    Tokenizer tokenizer("f(x)");
+    LazyTokenArray array(tokenizer);
+    REQUIRE_EQ(array.cur_token(), Token(TokenType::IDENT, "f"));
+    REQUIRE_EQ(array.next_token(), Token(TokenType::DELIM, "("));
+    REQUIRE_EQ(array.peek_token(2), Token(TokenType::DELIM, ")"));
+    REQUIRE_EQ(array.peek_token(10), Token(TokenType::END));
+}
+
+TEST(comparison_quirk)
+{
+    REQUIRE_EQ(Token(TokenType::DELIM, "."), Token(TokenType::DELIM, TokenStr(1, '.')));
+}
+
+int main(int argc, char **argv)
 {
     int failed = 0;
     RUN_ALL(failed);

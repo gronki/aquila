@@ -127,4 +127,28 @@ std::vector<Token> tokenize(const TokenStr &buffer, Int start_line)
     return tokens;
 }
 
+Token LazyTokenArray::peek_token(Int offset)
+{
+    if (offset + pos < 0)
+        throw std::runtime_error("may not rewind before the first token");
+
+    while (tokens.size() < offset + pos + 1)
+    {
+        tokens.push_back(tokenizer.next_token());
+    }
+    return tokens[offset + pos];
+}
+
+Token LazyTokenArray::cur_token()
+{
+    return peek_token(0);
+}
+
+Token LazyTokenArray::next_token(Int offset)
+{
+    const Token &t = peek_token(offset);
+    pos += offset;
+    return t;
+}
+
 } // namespace aquila::interpreter

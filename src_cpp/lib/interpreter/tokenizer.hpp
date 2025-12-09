@@ -36,4 +36,17 @@ public:
 
 std::vector<Token> tokenize(const TokenStr &buffer, Int start_line = 1);
 
+class LazyTokenArray
+{
+    Tokenizer &tokenizer;
+    std::vector<Token> tokens;
+    Int pos = 0;
+
+public:
+    LazyTokenArray(Tokenizer &tokenizer) : tokenizer(tokenizer) {}
+    Token peek_token(Int offset = 0);
+    Token cur_token();
+    Token next_token(Int offset = 1);
+};
+
 } // namespace aquila::interpreter

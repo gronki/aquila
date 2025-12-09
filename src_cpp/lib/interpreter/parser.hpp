@@ -5,10 +5,11 @@
 
 #include "ast.hpp"
 #include "token.hpp"
+#include "tokenizer.hpp"
 
 namespace aquila::interpreter
 {
 
-std::unique_ptr<AstNode> parse(std::vector<Token> tokens);
+bool parse(LazyTokenArray &tokens, std::unique_ptr<AstNode> &root);
 
 }

@@ -7,7 +7,7 @@ AccessModifierOffset: -4
 PointerAlignment: Right
 ReferenceAlignment: Right
 
-ColumnLimit: 80
+ColumnLimit: 88
 
 BreakBeforeBraces: Allman
 AllowShortIfStatementsOnASingleLine: false

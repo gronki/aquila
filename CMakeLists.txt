@@ -10,11 +10,16 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 set(CMAKE_C_FLAGS_DEBUG   "-g3 -O0 -Wall -Wextra -Wpedantic -Werror=return-type -Werror=uninitialized -Werror=maybe-uninitialized -Werror=delete-incomplete -Wnon-virtual-dtor -Wno-unused-parameter")
-set(CMAKE_C_FLAGS_RELEASE "-O3 -ffast-math -march=native -fopenmp -DNDEBUG -g1")
+set(CMAKE_C_FLAGS_RELEASE "-O3 -ffast-math -march=native -DNDEBUG -g1")
 set(CMAKE_CXX_FLAGS_DEBUG   "-g3 -O0 -Wall -Wextra -Wpedantic -Werror=return-type -Werror=uninitialized -Werror=maybe-uninitialized -Werror=delete-incomplete -Wnon-virtual-dtor -Wno-unused-parameter")
-set(CMAKE_CXX_FLAGS_RELEASE "-O3 -ffast-math -march=native -fopenmp -DNDEBUG -g1")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -ffast-math -march=native -DNDEBUG -g1")
 set(CMAKE_Fortran_FLAGS_DEBUG   "-g3 -O0 -fcheck=all -Wall -Wextra -Wno-unused-dummy-argument")
-set(CMAKE_Fortran_FLAGS_RELEASE "-O3 -ffast-math -march=native -fopenmp -DNDEBUG -g1")
+set(CMAKE_Fortran_FLAGS_RELEASE "-O3 -funsafe-math-optimizations -march=native -DNDEBUG -g1")
+
+option(OPENMP "use OpenMP in build" OFF)
+if (OPENMP)
+add_compile_options(-fopenmp)
+endif ()
 
 add_subdirectory(deps/task-dispatch)
 

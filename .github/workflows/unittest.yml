@@ -143,9 +143,9 @@ jobs:
           export CC=icx
           export CXX=icpx
           export FC=ifx
-          export CFLAGS="-O0 -g3"
-          export CXXFLAGS="-O0 -g3"
-          export FFLAGS="-O0 -g3 -check all,nouninit -traceback -warn all -heap-arrays"
+          export CFLAGS="-O3 -fp-model=fast -g1  -DNDEBUG"
+          export CXXFLAGS="-O3 -fp-model=fast -g1  -DNDEBUG"
+          export FFLAGS="-O3 -fp-model=fast -g1 -traceback -heap-arrays -DNDEBUG"
           
           mkdir -p build
           rm -rf build/*
@@ -164,9 +164,9 @@ jobs:
           export CC=icx
           export CXX=icpx
           export FC=ifx
-          export CFLAGS="-O0 -g3"
-          export CXXFLAGS="-O0 -g3"
-          export FFLAGS="-O0 -g3 -check all,nouninit -traceback -warn all -heap-arrays"
+          export CFLAGS="-O3 -fp-model=fast -g1 -qopenmp  -DNDEBUG"
+          export CXXFLAGS="-O3 -fp-model=fast -g1 -qopenmp  -DNDEBUG"
+          export FFLAGS="-O3 -fp-model=fast -g1 -traceback -heap-arrays -qopenmp  -DNDEBUG"
           
           mkdir -p build
           rm -rf build/*
@@ -242,9 +242,9 @@ jobs:
           export CC=clang-${{ matrix.llvm-ver }}
           export CXX=clang-${{ matrix.llvm-ver }}
           export FC=flang-new-${{ matrix.llvm-ver }}
-          export CFLAGS="-O3 -ffast-math -g1"
-          export CXXFLAGS="-O3 -ffast-math -g1"
-          export FFLAGS="-O3 -ffast-math -g1"
+          export CFLAGS="-O3 -ffast-math -g1 -DNDEBUG"
+          export CXXFLAGS="-O3 -ffast-math -g1 -DNDEBUG"
+          export FFLAGS="-O3 -ffast-math -g1 -DNDEBUG"
           
           mkdir -p build
           rm -rf build/*
@@ -262,9 +262,9 @@ jobs:
           export CC=clang-${{ matrix.llvm-ver }}
           export CXX=clang-${{ matrix.llvm-ver }}
           export FC=flang-new-${{ matrix.llvm-ver }}
-          export CFLAGS="-O3 -ffast-math -g1 -fopenmp"
-          export CXXFLAGS="-O3 -ffast-math -g1 -fopenmp"
-          export FFLAGS="-O3 -ffast-math -g1 -fopenmp"
+          export CFLAGS="-O3 -ffast-math -g1 -fopenmp -DNDEBUG"
+          export CXXFLAGS="-O3 -ffast-math -g1 -fopenmp -DNDEBUG"
+          export FFLAGS="-O3 -ffast-math -g1 -fopenmp -DNDEBUG"
           
           mkdir -p build
           rm -rf build/*

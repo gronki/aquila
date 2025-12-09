@@ -30,9 +30,6 @@ jobs:
       - name: Install build dependencies
         run: sudo apt-get install -y libcfitsio-dev libpng-dev libgnutls30 libreadline-dev
   
-      - name: Download test data
-        run: scripts/get_test_data.sh
-
       - name: Build app
         run: |
           export CC=gcc-${{ matrix.gcc-ver }} 
@@ -113,9 +110,6 @@ jobs:
       - name: Install build dependencies
         run: sudo apt-get install -y libcfitsio-dev libpng-dev libgnutls30 libreadline-dev
 
-      - name: Download test data
-        run: scripts/get_test_data.sh
-
       - name: Build and install the app
         run: |
           source /opt/intel/oneapi/setvars.sh
@@ -134,6 +128,7 @@ jobs:
   
       - name: Run unit test on example data
         run: |
+          source /opt/intel/oneapi/setvars.sh
           cd build
           ctest . -V
 
@@ -155,6 +150,7 @@ jobs:
   
       - name: Run unit test on example data
         run: |
+          source /opt/intel/oneapi/setvars.sh
           cd build
           ctest . -V
 
@@ -176,6 +172,7 @@ jobs:
   
       - name: Run unit test on example data
         run: |
+          source /opt/intel/oneapi/setvars.sh
           cd build
           ctest . -V
 
@@ -213,9 +210,6 @@ jobs:
 
       - name: Install build dependencies
         run: sudo apt-get install -y libcfitsio-dev libpng-dev libgnutls30 libreadline-dev
-
-      - name: Download test data
-        run: scripts/get_test_data.sh
 
       - name: Build and install the app
         run: |

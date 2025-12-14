@@ -14,7 +14,7 @@ struct arg_caster;
 template <>
 struct arg_caster<>
 {
-    arg_caster(const std::vector<Value *> &args, int idx = 0)
+    arg_caster(const std::vector<const Value *> &args, int idx = 0)
     {
         if (idx != args.size())
             throw std::runtime_error("list length mismatch");
@@ -24,15 +24,16 @@ struct arg_caster<>
 template <typename ArgF, typename... ArgsT>
 struct arg_caster<ArgF, ArgsT...>
 {
-    arg_caster(const std::vector<Value *> &args, int idx = 0) : next(args, idx + 1)
+    arg_caster(const std::vector<const Value *> &args, int idx = 0)
+        : next(args, idx + 1)
     {
         if (idx > args.size())
             throw std::runtime_error("out of bounds");
-        val = dynamic_cast<ArgF *>(args[idx]);
+        val = dynamic_cast<const ArgF *>(args[idx]);
         if (!val)
             throw std::runtime_error("bad cast");
     }
-    ArgF *val;
+    const ArgF *val;
     arg_caster<ArgsT...> next;
 };
 
@@ -56,7 +57,7 @@ void collector(const arg_caster<CasterArgs...> &caster,
 template <typename TT, typename... ArgsT>
 std::unique_ptr<Value> bind_args(TT *obj,
                                  std::unique_ptr<Value> (TT::*f)(const ArgsT &...),
-                                 const std::vector<Value *> &args)
+                                 const std::vector<const Value *> &args)
 {
     arg_caster<ArgsT...> caster(args);
     std::unique_ptr<Value> result;

@@ -34,8 +34,14 @@ class Operation
 {
 public:
     // virtual std::vector<ArgManifest> arg_manifest() = 0;
-    virtual std::unique_ptr<Value> call(const std::vector<Value *> &) = 0;
+    virtual std::unique_ptr<Value> call(const std::vector<const Value *> &) = 0;
     virtual ~Operation() = default;
 };
+
+#define BIND_ARGS(proc)                                                                \
+    std::unique_ptr<Value> call(const std::vector<const Value *> &args) override       \
+    {                                                                                  \
+        return bind_args(this, (&proc), args);                                         \
+    }
 
 } // namespace aquila::interpreter

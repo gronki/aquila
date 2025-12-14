@@ -1,4 +1,5 @@
 #include <memory>
+#include <sstream>
 #include <string>
 #include <tuple>
 
@@ -8,27 +9,28 @@
 
 using namespace aquila::interpreter;
 
-class AddOperation : public Operation
+class TestOperation : public Operation
 {
 public:
-    std::unique_ptr<Value> call(const std::vector<Value *> &args) override
-    {
-        // the whole deal was about: how to bind it automatically?
-        // return run(dynamic_cast<RealValue &>(*args[0]), dynamic_cast<IntValue&>(*args[1]));
-        return bind_args(this, &AddOperation::run, args);
-    }
+    BIND_ARGS(TestOperation::run);
 
-    std::unique_ptr<Value> run(const RealValue &a, const IntValue &b)
+    std::unique_ptr<Value> run(const RealValue &a, const IntValue &b, const StrValue &s)
     {
-        return std::make_unique<RealValue>(a.value + b.value);
+        std::stringstream ss;
+        ss << "I got an float " << a << ", int " << b << " and string " << s << ".";
+        return std::make_unique<StrValue>(ss.str());
     }
 };
 
 int main()
 {
-    RealValue r1{1};
-    IntValue i2{2};
-    AddOperation addop;
-    // std::cout << dynamic_cast<RealValue &>(*addop.run(r1, r2)).value << std::endl;
-    std::cout << dynamic_cast<RealValue &>(*addop.call({&r1, &i2})).value << std::endl;
+    RealValue r{1.0};
+    IntValue i{2};
+    StrValue s{"three"};
+
+    std::vector<const Value *> inputs{&r, &i, &s};
+
+    TestOperation addop;
+    auto result = addop.call(inputs);
+    std::cout << dynamic_cast<StrValue &>(*result).value << std::endl;
 }

@@ -16,7 +16,6 @@ struct arg_caster<>
 {
     arg_caster(const std::vector<Value *> &args, int idx = 0)
     {
-        std::cout << " list ends at index " << idx << "  " << std::endl;
         if (idx != args.size())
             throw std::runtime_error("list length mismatch");
     }
@@ -27,7 +26,6 @@ struct arg_caster<ArgF, ArgsT...>
 {
     arg_caster(const std::vector<Value *> &args, int idx = 0) : next(args, idx + 1)
     {
-        std::cout << "parsing arg " << idx << " as " << typeid(ArgF).name() << std::endl;
         if (idx > args.size())
             throw std::runtime_error("out of bounds");
         val = dynamic_cast<ArgF *>(args[idx]);
@@ -47,7 +45,6 @@ void collector(const arg_caster<CasterArgs...> &caster,
 {
     if constexpr (sizeof...(CasterArgs) == 0)
     {
-        std::cout << "CALLING! args: " << sizeof...(args) << std::endl;
         result = (obj->*f)(args...);
     }
     else

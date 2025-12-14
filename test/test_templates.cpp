@@ -22,6 +22,14 @@ public:
     }
 };
 
+class EmptyOperation : public Operation
+{
+public:
+    BIND_ARGS(EmptyOperation::run);
+
+    std::unique_ptr<Value> run() { return std::make_unique<StrValue>("noooo"); }
+};
+
 int main()
 {
     RealValue r{1.0};
@@ -33,4 +41,7 @@ int main()
     TestOperation addop;
     auto result = addop.call(inputs);
     std::cout << dynamic_cast<StrValue &>(*result).value << std::endl;
+
+    EmptyOperation emptyop;
+    std::cout << dynamic_cast<StrValue &>(*emptyop.call({})).value << std::endl;
 }

@@ -17,7 +17,11 @@ struct arg_caster<>
     arg_caster(const std::vector<const Value *> &args, int idx = 0)
     {
         if (idx != args.size())
-            throw std::runtime_error("list length mismatch");
+        {
+            throw std::runtime_error(
+                std::string("argument list mistmatch: ") + std::to_string(args.size()) +
+                " inputs received, but expecting " + std::to_string(idx) + " inputs");
+        }
     }
 };
 
@@ -27,8 +31,10 @@ struct arg_caster<ArgF, ArgsT...>
     arg_caster(const std::vector<const Value *> &args, int idx = 0)
         : next(args, idx + 1)
     {
-        if (idx > args.size())
-            throw std::runtime_error("out of bounds");
+        // Note: because we call next() constructor above, the whole recursion
+        // tree will be initialized before we reach this point.
+        // We make check in the constructor of the default specialization <>
+        // so by here we are sure that the list lenghts are matched.
         val = dynamic_cast<const ArgF *>(args[idx]);
         if (!val)
             throw std::runtime_error("bad cast");

@@ -156,6 +156,7 @@ static void parse_expression(LazyTokenArray &tokens, std::unique_ptr<AstNode> &n
 
         if (auto *parent_call_node = dynamic_cast<AstOpNode *>(parent_node.get()))
         {
+            // stadard chaining: X % f(Y) -> F(X, Y)
             AstOpNode::OpArg first_arg;
             first_arg.arg_val = std::move(node);
             parent_call_node->args.insert(parent_call_node->args.begin(),
@@ -164,6 +165,9 @@ static void parse_expression(LazyTokenArray &tokens, std::unique_ptr<AstNode> &n
         }
         else if (auto *parent_call_node = dynamic_cast<AstRefNode *>(parent_node.get()))
         {
+            // param function: X % Y -> param(X, "Y")
+            // used to retrieve some (static) properties from a value
+            // for example, an exposure time from FITS header
             auto param_op = std::make_unique<AstOpNode>();
             param_op->opname = "param";
             param_op->args.push_back(AstOpNode::OpArg{.arg_val = std::move(node)});
@@ -174,7 +178,6 @@ static void parse_expression(LazyTokenArray &tokens, std::unique_ptr<AstNode> &n
         }
         else
         {
-            // TODO: here X.ident syntax could be expanded to getparam(X, "ident")
             throw std::runtime_error("incorrect chaining");
         }
     }

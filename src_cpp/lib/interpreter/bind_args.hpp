@@ -8,66 +8,94 @@
 namespace aquila::interpreter
 {
 
-template <typename... Args>
-struct arg_caster;
+template <typename... ArgsT>
+struct __args_binder;
 
 template <>
-struct arg_caster<>
+struct __args_binder<>
 {
-    arg_caster(const std::vector<const Value *> &args, int idx = 0)
+    template <typename OpT, typename... ArgsT, typename... CallArgsT>
+    static void run(OpT *obj,
+                    std::unique_ptr<Value> (OpT::*exec_fun)(const ArgsT &...),
+                    const std::vector<const Value *> &args,
+                    std::unique_ptr<Value> &result,
+                    std::size_t idx,
+                    const CallArgsT &...callargs)
     {
-        if (idx != args.size())
-        {
-            throw std::runtime_error(
-                std::string("argument list mistmatch: ") + std::to_string(args.size()) +
-                " inputs received, but expecting " + std::to_string(idx) + " inputs");
-        }
+        result = (obj->*exec_fun)(callargs...);
     }
 };
 
-template <typename ArgF, typename... ArgsT>
-struct arg_caster<ArgF, ArgsT...>
+template <typename T>
+const T *cast_value(const Value *v)
 {
-    arg_caster(const std::vector<const Value *> &args, int idx = 0)
-        : next(args, idx + 1)
-    {
-        // Note: because we call next() constructor above, the whole recursion
-        // tree will be initialized before we reach this point.
-        // We make check in the constructor of the default specialization <>
-        // so by here we are sure that the list lenghts are matched.
-        val = dynamic_cast<const ArgF *>(args[idx]);
-        if (!val)
-            throw std::runtime_error("bad cast");
-    }
-    const ArgF *val;
-    arg_caster<ArgsT...> next;
-};
-
-template <typename TT, typename... CasterArgs, typename... CallArgsT, typename... Args>
-void collector(const arg_caster<CasterArgs...> &caster,
-               TT *obj,
-               std::unique_ptr<Value> (TT::*f)(const CallArgsT &...),
-               std::unique_ptr<Value> &result,
-               const Args &...args)
-{
-    if constexpr (sizeof...(CasterArgs) == 0)
-    {
-        result = (obj->*f)(args...);
-    }
-    else
-    {
-        collector(caster.next, obj, f, result, args..., *caster.val);
-    }
+    return dynamic_cast<const T *>(v);
 }
 
-template <typename TT, typename... ArgsT>
-std::unique_ptr<Value> bind_args(TT *obj,
-                                 std::unique_ptr<Value> (TT::*f)(const ArgsT &...),
+template <typename T>
+const T *cast_simple_value(const Value *v)
+{
+    const SimpleValue<T> *sv = dynamic_cast<const SimpleValue<T> *>(v);
+    if (!sv)
+        return nullptr;
+    return &sv->value;
+}
+
+template <>
+const Real *cast_value<Real>(const Value *v)
+{
+    return cast_simple_value<Real>(v);
+}
+
+template <>
+const Int *cast_value<Int>(const Value *v)
+{
+    return cast_simple_value<Int>(v);
+}
+
+template <>
+const std::string *cast_value<std::string>(const Value *v)
+{
+    return cast_simple_value<std::string>(v);
+}
+
+template <typename T, typename... TT>
+struct __args_binder<T, TT...>
+{
+    using next = __args_binder<TT...>;
+    template <typename OpT, typename... ArgsT, typename... CallArgsT>
+    static void run(OpT *obj,
+                    std::unique_ptr<Value> (OpT::*exec_fun)(const ArgsT &...),
+                    const std::vector<const Value *> &args,
+                    std::unique_ptr<Value> &result,
+                    std::size_t idx,
+                    const CallArgsT &...callargs)
+    {
+        const T *tptr = cast_value<T>(args[idx]);
+        if (!tptr)
+            throw std::runtime_error(std::string("Error trying to interpret "
+                                                 "argument ") +
+                                     std::to_string(idx + 1));
+        next::run(obj, exec_fun, args, result, idx + 1, callargs..., *tptr);
+    }
+};
+
+template <typename OpT, typename... ArgsT>
+std::unique_ptr<Value> bind_args(OpT *obj,
+                                 std::unique_ptr<Value> (OpT::*exec_fun)(const ArgsT &...),
                                  const std::vector<const Value *> &args)
 {
-    arg_caster<ArgsT...> caster(args);
-    std::unique_ptr<Value> result;
-    collector(caster, obj, f, result);
+    if (sizeof...(ArgsT) != args.size())
+    {
+        throw std::runtime_error(std::string("Argument list length incorrect: "
+                                             "expected ") +
+                                 std::to_string(sizeof...(ArgsT)) +
+                                 " arguments but got " + std::to_string(args.size()));
+    }
+
+    __args_binder<ArgsT...> binder;
+    std::unique_ptr<Value> result = nullptr;
+    binder.run(obj, exec_fun, args, result, 0);
     return result;
 }
 

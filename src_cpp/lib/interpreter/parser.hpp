@@ -10,6 +10,6 @@
 namespace aquila::interpreter
 {
 
-bool parse(LazyTokenArray &tokens, std::unique_ptr<AstNode> &root);
+void parse(LazyTokenArray &tokens, std::unique_ptr<AstNode> &root);
 
 }

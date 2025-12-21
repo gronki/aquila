@@ -7,21 +7,20 @@ namespace aquila::interpreter
 /**
  * Definitions of static procedures in this file.
  */
-static bool parse_expression(LazyTokenArray &tokens, std::unique_ptr<AstNode> &node);
-static bool parse_function_argument_list(LazyTokenArray &tokens,
+static void parse_basic_expression(LazyTokenArray &tokens, std::unique_ptr<AstNode> &node);
+static void parse_function_argument_list(LazyTokenArray &tokens,
                                          std::vector<AstOpNode::OpArg> &node_args);
-static bool parse_expression_with_chaining(LazyTokenArray &tokens,
-                                           std::unique_ptr<AstNode> &node);
+static void parse_expression(LazyTokenArray &tokens, std::unique_ptr<AstNode> &node);
 
 /**
  * Parse an expression (literal, reference, function call) but not including chaining.
  */
-static bool parse_expression(LazyTokenArray &tokens, std::unique_ptr<AstNode> &node)
+static void parse_basic_expression(LazyTokenArray &tokens, std::unique_ptr<AstNode> &node)
 {
     const Token &token = tokens.cur_token();
 
     if (token.type == TokenType::END)
-        return false;
+        return;
 
     if (token.type == TokenType::NUM_LITERAL)
     {
@@ -30,7 +29,7 @@ static bool parse_expression(LazyTokenArray &tokens, std::unique_ptr<AstNode> &n
         value_node->loc = token.loc;
         node = std::move(value_node);
         tokens.next_token();
-        return true;
+        return;
     }
 
     if (token.type == TokenType::STR_LITERAL)
@@ -40,13 +39,13 @@ static bool parse_expression(LazyTokenArray &tokens, std::unique_ptr<AstNode> &n
         value_node->loc = token.loc;
         node = std::move(value_node);
         tokens.next_token();
-        return true;
+        return;
     }
 
     if (token.type != TokenType::IDENT)
     {
         throw std::runtime_error(std::string("unexpected token: ") + token.str());
-        return false;
+        return;
     }
 
     Token maybe_opening_brace = tokens.next_token();
@@ -57,7 +56,7 @@ static bool parse_expression(LazyTokenArray &tokens, std::unique_ptr<AstNode> &n
         ref_node->refname = token.value;
         ref_node->loc = token.loc;
         node = std::move(ref_node);
-        return true;
+        return;
     }
 
     tokens.next_token();
@@ -69,13 +68,12 @@ static bool parse_expression(LazyTokenArray &tokens, std::unique_ptr<AstNode> &n
     op_node->loc = token.loc;
     parse_function_argument_list(tokens, op_node->args);
     node = std::move(op_node);
-    return true;
 }
 
 /**
  * Parse function argument list (starting from the first token after the opening brace).
  */
-static bool parse_function_argument_list(LazyTokenArray &tokens,
+static void parse_function_argument_list(LazyTokenArray &tokens,
                                          std::vector<AstOpNode::OpArg> &node_args)
 {
 
@@ -86,7 +84,7 @@ static bool parse_function_argument_list(LazyTokenArray &tokens,
         if (cur_token == Token(TokenType::DELIM, ")"))
         {
             tokens.next_token();
-            return true;
+            return;
         }
         else if (cur_token.type == TokenType::END)
         {
@@ -120,7 +118,7 @@ static bool parse_function_argument_list(LazyTokenArray &tokens,
             // in principle we would not need to repeat that check twice,
             // but we do so to throw a clearer error message
             tokens.next_token();
-            return true;
+            return;
         }
         else if (cur_token.type == TokenType::END)
         {
@@ -134,58 +132,62 @@ static bool parse_function_argument_list(LazyTokenArray &tokens,
         }
     }
 
-    return false; // unreachable
+    return; // unreachable
 }
 
 /**
  * Parse the expression but take care of chaining. Calls like f(a,b).g(c,d)
  * will be reformed to g(f(a, b), c, d).
  */
-static bool parse_expression_with_chaining(LazyTokenArray &tokens,
-                                           std::unique_ptr<AstNode> &node)
+static void parse_expression(LazyTokenArray &tokens, std::unique_ptr<AstNode> &node)
 {
-    std::unique_ptr<AstNode> expr_node;
-    bool success = parse_expression(tokens, expr_node);
-    Token cur_token = tokens.cur_token();
+    parse_basic_expression(tokens, node);
 
-    if (cur_token.type == TokenType::END)
-    {
-        node = std::move(expr_node);
-        return success;
-    }
+    std::cout << "CHAIN " << tokens.cur_token() << std::endl;
 
-    if (cur_token == Token(TokenType::DELIM, "."))
+    while (tokens.cur_token() == Token(TokenType::DELIM, CHAIN_CALL_DELIM))
     {
 
         // we might have a chained call here
         tokens.next_token();
 
         std::unique_ptr<AstNode> parent_node;
-        parse_expression(tokens, parent_node);
+        parse_basic_expression(tokens, parent_node);
 
-        auto *parent_call_node = dynamic_cast<AstOpNode *>(parent_node.get());
-        if (parent_call_node)
+        if (auto *parent_call_node = dynamic_cast<AstOpNode *>(parent_node.get()))
         {
             AstOpNode::OpArg first_arg;
-            first_arg.arg_val = std::move(expr_node);
+            first_arg.arg_val = std::move(node);
             parent_call_node->args.insert(parent_call_node->args.begin(),
                                           std::move(first_arg));
             node = std::move(parent_node);
-            return true;
         }
-        throw std::runtime_error("only function calls allowed in chaining");
+        else if (auto *parent_call_node = dynamic_cast<AstRefNode *>(parent_node.get()))
+        {
+            auto param_op = std::make_unique<AstOpNode>();
+            param_op->opname = "param";
+            param_op->args.push_back(AstOpNode::OpArg{.arg_val = std::move(node)});
+            auto param_arg = std::make_unique<AstValueNode>();
+            param_arg->constant = std::make_unique<StrValue>(parent_call_node->refname);
+            param_op->args.push_back(AstOpNode::OpArg{.arg_val = std::move(param_arg)});
+            node = std::move(param_op);
+        }
+        else
+        {
+            // TODO: here X.ident syntax could be expanded to getparam(X, "ident")
+            throw std::runtime_error("incorrect chaining");
+        }
     }
 
-    throw std::runtime_error("expected end of the expression");
-    return false;
+    return;
 }
 
 /**
  * Main parsing function.
  */
-bool parse(LazyTokenArray &tokens, std::unique_ptr<AstNode> &root)
+void parse(LazyTokenArray &tokens, std::unique_ptr<AstNode> &root)
 {
-    return parse_expression_with_chaining(tokens, root);
+    parse_expression(tokens, root);
 }
 
 } // namespace aquila::interpreter

@@ -15,12 +15,9 @@ using namespace aquila::interpreter;
 class TestOperation : public Operation
 {
 public:
-    std::unique_ptr<Value> call(const std::vector<const Value *> &args) override
-    {
-        return bind_args(this, &TestOperation::run, args);
-    }
+    BIND_ARGS(&TestOperation::run);
 
-    std::unique_ptr<Value> run(const RealValue &a, const IntValue &b, const StrValue &s)
+    std::unique_ptr<Value> run(const RealValue &a, const IntValue &b, const StrValue &s) const
     {
         std::stringstream ss;
         ss << "I got an float " << a << ", int " << b << " and string " << s << ".";
@@ -31,12 +28,8 @@ public:
 class EmptyOperation : public Operation
 {
 public:
-    std::unique_ptr<Value> call(const std::vector<const Value *> &args) override
-    {
-        return bind_args(this, &EmptyOperation::run, args);
-    }
-
-    std::unique_ptr<Value> run() { return std::make_unique<StrValue>("noooo"); }
+    BIND_ARGS(&EmptyOperation::run);
+    std::unique_ptr<Value> run() const { return std::make_unique<StrValue>("noooo"); }
 };
 
 // class VariaOperation : public Operation
@@ -61,12 +54,9 @@ public:
 class DirectCastOp : public Operation
 {
 public:
-    std::unique_ptr<Value> call(const std::vector<const Value *> &args) override
-    {
-        return bind_args(this, &DirectCastOp::run, args);
-    }
+    BIND_ARGS(&DirectCastOp::run);
 
-    std::unique_ptr<Value> run(const Real &a, const Int &b)
+    std::unique_ptr<Value> run(const Real &a, const Int &b) const
     {
         return std::make_unique<RealValue>(a * b);
     }
@@ -119,11 +109,11 @@ TEST(wrongtype)
     TestOperation addop;
 
     EXPECT_ERROR("interpret",
-                 [&]()
-                 {
-                     auto result = addop.call(inputs);
-                     std::cout << *result << std::endl;
-                 });
+        [&]()
+        {
+            auto result = addop.call(inputs);
+            std::cout << *result << std::endl;
+        });
 }
 
 TEST(toomany)
@@ -139,11 +129,11 @@ TEST(toomany)
     TestOperation addop;
 
     EXPECT_ERROR("length",
-                 [&]()
-                 {
-                     auto result = addop.call(inputs);
-                     std::cout << *result << std::endl;
-                 });
+        [&]()
+        {
+            auto result = addop.call(inputs);
+            std::cout << *result << std::endl;
+        });
 }
 
 TEST(notenough)
@@ -157,11 +147,11 @@ TEST(notenough)
     TestOperation addop;
 
     EXPECT_ERROR("length",
-                 [&]()
-                 {
-                     auto result = addop.call(inputs);
-                     std::cout << *result << std::endl;
-                 });
+        [&]()
+        {
+            auto result = addop.call(inputs);
+            std::cout << *result << std::endl;
+        });
 }
 
 int main()

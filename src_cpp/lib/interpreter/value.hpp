@@ -28,6 +28,18 @@ inline std::ostream &operator<<(std::ostream &os, const Value &v)
     return os;
 }
 
+template <typename T>
+std::unique_ptr<T> as_ptr(T &&t)
+{
+    return std::make_unique<T>(std::move(t));
+}
+
+template <typename T>
+std::unique_ptr<T> as_ptr(const T &t)
+{
+    return std::make_unique<T>(t);
+}
+
 struct AnySimpleValue : public Value
 {
 public:
@@ -54,10 +66,7 @@ struct SimpleValue : public AnySimpleValue
 
     void write(std::ostream &os) const override { os << value; }
 
-    std::unique_ptr<Value> clone() const override
-    {
-        return std::make_unique<SimpleValue<T>>(*this);
-    }
+    std::unique_ptr<Value> clone() const override { return as_ptr(*this); }
 
     friend bool operator==(const SimpleValue<T> &a, const SimpleValue<T> &b)
     {
@@ -71,12 +80,12 @@ struct SimpleValue : public AnySimpleValue
 
     virtual bool dyn_compare(const AnySimpleValue &other) const
     {
-        std::cout << "Dynamic compare called between " << *this << " and "
-                  << other << std::endl;
+        std::cout << "Dynamic compare called between " << *this << " and " << other
+                  << std::endl;
         try
         {
-            const SimpleValue<T>
-                &other_sametype = dynamic_cast<const SimpleValue<T> &>(other);
+            const SimpleValue<T> &other_sametype = dynamic_cast<const SimpleValue<T> &>(
+                other);
             return other_sametype.value == value;
         }
         catch (const std::bad_cast &ex)
@@ -94,7 +103,7 @@ inline void SimpleValue<std::string>::write(std::ostream &os) const
 
 using IntValue = SimpleValue<Int>;
 using RealValue = SimpleValue<Real>;
-using StrValue = SimpleValue<std::string>;
+using StrValue = SimpleValue<String>;
 
 using ValuePtrVector = std::vector<std::unique_ptr<Value>>;
 
@@ -135,10 +144,7 @@ struct SequenceValue : public Value
         os << "]";
     }
 
-    std::unique_ptr<Value> clone() const override
-    {
-        return std::make_unique<SequenceValue>(*this);
-    }
+    std::unique_ptr<Value> clone() const override { return as_ptr(*this); }
 };
 
 } // namespace aquila::interpreter

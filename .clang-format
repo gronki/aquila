@@ -26,10 +26,15 @@ SeparateNamespaceBlocks: Always
 BinPackArguments: false
 BinPackParameters: false
 
-PenaltyBreakBeforeFirstCallParameter: 100 # default: 19
-PenaltyBreakAssignment: 1000 # default: 2
+AlignAfterOpenBracket: DontAlign
+BreakBeforeBinaryOperators: NonAssignment
+BreakConstructorInitializers: AfterColon
+AlignOperands: false
+
+PenaltyBreakBeforeFirstCallParameter: 50 # default: 19
+PenaltyBreakAssignment: 10 # default: 2
 PenaltyBreakBeforeBinaryOperators: 1 # default 50
 PenaltyBreakAfterReturnType: 60 # default: 60
 PenaltyReturnTypeOnItsOwnLine: 200 # default: 200
-PenaltyBreakString: 1 # default: 1000
+PenaltyBreakString: 1000 # default: 1000
 PenaltyExcessCharacter: 5 # default: 100

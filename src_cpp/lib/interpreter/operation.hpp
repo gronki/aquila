@@ -1,6 +1,7 @@
 #pragma once
 
 #include <functional>
+#include <map>
 #include <memory>
 #include <optional>
 #include <stdexcept>
@@ -41,11 +42,13 @@ struct ArgSpec
     // CheckFunction check = default_check;
 };
 
-class Operation
+using ArgManifest = std::vector<ArgSpec>;
+
+struct Operation
 {
-public:
-    virtual std::optional<std::vector<ArgSpec>> arg_manifest() const { return std::nullopt; }
+    virtual std::optional<ArgManifest> arg_manifest() const { return std::nullopt; }
     virtual std::unique_ptr<Value> call(const std::vector<const Value *> &) const = 0;
+    virtual std::string name() const = 0;
     virtual ~Operation() = default;
 };
 
@@ -54,9 +57,6 @@ public:
     {                                                                                  \
         return bind_args(this, (proc), args);                                          \
     }
-
-std::vector<const Value *> build_ptrs(
-    const std::vector<std::unique_ptr<Value>> &given_args);
 
 struct ArgMatch
 {
@@ -69,7 +69,25 @@ std::vector<ArgMatch> match_arguments(
     const std::vector<ArgSpec> &manifest, const std::vector<std::string> &given_keys);
 
 std::vector<const Value *> build_ptrs_from_match(
-    const std::vector<std::unique_ptr<Value>> &given_args,
-    const std::vector<ArgMatch> &match);
+    const std::vector<const Value *> &given_args, const std::vector<ArgMatch> &match);
+
+using OpFactory = std::unique_ptr<Operation> (*)();
+using OpDatabase = std::map<String, OpFactory>;
+
+OpDatabase &global_op_db();
 
 } // namespace aquila::interpreter
+
+template <typename OpClass>
+struct register_op_global
+{
+    register_op_global()
+    {
+        OpClass op;
+        aquila::interpreter::global_op_db().insert_or_assign(op.name(),
+            []() -> std::unique_ptr<aquila::interpreter::Operation>
+            { return std::make_unique<OpClass>(); });
+    }
+};
+
+#define REGISTER(opclass) inline register_op_global<opclass> __register_##opclass;

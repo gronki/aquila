@@ -23,6 +23,7 @@ public:
         ss << "I got an float " << a << ", int " << b << " and string " << s << ".";
         return std::make_unique<StrValue>(ss.str());
     }
+    std::string name() const override { return "test"; }
 };
 
 class EmptyOperation : public Operation
@@ -30,6 +31,7 @@ class EmptyOperation : public Operation
 public:
     BIND_ARGS(&EmptyOperation::run);
     std::unique_ptr<Value> run() const { return std::make_unique<StrValue>("noooo"); }
+    std::string name() const override { return "test"; }
 };
 
 // class VariaOperation : public Operation
@@ -60,6 +62,7 @@ public:
     {
         return std::make_unique<RealValue>(a * b);
     }
+    std::string name() const override { return "test"; }
 };
 
 TEST(normal)

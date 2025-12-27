@@ -8,8 +8,8 @@ namespace aquila::interpreter
  * Definitions of static procedures in this file.
  */
 static void parse_basic_expression(LazyTokenArray &tokens, std::unique_ptr<AstNode> &node);
-static void parse_function_argument_list(LazyTokenArray &tokens,
-                                         std::vector<AstOpNode::OpArg> &node_args);
+static void parse_function_argument_list(
+    LazyTokenArray &tokens, std::vector<AstOpNode::OpArg> &node_args);
 static void parse_expression(LazyTokenArray &tokens, std::unique_ptr<AstNode> &node);
 
 /**
@@ -73,8 +73,8 @@ static void parse_basic_expression(LazyTokenArray &tokens, std::unique_ptr<AstNo
 /**
  * Parse function argument list (starting from the first token after the opening brace).
  */
-static void parse_function_argument_list(LazyTokenArray &tokens,
-                                         std::vector<AstOpNode::OpArg> &node_args)
+static void parse_function_argument_list(
+    LazyTokenArray &tokens, std::vector<AstOpNode::OpArg> &node_args)
 {
 
     while (true)
@@ -97,8 +97,8 @@ static void parse_function_argument_list(LazyTokenArray &tokens,
 
         AstOpNode::OpArg arg;
 
-        if (cur_token.type == TokenType::IDENT &&
-            maybe_kv_sep == Token(TokenType::DELIM, KWARG_DELIM))
+        if (cur_token.type == TokenType::IDENT
+            && maybe_kv_sep == Token(TokenType::DELIM, KWARG_DELIM))
         {
             tokens.next_token(2);
             arg.key = std::move(cur_token.value);
@@ -127,8 +127,8 @@ static void parse_function_argument_list(LazyTokenArray &tokens,
         }
         else
         {
-            throw std::runtime_error(std::string("expected , or ), but got: ") +
-                                     cur_token.value);
+            throw std::runtime_error(
+                std::string("expected , or ), but got: ") + cur_token.value);
         }
     }
 
@@ -142,8 +142,6 @@ static void parse_function_argument_list(LazyTokenArray &tokens,
 static void parse_expression(LazyTokenArray &tokens, std::unique_ptr<AstNode> &node)
 {
     parse_basic_expression(tokens, node);
-
-    std::cout << "CHAIN " << tokens.cur_token() << std::endl;
 
     while (tokens.cur_token() == Token(TokenType::DELIM, CHAIN_CALL_DELIM))
     {
@@ -159,8 +157,8 @@ static void parse_expression(LazyTokenArray &tokens, std::unique_ptr<AstNode> &n
             // stadard chaining: X % f(Y) -> F(X, Y)
             AstOpNode::OpArg first_arg;
             first_arg.arg_val = std::move(node);
-            parent_call_node->args.insert(parent_call_node->args.begin(),
-                                          std::move(first_arg));
+            parent_call_node->args.insert(
+                parent_call_node->args.begin(), std::move(first_arg));
             node = std::move(parent_node);
         }
         else if (auto *parent_call_node = dynamic_cast<AstRefNode *>(parent_node.get()))
@@ -178,7 +176,8 @@ static void parse_expression(LazyTokenArray &tokens, std::unique_ptr<AstNode> &n
         }
         else
         {
-            throw std::runtime_error("incorrect chaining");
+            throw std::runtime_error(
+                "incorrect chaining: only identifier X%Y or function X%F() allowed");
         }
     }
 

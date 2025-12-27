@@ -97,7 +97,9 @@ link_libraries(aqnew)
 
 add_executable(aqneo src_cpp/app/aqneo.cpp)
 add_executable(aqfindstar src_cpp/app/aqfindstar.cpp)
-install(TARGETS aqneo aqfindstar DESTINATION ${CMAKE_INSTALL_BINDIR})
+add_executable(aq2cpp src_cpp/app/aq2cpp.cpp)
+install(TARGETS aqneo aqfindstar aq2cpp DESTINATION ${CMAKE_INSTALL_BINDIR})
+target_link_libraries(aq2cpp PRIVATE ${READLINE_LIBRARIES})
 
 file(GLOB TEST_SOURCES CONFIGURE_DEPENDS test/*.cpp)
 

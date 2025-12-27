@@ -3,6 +3,7 @@
 #include <iostream>
 #include <memory>
 #include <ostream>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -20,6 +21,12 @@ struct Value
     virtual std::unique_ptr<Value> clone() const = 0;
     virtual ~Value() = default;
     virtual void write(std::ostream &os) const = 0;
+    std::string str() const
+    {
+        std::stringstream ss;
+        write(ss);
+        return ss.str();
+    }
 };
 
 inline std::ostream &operator<<(std::ostream &os, const Value &v)
@@ -84,8 +91,8 @@ struct SimpleValue : public AnySimpleValue
                   << std::endl;
         try
         {
-            const SimpleValue<T> &other_sametype = dynamic_cast<const SimpleValue<T> &>(
-                other);
+            const SimpleValue<T> &other_sametype =
+                dynamic_cast<const SimpleValue<T> &>(other);
             return other_sametype.value == value;
         }
         catch (const std::bad_cast &ex)
@@ -122,8 +129,7 @@ struct SequenceValue : public Value
             items.push_back(item->clone());
         }
     }
-    SequenceValue(SequenceValue &&other) : items(std::move(other.items)) {}
-    SequenceValue(ValuePtrVector &&items) : items(std::move(items)) {}
+    SequenceValue(ValuePtrVector items) : items(std::move(items)) {}
 
     void write(std::ostream &os) const override
     {

@@ -9,10 +9,17 @@ namespace aquila::interpreter
 
 using std::size_t;
 
+OpDatabase &global_op_db()
+{
+    static OpDatabase db;
+    return db;
+}
+
 bool ArgSpec::has_default() const
 {
     return default_int.has_value() || default_real.has_value() || default_str.has_value();
 }
+
 std::unique_ptr<Value> ArgSpec::build_default() const
 {
     if (int(default_int.has_value()) + int(default_real.has_value())
@@ -174,7 +181,7 @@ std::vector<ArgMatch> match_arguments(
 }
 
 std::vector<const Value *> build_ptrs_from_match(
-    const std::vector<std::unique_ptr<Value>> &given_args, const std::vector<ArgMatch> &match)
+    const std::vector<const Value *> &given_args, const std::vector<ArgMatch> &match)
 {
     const size_t n_args = match.size();
 
@@ -185,7 +192,7 @@ std::vector<const Value *> build_ptrs_from_match(
         if (match[ispec].matched)
         {
             auto iarg = match[ispec].pos;
-            args[ispec] = given_args[iarg].get();
+            args[ispec] = given_args[iarg];
             continue;
         }
 

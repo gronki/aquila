@@ -12,28 +12,6 @@
 using namespace aquila;
 using namespace aquila::interpreter;
 
-// class TestOperation : public Operation
-// {
-// public:
-//     BIND_ARGS(&TestOperation::run);
-
-//     std::unique_ptr<Value> run(const RealValue &a, const IntValue &b, const StrValue &s) const
-//     {
-//         std::stringstream ss;
-//         ss << "I got an float " << a << ", int " << b << " and string " << s << ".";
-//         return std::make_unique<StrValue>(ss.str());
-//     }
-
-//     std::optional<ArgListManifest> arg_manifest() const override
-//     {
-//         return ArgListManifest{
-//             {.name = "a"},
-//             {.name = "b", .default_int = 3},
-//             {.name = "c", .default_str = "none"},
-//         };
-//     }
-// };
-
 TEST(match1)
 {
     std::vector<ArgSpec> manifest{

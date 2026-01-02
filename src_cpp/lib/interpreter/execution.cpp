@@ -50,7 +50,7 @@ static std::unique_ptr<Value> op_call_with_sequencing(
         {
             sequence_len = seq_arg->size();
         }
-        else if (sequence_len != seq_arg->size())
+        else if (sequence_len != Int(seq_arg->size()))
         {
             throw std::runtime_error(
                 std::string("sequence length must be the same but got: ")

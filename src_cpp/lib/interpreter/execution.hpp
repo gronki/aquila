@@ -64,43 +64,7 @@ public:
             match = match_arguments(maybe_manifest.value(), keys);
     }
 
-    const Value *yield() override
-    {
-        if (value)
-            return value.get();
-
-        std::vector<const Value *> arg_results;
-        arg_results.reserve(args.size());
-
-        for (auto &arg : args)
-        {
-            arg_results.push_back(arg->yield());
-        }
-
-        try
-        {
-            if (use_match)
-            {
-                value = op->call(build_ptrs_from_match(arg_results, match));
-            }
-            else
-            {
-                value = op->call(arg_results);
-            }
-        }
-        catch (const std::runtime_error &e)
-        {
-            throw std::runtime_error(std::string("Error procession operation ")
-                + op->name() + ": " + e.what());
-        }
-
-        for (auto &arg : args)
-        {
-            arg->clean();
-        }
-
-        return value.get();
-    }
+    const Value *yield() override;
 
     void clean() override { value = nullptr; }
 };

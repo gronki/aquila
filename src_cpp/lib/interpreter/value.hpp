@@ -131,6 +131,8 @@ struct SequenceValue : public Value
     }
     SequenceValue(ValuePtrVector items) : items(std::move(items)) {}
 
+    size_t size() const { return items.size(); }
+
     void write(std::ostream &os) const override
     {
         os << "[";

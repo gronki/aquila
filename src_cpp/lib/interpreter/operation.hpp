@@ -84,6 +84,7 @@ struct register_op_global
     register_op_global()
     {
         OpClass op;
+        std::cout << "Registering operation " << op.name() << std::endl;
         aquila::interpreter::global_op_db().insert_or_assign(op.name(),
             []() -> std::unique_ptr<aquila::interpreter::Operation>
             { return std::make_unique<OpClass>(); });

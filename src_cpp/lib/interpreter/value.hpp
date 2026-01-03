@@ -19,8 +19,8 @@ struct Value
     Value(const Value &) = delete;
     Value &operator=(const Value &) = delete;
     virtual std::unique_ptr<Value> clone() const = 0;
-    virtual ~Value() = default;
     virtual void write(std::ostream &os) const = 0;
+    virtual ~Value() = default;
     std::string str() const
     {
         std::stringstream ss;
@@ -111,6 +111,10 @@ inline void SimpleValue<std::string>::write(std::ostream &os) const
 using IntValue = SimpleValue<Int>;
 using RealValue = SimpleValue<Real>;
 using StrValue = SimpleValue<String>;
+
+struct CompoundValue : public Value
+{
+};
 
 using ValuePtrVector = std::vector<std::unique_ptr<Value>>;
 

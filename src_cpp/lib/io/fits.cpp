@@ -1,12 +1,12 @@
 #include "fits.hpp"
 #include <fitsio.h>
+#include <sstream>
 #include <stdexcept>
 #include <vector>
-#include <sstream>
 
 using namespace aquila;
 
-void __throw_for_error(int status, const char *file, int line)
+static void __throw_for_error(int status, const char *file, int line)
 {
     if (status)
     {
@@ -41,7 +41,7 @@ Buffer<Real> aquila::read_fits(const String &filename)
     throw_for_error(status);
 
     Buffer<Real> buf(nx, ny);
-    View<Real> img{buf};
+    MutableView<Real> img{buf};
     for (Int ix = 0; ix < nx; ix++)
     {
         for (Int iy = 0; iy < ny; iy++)

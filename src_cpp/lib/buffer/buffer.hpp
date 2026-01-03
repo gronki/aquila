@@ -25,23 +25,24 @@ template <typename T>
 class View;
 
 template <typename T>
+class MutableView;
+
+template <typename T>
 class Buffer
 {
     std::vector<T> buffer;
-    const Int nx, ny;
+    Int nx, ny;
 
 public:
-    Buffer(Int nx, Int ny) : nx(nx), ny(ny) { buffer.resize(nx * ny); }
+    Buffer(Int nx, Int ny) : buffer(nx * ny), nx(nx), ny(ny) {}
 
-    Buffer(Int nx, Int ny, T value) : nx(nx), ny(ny)
+    Buffer(Int nx, Int ny, T value) : buffer(nx * ny), nx(nx), ny(ny)
     {
-        buffer.resize(nx * ny);
         std::fill(buffer.begin(), buffer.end(), value);
     }
 
-    Buffer(const View<T> &view) : nx(view.nx), ny(view.ny)
+    Buffer(const View<T> &view) : buffer(view.nx * view.ny), nx(view.nx), ny(view.ny)
     {
-        buffer.resize(nx * ny);
         for (Int ivec = 0; ivec < view.vecs(); ivec++)
         {
             const T *srcrow = view.vec(ivec);
@@ -92,55 +93,141 @@ public:
         return {*this, ix_lo, ix_hi, iy_lo, iy_hi};
     }
 
+    View<T> mut_view() { return {*this}; }
+    View<T> mut_view(Int ix_lo, Int ix_hi, Int iy_lo, Int iy_hi)
+    {
+        return {*this, ix_lo, ix_hi, iy_lo, iy_hi};
+    }
+
     friend class View<T>;
+    friend class MutableView<T>;
 };
 
 template <typename T>
 class View
 {
-    Buffer<T> *buf = nullptr;
+    const Buffer<T> *buf = nullptr;
     const Int off_x, off_y, nx, ny, buf_nx, buf_ny;
 
 public:
-    View(Buffer<T> &buf)
-        : buf(&buf), off_x(0), off_y(0), nx(buf.nx), buf_nx(buf.nx), ny(buf.ny),
-          buf_ny(buf.ny)
+    View(const Buffer<T> &buf) :
+        buf(&buf), off_x(0), off_y(0), nx(buf.nx), buf_nx(buf.nx), ny(buf.ny),
+        buf_ny(buf.ny)
     {
     }
 
-    View(Buffer<T> &buf, Int ix_lo, Int ix_hi, Int iy_lo, Int iy_hi)
-        : buf(&buf), buf_nx(buf.nx), buf_ny(buf.ny),
-          off_x(wrap_idx(ix_lo, buf.cols())), off_y(wrap_idx(iy_lo, buf.rows())),
-          nx(wrap_idx(ix_hi, buf.cols()) - off_x),
-          ny(wrap_idx(iy_hi, buf.rows()) - off_y)
+    View(const Buffer<T> &buf, Int ix_lo, Int ix_hi, Int iy_lo, Int iy_hi) :
+        buf(&buf), buf_nx(buf.nx), buf_ny(buf.ny), off_x(wrap_idx(ix_lo, buf.cols())),
+        off_y(wrap_idx(iy_lo, buf.rows())), nx(wrap_idx(ix_hi, buf.cols()) - off_x),
+        ny(wrap_idx(iy_hi, buf.rows()) - off_y)
     {
 #ifndef NDEBUG
-        std::cout << "requested slice " << ix_lo << ":" << ix_hi << " " << iy_lo
-                  << ":" << iy_hi << " pointing at " << off_x << ":"
-                  << off_x + nx << " " << off_y << ":" << off_y + ny << " ("
-                  << nx << "x" << ny << ")"
-                  << " from frame " << buf.cols() << "x" << buf.rows()
-                  << std::endl;
+        std::cout << "requested slice " << ix_lo << ":" << ix_hi << " " << iy_lo << ":"
+                  << iy_hi << " pointing at " << off_x << ":" << off_x + nx << " "
+                  << off_y << ":" << off_y + ny << " (" << nx << "x" << ny << ")"
+                  << " from frame " << buf.cols() << "x" << buf.rows() << std::endl;
 #endif
 
         check(nx > 0);
         check(ny > 0);
     }
 
-    View(View<T> &view, Int ix_lo, Int ix_hi, Int iy_lo, Int iy_hi)
-        : buf(view.buf), buf_nx(view.buf_nx), buf_ny(view.buf_ny),
-          off_x(view.off_x + wrap_idx(ix_lo, view.cols())),
-          off_y(view.off_y + wrap_idx(iy_lo, view.rows())),
-          nx(wrap_idx(ix_hi, view.cols()) - wrap_idx(ix_lo, view.cols())),
-          ny(wrap_idx(iy_hi, view.rows()) - wrap_idx(iy_lo, view.rows()))
+    View(const View<T> &view, Int ix_lo, Int ix_hi, Int iy_lo, Int iy_hi) :
+        buf(view.buf), buf_nx(view.buf_nx), buf_ny(view.buf_ny),
+        off_x(view.off_x + wrap_idx(ix_lo, view.cols())),
+        off_y(view.off_y + wrap_idx(iy_lo, view.rows())),
+        nx(wrap_idx(ix_hi, view.cols()) - wrap_idx(ix_lo, view.cols())),
+        ny(wrap_idx(iy_hi, view.rows()) - wrap_idx(iy_lo, view.rows()))
     {
 #ifndef NDEBUG
-        std::cout << "requested slice " << ix_lo << ":" << ix_hi << " " << iy_lo
-                  << ":" << iy_hi << " pointing at " << off_x << ":"
-                  << off_x + nx << " " << off_y << ":" << off_y + ny << " ("
-                  << nx << "x" << ny << ")"
-                  << " from frame " << view.buf_nx << "x" << view.buf_ny
-                  << std::endl;
+        std::cout << "requested slice " << ix_lo << ":" << ix_hi << " " << iy_lo << ":"
+                  << iy_hi << " pointing at " << off_x << ":" << off_x + nx << " "
+                  << off_y << ":" << off_y + ny << " (" << nx << "x" << ny << ")"
+                  << " from frame " << view.buf_nx << "x" << view.buf_ny << std::endl;
+#endif
+
+        check(nx > 0);
+        check(ny > 0);
+    }
+    View(const MutableView<T> &view) :
+        buf(view.buf), buf_nx(view.buf_nx), buf_ny(view.buf_ny), off_x(view.off_x),
+        off_y(view.off_y), nx(view.nx), ny(view.ny)
+    {
+    }
+
+    const T &operator()(const Int ix, const Int iy) const noexcept
+    {
+        check(ix >= 0);
+        check(ix < nx);
+        check(iy >= 0);
+        check(iy < ny);
+        return buf->buffer[buf_ny * (ix + off_x) + (iy + off_y)];
+    }
+
+    Int cols() const noexcept { return nx; }
+    Int rows() const noexcept { return ny; }
+    Int size() const noexcept { return nx * ny; }
+    bool is_contiguous() const noexcept { return (ny == buf_ny) && (off_y == 0); }
+
+    Int vecs() const noexcept { return nx; }
+    Int nvec() const noexcept { return ny; }
+    const T *vec(Int ivec) const noexcept
+    {
+        check(ivec < vecs());
+        return &(buf->buffer[off_y + buf_ny * (ivec + off_x)]);
+    }
+
+    View<T> view(Int ix_lo, Int ix_hi, Int iy_lo, Int iy_hi)
+    {
+        return {*this, ix_lo, ix_hi, iy_lo, iy_hi};
+    }
+
+    friend class Buffer<T>;
+    template <typename U>
+    friend std::ostream &operator<<(std::ostream &os, const View<U> &buf);
+};
+
+template <typename T>
+class MutableView
+{
+    Buffer<T> *buf = nullptr;
+    const Int off_x, off_y, nx, ny, buf_nx, buf_ny;
+
+public:
+    MutableView(Buffer<T> &buf) :
+        buf(&buf), off_x(0), off_y(0), nx(buf.nx), buf_nx(buf.nx), ny(buf.ny),
+        buf_ny(buf.ny)
+    {
+    }
+
+    MutableView(Buffer<T> &buf, Int ix_lo, Int ix_hi, Int iy_lo, Int iy_hi) :
+        buf(&buf), buf_nx(buf.nx), buf_ny(buf.ny), off_x(wrap_idx(ix_lo, buf.cols())),
+        off_y(wrap_idx(iy_lo, buf.rows())), nx(wrap_idx(ix_hi, buf.cols()) - off_x),
+        ny(wrap_idx(iy_hi, buf.rows()) - off_y)
+    {
+#ifndef NDEBUG
+        std::cout << "requested slice " << ix_lo << ":" << ix_hi << " " << iy_lo << ":"
+                  << iy_hi << " pointing at " << off_x << ":" << off_x + nx << " "
+                  << off_y << ":" << off_y + ny << " (" << nx << "x" << ny << ")"
+                  << " from frame " << buf.cols() << "x" << buf.rows() << std::endl;
+#endif
+
+        check(nx > 0);
+        check(ny > 0);
+    }
+
+    MutableView(const MutableView<T> &view, Int ix_lo, Int ix_hi, Int iy_lo, Int iy_hi) :
+        buf(view.buf), buf_nx(view.buf_nx), buf_ny(view.buf_ny),
+        off_x(view.off_x + wrap_idx(ix_lo, view.cols())),
+        off_y(view.off_y + wrap_idx(iy_lo, view.rows())),
+        nx(wrap_idx(ix_hi, view.cols()) - wrap_idx(ix_lo, view.cols())),
+        ny(wrap_idx(iy_hi, view.rows()) - wrap_idx(iy_lo, view.rows()))
+    {
+#ifndef NDEBUG
+        std::cout << "requested slice " << ix_lo << ":" << ix_hi << " " << iy_lo << ":"
+                  << iy_hi << " pointing at " << off_x << ":" << off_x + nx << " "
+                  << off_y << ":" << off_y + ny << " (" << nx << "x" << ny << ")"
+                  << " from frame " << view.buf_nx << "x" << view.buf_ny << std::endl;
 #endif
 
         check(nx > 0);
@@ -168,10 +255,7 @@ public:
     Int cols() const noexcept { return nx; }
     Int rows() const noexcept { return ny; }
     Int size() const noexcept { return nx * ny; }
-    bool is_contiguous() const noexcept
-    {
-        return (ny == buf_ny) && (off_y == 0);
-    }
+    bool is_contiguous() const noexcept { return (ny == buf_ny) && (off_y == 0); }
 
     Int vecs() const noexcept { return nx; }
     Int nvec() const noexcept { return ny; }
@@ -186,7 +270,7 @@ public:
         return &(buf->buffer[off_y + buf_ny * (ivec + off_x)]);
     }
 
-    View<T> &operator=(T val)
+    MutableView<T> &operator=(T val)
     {
         for (Int irow = 0; irow < vecs(); irow++)
         {
@@ -196,7 +280,7 @@ public:
         return *this;
     }
 
-    View<T> &operator=(const View<T> &other)
+    MutableView<T> &operator=(const View<T> &other)
     {
         check(rows() == other.rows());
         check(cols() == other.cols());
@@ -209,14 +293,12 @@ public:
         return *this;
     }
 
-    View<T> view(Int ix_lo, Int ix_hi, Int iy_lo, Int iy_hi)
+    MutableView<T> view(Int ix_lo, Int ix_hi, Int iy_lo, Int iy_hi)
     {
         return {*this, ix_lo, ix_hi, iy_lo, iy_hi};
     }
 
     friend class Buffer<T>;
-    template <typename U>
-    friend std::ostream &operator<<(std::ostream &os, const View<U> &buf);
 };
 
 template <typename U>

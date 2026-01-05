@@ -176,7 +176,7 @@ const Value *OpNode::yield()
     catch (const std::runtime_error &e)
     {
         throw std::runtime_error(
-            std::string("Error procession operation ") + op->name() + ": " + e.what());
+            std::string("Error in operation ") + op->name() + ": " + e.what());
     }
 
     for (auto &arg : args)

@@ -4,6 +4,7 @@
 #include <ostream>
 #include <vector>
 
+#include "characters.hpp"
 #include "token.hpp"
 #include "value.hpp"
 
@@ -67,7 +68,7 @@ struct AstExpandNode : public AstNode
 
     virtual void _print(std::ostream &os, Int indent) const
     {
-        os << (kind == Kind::EXPANSION ? "*" : "&");
+        os << (kind == Kind::EXPANSION ? EXPAND_DELIM : CONTRACT_DELIM);
         if (expandable)
         {
             expandable->_print(os, indent);

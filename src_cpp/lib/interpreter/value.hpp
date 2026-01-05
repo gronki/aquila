@@ -172,6 +172,7 @@ namespace aquila
 
 // export frequently used names
 using interpreter::RealValue;
+using interpreter::SequenceValue;
 using interpreter::StrValue;
 using interpreter::Value;
 using interpreter::ValuePtr;

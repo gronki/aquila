@@ -76,19 +76,44 @@ using OpDatabase = std::map<String, OpFactory>;
 
 OpDatabase &global_op_db();
 
-} // namespace aquila::interpreter
-
 template <typename OpClass>
 struct register_op_global
 {
     register_op_global()
     {
         OpClass op;
-        std::cout << "Registering operation " << op.name() << std::endl;
-        aquila::interpreter::global_op_db().insert_or_assign(op.name(),
+        auto name = op.name();
+
+        auto [it, inserted] = aquila::interpreter::global_op_db().insert({
+            name,
             []() -> std::unique_ptr<aquila::interpreter::Operation>
-            { return std::make_unique<OpClass>(); });
+            { return std::make_unique<OpClass>(); },
+        });
+
+        if (inserted)
+        {
+            std::cout << "Registered operation " << name << std::endl;
+        }
+        else
+        {
+            std::cerr << "Duplicate operation definition: " << name << ", skipping..."
+                      << std::endl;
+            return;
+        }
     }
 };
 
-#define REGISTER(opclass) inline register_op_global<opclass> __register_##opclass;
+#define REGISTER(opclass)                                                              \
+    aquila::interpreter::register_op_global<opclass> __register__operation__##opclass;
+
+} // namespace aquila::interpreter
+
+namespace aquila
+{
+
+// export frequently used names
+using interpreter::ArgManifest;
+using interpreter::ArgSpec;
+using interpreter::Operation;
+
+} // namespace aquila

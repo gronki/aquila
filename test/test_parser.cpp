@@ -1,4 +1,5 @@
 #include "../src_cpp/lib/interpreter/ast.hpp"
+#include "../src_cpp/lib/interpreter/characters.hpp"
 #include "../src_cpp/lib/interpreter/parser.hpp"
 #include "../src_cpp/lib/interpreter/tokenizer.hpp"
 #include "testmacros.hpp"
@@ -74,7 +75,8 @@ TEST(call)
 
 TEST(call_chain_keys)
 {
-    Tokenizer tokenizer(" ff (3.0) % gg(key: \"a\"  )");
+    Tokenizer tokenizer(std::string(" ff (3.0)") + std::string(1, CHAIN_CALL_DELIM)
+        + " gg(key: \"a\"  )");
     // equivalent to: gg(ff(3.0), key: "a")
 
     LazyTokenArray token_array(tokenizer);
@@ -108,7 +110,8 @@ TEST(call_chain_keys)
 
 TEST(call_chain_keys_2)
 {
-    Tokenizer tokenizer(" t( ff (3.0) %gg(key: \"a\"  ) )");
+    Tokenizer tokenizer(std::string(" t( ff (3.0) ") + std::string(1, CHAIN_CALL_DELIM)
+        + "gg(key: \"a\"  ) )");
     // equivalent to: gg(ff(3.0), key: "a")
 
     LazyTokenArray token_array(tokenizer);
@@ -149,7 +152,8 @@ TEST(call_chain_keys_2)
 
 TEST(call_chain_keys_3)
 {
-    Tokenizer tokenizer(" ff (3.0) % gg( ) %t()");
+    Tokenizer tokenizer(std::string(" ff (3.0) ") + std::string(1, CHAIN_CALL_DELIM)
+        + " gg( ) " + std::string(1, CHAIN_CALL_DELIM) + "t()");
     // equivalent to: gg(ff(3.0), key: "a")
 
     LazyTokenArray token_array(tokenizer);
@@ -185,7 +189,8 @@ TEST(call_chain_keys_3)
 
 TEST(call_param)
 {
-    Tokenizer tokenizer(" ff (3.0) % gg");
+    Tokenizer tokenizer(
+        std::string(" ff (3.0) ") + std::string(1, CHAIN_CALL_DELIM) + " gg");
     // equivalent to: gg(ff(3.0), key: "a")
 
     LazyTokenArray token_array(tokenizer);
@@ -218,8 +223,12 @@ TEST(call_param)
 
 TEST(print)
 {
-    Tokenizer tokenizer("  ff (3.0) % gg(key: \"a\" , \"q\"%split ) %t(p: q%prop, v: "
-                        "z) % ababa(33, xyz, 13) ");
+    Tokenizer tokenizer(std::string("  ff (3.0) ") + std::string(1, CHAIN_CALL_DELIM)
+        + " gg(key: \"a\" , \"q\"" + std::string(1, CHAIN_CALL_DELIM) + "split ) "
+        + std::string(1, CHAIN_CALL_DELIM) + "t(p: q" + std::string(1, CHAIN_CALL_DELIM)
+        + "prop, v: "
+          "z) "
+        + std::string(1, CHAIN_CALL_DELIM) + " ababa(33, xyz, 13) ");
     LazyTokenArray token_array(tokenizer);
     std::unique_ptr<AstNode> root;
     parse(token_array, root);

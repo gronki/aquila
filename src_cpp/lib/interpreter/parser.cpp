@@ -17,27 +17,23 @@ static void parse_expression(LazyTokenArray &tokens, std::unique_ptr<AstNode> &n
  */
 static void parse_basic_expression(LazyTokenArray &tokens, std::unique_ptr<AstNode> &node)
 {
-    const Token &token = tokens.cur_token();
+    Token token = tokens.cur_token();
 
     if (token.type == TokenType::END)
         return;
 
     if (token.type == TokenType::NUM_LITERAL)
     {
-        auto value_node = std::make_unique<AstValueNode>();
-        value_node->constant = std::make_unique<RealValue>(std::stod(token.value));
-        value_node->loc = token.loc;
-        node = std::move(value_node);
+        node = std::make_unique<AstValueNode>(
+            std::make_unique<RealValue>(std::stod(token.value)), token.loc);
         tokens.next_token();
         return;
     }
 
     if (token.type == TokenType::STR_LITERAL)
     {
-        auto value_node = std::make_unique<AstValueNode>();
-        value_node->constant = std::make_unique<StrValue>(token.value);
-        value_node->loc = token.loc;
-        node = std::move(value_node);
+        node = std::make_unique<AstValueNode>(
+            std::make_unique<StrValue>(token.value), token.loc);
         tokens.next_token();
         return;
     }
@@ -52,10 +48,7 @@ static void parse_basic_expression(LazyTokenArray &tokens, std::unique_ptr<AstNo
 
     if (maybe_opening_brace != Token(TokenType::DELIM, "("))
     {
-        auto ref_node = std::make_unique<AstRefNode>();
-        ref_node->refname = token.value;
-        ref_node->loc = token.loc;
-        node = std::move(ref_node);
+        node = std::make_unique<AstRefNode>(token.value, token.loc);
         return;
     }
 
@@ -63,11 +56,11 @@ static void parse_basic_expression(LazyTokenArray &tokens, std::unique_ptr<AstNo
 
     // here we know that we are parsing function argument list
 
-    auto op_node = std::make_unique<AstOpNode>();
-    op_node->opname = token.value;
-    op_node->loc = token.loc;
-    parse_function_argument_list(tokens, op_node->args);
-    node = std::move(op_node);
+    auto opname = token.value;
+    auto loc = token.loc;
+    std::vector<AstOpNode::OpArg> args;
+    parse_function_argument_list(tokens, args);
+    node = std::make_unique<AstOpNode>(opname, std::move(args), loc);
 }
 
 /**
@@ -100,11 +93,28 @@ static void parse_function_argument_list(
         if (cur_token.type == TokenType::IDENT
             && maybe_kv_sep == Token(TokenType::DELIM, KWARG_DELIM))
         {
-            tokens.next_token(2);
+            arg.has_key = true;
             arg.key = std::move(cur_token.value);
+            cur_token = tokens.next_token(2);
         }
-        parse_expression(tokens, arg.arg_val);
 
+        bool expansion = tokens.cur_token() == Token(TokenType::DELIM, EXPAND_DELIM);
+        bool contraction = tokens.cur_token() == Token(TokenType::DELIM, CONTRACT_DELIM);
+
+        if (expansion || contraction)
+            cur_token = tokens.next_token();
+
+        if (expansion && arg.has_key)
+            throw std::runtime_error("Expansion not allowed here.");
+
+        std::unique_ptr<AstNode> arg_node;
+        parse_expression(tokens, arg_node);
+
+        if (expansion || contraction)
+            arg_node = std::make_unique<AstExpandNode>(std::move(arg_node),
+                expansion ? AstExpandNode::Kind::EXPANSION : AstExpandNode::Kind::CONTRACTION,
+                cur_token.loc);
+        arg.arg_val = std::move(arg_node);
         node_args.push_back(std::move(arg));
 
         cur_token = tokens.cur_token();
@@ -149,6 +159,13 @@ static void parse_expression(LazyTokenArray &tokens, std::unique_ptr<AstNode> &n
         // we might have a chained call here
         tokens.next_token();
 
+        auto cur_token = tokens.cur_token();
+        bool contract_chain = cur_token == Token(TokenType::DELIM, CONTRACT_DELIM);
+        bool expand_chain = cur_token == Token(TokenType::DELIM, EXPAND_DELIM);
+
+        if (contract_chain || expand_chain)
+            tokens.next_token();
+
         std::unique_ptr<AstNode> parent_node;
         parse_basic_expression(tokens, parent_node);
 
@@ -156,23 +173,30 @@ static void parse_expression(LazyTokenArray &tokens, std::unique_ptr<AstNode> &n
         {
             // stadard chaining: X % f(Y) -> F(X, Y)
             AstOpNode::OpArg first_arg;
-            first_arg.arg_val = std::move(node);
+            first_arg.arg_val = contract_chain || expand_chain
+                ? std::make_unique<AstExpandNode>(std::move(node),
+                      contract_chain ? AstExpandNode::Kind::CONTRACTION
+                                     : AstExpandNode::Kind::EXPANSION,
+                      cur_token.loc)
+                : std::move(node);
             parent_call_node->args.insert(
                 parent_call_node->args.begin(), std::move(first_arg));
             node = std::move(parent_node);
         }
         else if (auto *parent_call_node = dynamic_cast<AstRefNode *>(parent_node.get()))
         {
+            if (contract_chain)
+                throw std::runtime_error("& not allowed here");
             // param function: X % Y -> param(X, "Y")
             // used to retrieve some (static) properties from a value
             // for example, an exposure time from FITS header
-            auto param_op = std::make_unique<AstOpNode>();
-            param_op->opname = "param";
-            param_op->args.push_back(AstOpNode::OpArg{.arg_val = std::move(node)});
-            auto param_arg = std::make_unique<AstValueNode>();
-            param_arg->constant = std::make_unique<StrValue>(parent_call_node->refname);
-            param_op->args.push_back(AstOpNode::OpArg{.arg_val = std::move(param_arg)});
-            node = std::move(param_op);
+            std::vector<AstOpNode::OpArg> args(2);
+            args[0].arg_val = std::move(node);
+            args[1].arg_val = std::make_unique<AstValueNode>(
+                std::make_unique<StrValue>(parent_call_node->refname),
+                parent_call_node->loc);
+            node = std::make_unique<AstOpNode>(
+                "param", std::move(args), args[0].arg_val->loc);
         }
         else
         {

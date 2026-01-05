@@ -5,7 +5,7 @@
 #include <readline/history.h>
 
 #include "../lib/interpreter/interpreter.hpp"
-#include "../../test/test_operations.hpp"
+// #include "../../test/test_operations.hpp"
 
 using namespace aquila;
 using namespace aquila::interpreter;

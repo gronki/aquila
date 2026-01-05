@@ -2,3 +2,9 @@
 - opcje: -hot [sigma], -only-hot [sigma]
 - opcja: -dark-has-bias
 - opcja: -dark-optimize
+
+
+lrgb(65000, file("../scratch/m42_R.fits"), file("../scratch/m42_G.fits"),file("../scratch/m42_B.fits")) % save(array("cR.fits", "cG.fits", "cB.fits"))
+
+array(*array(1,2), *array(3,4))
+pow(*array(2,3))

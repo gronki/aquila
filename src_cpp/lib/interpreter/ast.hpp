@@ -13,6 +13,10 @@ namespace aquila::interpreter
 struct AstNode
 {
     TokenLoc loc;
+
+    AstNode(const TokenLoc &loc) : loc(loc) {}
+    AstNode() {}
+
     virtual ~AstNode() = default;
     virtual void _print(std::ostream &, Int indent) const = 0;
     friend std::ostream &operator<<(std::ostream &os, const AstNode &node)
@@ -25,6 +29,11 @@ struct AstNode
 struct AstValueNode : public AstNode
 {
     std::unique_ptr<AnySimpleValue> constant;
+
+    AstValueNode(std::unique_ptr<AnySimpleValue> constant, const TokenLoc &loc) :
+        constant(std::move(constant)), AstNode(loc)
+    {
+    }
 
     virtual void _print(std::ostream &os, Int indent) const
     {
@@ -39,9 +48,45 @@ struct AstValueNode : public AstNode
     }
 };
 
+struct AstExpandNode : public AstNode
+{
+
+    enum class Kind
+    {
+        EXPANSION,
+        CONTRACTION
+    };
+
+    std::unique_ptr<AstNode> expandable;
+    Kind kind;
+
+    AstExpandNode(std::unique_ptr<AstNode> expandable, Kind kind, const TokenLoc &loc) :
+        expandable(std::move(expandable)), kind(kind), AstNode(loc)
+    {
+    }
+
+    virtual void _print(std::ostream &os, Int indent) const
+    {
+        os << (kind == Kind::EXPANSION ? "*" : "&");
+        if (expandable)
+        {
+            expandable->_print(os, indent);
+        }
+        else
+        {
+            os << "none";
+        }
+    }
+};
+
 struct AstRefNode : public AstNode
 {
     std::string refname;
+
+    AstRefNode(const std::string &refname, const TokenLoc &loc) :
+        refname(refname), AstNode(loc)
+    {
+    }
 
     virtual void _print(std::ostream &os, Int indent) const
     {
@@ -60,11 +105,17 @@ struct AstOpNode : public AstNode
 {
     struct OpArg
     {
+        bool has_key = false;
         std::string key = "";
         std::unique_ptr<AstNode> arg_val;
     };
     std::string opname;
     std::vector<OpArg> args;
+
+    AstOpNode(const std::string &opname, std::vector<OpArg> args, const TokenLoc &loc) :
+        opname(opname), args(std::move(args)), AstNode(loc)
+    {
+    }
 
     virtual void _print(std::ostream &os, Int indent) const
     {

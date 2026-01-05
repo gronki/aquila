@@ -3,6 +3,7 @@
 namespace aquila::interpreter::ops
 {
 
+REGISTER(SequenceOp);
 std::unique_ptr<Value> SequenceOp::call(const std::vector<const Value *> &args) const
 {
     std::vector<std::unique_ptr<Value>> items;

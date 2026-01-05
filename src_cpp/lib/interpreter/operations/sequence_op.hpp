@@ -12,6 +12,4 @@ struct SequenceOp : Operation
     std::string name() const override { return "array"; }
 };
 
-REGISTER(SequenceOp);
-
 } // namespace aquila::interpreter

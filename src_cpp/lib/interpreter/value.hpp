@@ -116,7 +116,8 @@ struct CompoundValue : public Value
 {
 };
 
-using ValuePtrVector = std::vector<std::unique_ptr<Value>>;
+using ValuePtr = std::unique_ptr<Value>;
+using ValuePtrVector = std::vector<ValuePtr>;
 
 struct SequenceValue : public Value
 {
@@ -124,9 +125,6 @@ struct SequenceValue : public Value
 
     SequenceValue(const SequenceValue &other)
     {
-#ifndef NDEBUG
-        std::cerr << "Warning: deep copying " << other << std::endl;
-#endif
         items.reserve(other.items.size());
         for (const auto &item : other.items)
         {
@@ -134,6 +132,7 @@ struct SequenceValue : public Value
         }
     }
     SequenceValue(ValuePtrVector items) : items(std::move(items)) {}
+    SequenceValue() : items(0) {}
 
     size_t size() const { return items.size(); }
 
@@ -151,7 +150,14 @@ struct SequenceValue : public Value
             {
                 os << ", ";
             }
-            item->write(os);
+            if (item)
+            {
+                item->write(os);
+            }
+            else
+            {
+                os << "(null)";
+            }
         }
         os << "]";
     }
@@ -160,3 +166,14 @@ struct SequenceValue : public Value
 };
 
 } // namespace aquila::interpreter
+
+namespace aquila
+{
+
+// export frequently used names
+using interpreter::RealValue;
+using interpreter::StrValue;
+using interpreter::Value;
+using interpreter::ValuePtr;
+
+} // namespace aquila

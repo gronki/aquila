@@ -1,6 +1,7 @@
 #include <iostream>
 
 #include "../src_cpp/lib/interpreter/interpreter.hpp"
+#include "../src_cpp/lib/interpreter/characters.hpp"
 
 #include "test_operations.hpp"
 #include "testmacros.hpp"
@@ -19,7 +20,10 @@ Namespace example_ns()
 TEST(example)
 {
     Namespace ns = example_ns();
-    auto exec = build_exectree_from_str(" add(1, 2) % mul(3)", ns, global_op_db());
+    auto exec = build_exectree_from_str(
+        std::string(" add(1, 2) ") + std::string(1, CHAIN_CALL_DELIM) + " mul(3)",
+        ns,
+        global_op_db());
     auto result = exec->yield();
     std::cout << (bool(result) ? result->str() : std::string("(null)")) << std::endl;
 }

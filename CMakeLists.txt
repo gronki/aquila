@@ -1,5 +1,12 @@
 cmake_minimum_required(VERSION 3.16)
+
 project(aquila LANGUAGES Fortran C CXX)
+
+
+set(CMAKE_CXX_STANDARD 20)       # request C++20
+set(CMAKE_CXX_STANDARD_REQUIRED ON)  # fail if compiler does not support it
+set(CMAKE_CXX_EXTENSIONS OFF)    # turn off compiler-specific extensions like gnu++20
+
 enable_testing()
 include(GNUInstallDirs)
 
@@ -10,7 +17,7 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 if(NOT DEFINED ENV{CFLAGS})
-    set(CMAKE_C_FLAGS_DEBUG   "-g3 -O0 -Wall -Wextra -Wpedantic -Werror=return-type -Werror=uninitialized -Werror=maybe-uninitialized -Werror=delete-incomplete -Wnon-virtual-dtor -Wno-unused-parameter")
+    set(CMAKE_C_FLAGS_DEBUG   "-g3 -O0 -Wall -Wextra -Wpedantic -Werror=return-type -Werror=uninitialized -Werror=maybe-uninitialized -Wno-unused-parameter")
     set(CMAKE_C_FLAGS_RELEASE "-O3 -ffast-math -march=native -DNDEBUG -g1")
 endif()
 if(NOT DEFINED ENV{CXXFLAGS})

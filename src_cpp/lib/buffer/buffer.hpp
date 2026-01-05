@@ -87,8 +87,8 @@ public:
         return buffer.data() + nvec() * ivec;
     }
 
-    View<T> view() { return {*this}; }
-    View<T> view(Int ix_lo, Int ix_hi, Int iy_lo, Int iy_hi)
+    View<T> view() const { return {*this}; }
+    View<T> view(Int ix_lo, Int ix_hi, Int iy_lo, Int iy_hi) const
     {
         return {*this, ix_lo, ix_hi, iy_lo, iy_hi};
     }
@@ -97,6 +97,11 @@ public:
     View<T> mut_view(Int ix_lo, Int ix_hi, Int iy_lo, Int iy_hi)
     {
         return {*this, ix_lo, ix_hi, iy_lo, iy_hi};
+    }
+
+    bool matches_shape(const View<T> &other) const noexcept
+    {
+        return (rows() == other.rows()) && (cols() == other.cols());
     }
 
     friend class View<T>;
@@ -176,10 +181,21 @@ public:
         check(ivec < vecs());
         return &(buf->buffer[off_y + buf_ny * (ivec + off_x)]);
     }
+    const T *data() const noexcept
+    {
+        if (!is_contiguous())
+            return nullptr;
+        return vec(0);
+    }
 
     View<T> view(Int ix_lo, Int ix_hi, Int iy_lo, Int iy_hi)
     {
         return {*this, ix_lo, ix_hi, iy_lo, iy_hi};
+    }
+
+    bool matches_shape(const View<T> &other) const noexcept
+    {
+        return (rows() == other.rows()) && (cols() == other.cols());
     }
 
     friend class Buffer<T>;
@@ -269,6 +285,18 @@ public:
         check(ivec < vecs());
         return &(buf->buffer[off_y + buf_ny * (ivec + off_x)]);
     }
+    T *data() noexcept
+    {
+        if (!is_contiguous())
+            return nullptr;
+        return vec(0);
+    }
+    const T *data() const noexcept
+    {
+        if (!is_contiguous())
+            return nullptr;
+        return vec(0);
+    }
 
     MutableView<T> &operator=(T val)
     {
@@ -298,6 +326,11 @@ public:
         return {*this, ix_lo, ix_hi, iy_lo, iy_hi};
     }
 
+    bool matches_shape(const View<T> &other) const noexcept
+    {
+        return (rows() == other.rows()) && (cols() == other.cols());
+    }
+
     friend class Buffer<T>;
 };
 
@@ -324,6 +357,18 @@ inline auto apply(const View<T> &one, F f)
     using U = decltype(f(std::declval<T>()));
     Buffer<U> result(nx, ny);
 
+    if (one.is_contiguous())
+    {
+        const T *__restrict one_data = one.data();
+        U *__restrict result_data = result.data();
+#pragma omp simd
+        for (Int i = 0; i < result.size(); i++)
+        {
+            result_data[i] = f(one_data[i]);
+        }
+        return result;
+    }
+
     for (Int ivec = 0; ivec < one.vecs(); ivec++)
     {
         const T *__restrict one_vec = one.vec(ivec);
@@ -347,6 +392,19 @@ inline auto apply(const View<T> &one, const View<U> &other, F f)
 
     using V = decltype(f(std::declval<T>(), std::declval<U>()));
     Buffer<V> result(nx, ny);
+
+    if (one.is_contiguous() && other.is_contiguous())
+    {
+        const T *__restrict one_data = one.data();
+        const U *__restrict other_data = other.data();
+        V *__restrict result_data = result.data();
+#pragma omp simd
+        for (Int i = 0; i < result.size(); i++)
+        {
+            result_data[i] = f(one_data[i], other_data[i]);
+        }
+        return result;
+    }
 
     for (Int ivec = 0; ivec < one.vecs(); ivec++)
     {
@@ -374,6 +432,20 @@ inline auto apply(const View<T> &one, const View<U> &other, const View<V> &onemo
 
     using W = decltype(f(std::declval<T>(), std::declval<U>(), std::declval<V>()));
     Buffer<W> result(nx, ny);
+
+    if (one.is_contiguous() && other.is_contiguous() && onemore.is_contiguous())
+    {
+        const T *__restrict one_data = one.data();
+        const U *__restrict other_data = other.data();
+        const V *__restrict onemore_data = onemore.data();
+        W *__restrict result_data = result.data();
+#pragma omp simd
+        for (Int i = 0; i < result.size(); i++)
+        {
+            result_data[i] = f(one_data[i], other_data[i], onemore_data[i]);
+        }
+        return result;
+    }
 
     for (Int ivec = 0; ivec < one.vecs(); ivec++)
     {

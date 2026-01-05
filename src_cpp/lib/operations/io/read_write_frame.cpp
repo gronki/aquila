@@ -4,12 +4,14 @@
 namespace aquila::ops
 {
 
-std::unique_ptr<Value> ReadFrame::run(const String &fn) const
+REGISTER(ReadFrame);
+ValuePtr ReadFrame::run(const String &fn) const
 {
     return std::make_unique<values::BufferValue>(read_fits(fn));
 }
 
-std::unique_ptr<Value> WriteFrame::run(const values::BufferValue &frame, const String &fn) const
+REGISTER(WriteFrame);
+ValuePtr WriteFrame::run(const values::BufferValue &frame, const String &fn) const
 {
     write_fits(fn, frame.buffer);
     return nullptr;

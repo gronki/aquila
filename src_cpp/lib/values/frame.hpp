@@ -1,3 +1,5 @@
+#pragma once
+
 #include "../buffer/buffer.hpp"
 #include "../interpreter/value.hpp"
 

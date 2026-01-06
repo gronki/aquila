@@ -5,7 +5,6 @@
 #include <iomanip>
 #include <iostream>
 #include <set>
-#include <stacktrace>
 #include <vector>
 
 #include "../../global/check.hpp"

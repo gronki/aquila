@@ -10,7 +10,8 @@ static std::unique_ptr<OpNode> build_op_node(
     auto op_it = opdb.find(ast_op_node.opname);
     if (op_it == opdb.end())
         throw std::runtime_error(std::string("Operation not found: ") + ast_op_node.opname);
-    auto op = op_it->second();
+    const OpDbEntry& op_entry = op_it->second;
+    auto op = op_entry.factory();
 
     if (!op)
         throw std::logic_error("Null operation pointer.");

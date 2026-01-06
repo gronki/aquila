@@ -49,6 +49,8 @@ struct Operation
     virtual std::optional<ArgManifest> arg_manifest() const { return std::nullopt; }
     virtual std::unique_ptr<Value> call(const std::vector<const Value *> &) const = 0;
     virtual std::string name() const = 0;
+    virtual std::string description() const { return ""; }
+    std::string signature_str() const;
     virtual ~Operation() = default;
 };
 
@@ -72,7 +74,13 @@ std::vector<const Value *> build_ptrs_from_match(
     const std::vector<const Value *> &given_args, const std::vector<ArgMatch> &match);
 
 using OpFactory = std::unique_ptr<Operation> (*)();
-using OpDatabase = std::map<String, OpFactory>;
+
+struct OpDbEntry
+{
+    OpFactory factory;
+    std::string signature_str, description;
+};
+using OpDatabase = std::map<String, OpDbEntry>;
 
 OpDatabase &global_op_db();
 
@@ -84,15 +92,20 @@ struct register_op_global
         OpClass op;
         auto name = op.name();
 
-        auto [it, inserted] = aquila::interpreter::global_op_db().insert({
-            name,
-            []() -> std::unique_ptr<aquila::interpreter::Operation>
-            { return std::make_unique<OpClass>(); },
-        });
+        OpDbEntry entry;
+        entry.factory = []() -> std::unique_ptr<aquila::interpreter::Operation>
+        { return std::make_unique<OpClass>(); };
+        entry.signature_str = op.signature_str();
+        entry.description = op.description();
+
+        auto [it, inserted] = aquila::interpreter::global_op_db().insert({name, entry});
 
         if (inserted)
         {
-            std::cout << "Registered operation " << name << std::endl;
+            std::cout << "operation " << entry.signature_str;
+            if (!entry.description.empty())
+                std::cout << ": " << entry.description;
+            std::cout << std::endl;
         }
         else
         {

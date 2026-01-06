@@ -1,5 +1,6 @@
 #include <map>
 #include <set>
+#include <sstream>
 
 #include "characters.hpp"
 #include "operation.hpp"
@@ -200,6 +201,39 @@ std::vector<const Value *> build_ptrs_from_match(
     }
 
     return args;
+}
+
+std::string Operation::signature_str() const
+{
+    std::stringstream ss;
+
+    ss << name() << "(";
+    auto manifest = arg_manifest();
+    if (!manifest.has_value())
+    {
+        ss << "...)";
+        return ss.str();
+    }
+    bool first = true;
+    for (const auto &argspec : manifest.value())
+    {
+        if (first)
+        {
+            first = false;
+        }
+        else
+        {
+            ss << ", ";
+        }
+        ss << argspec.name;
+        if (argspec.has_default())
+        {
+            auto def = argspec.build_default();
+            ss << ": " << def->str();
+        }
+    }
+    ss << ")";
+    return ss.str();
 }
 
 } // namespace aquila::interpreter

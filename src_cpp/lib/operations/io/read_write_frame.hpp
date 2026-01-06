@@ -16,6 +16,7 @@ struct ReadFrame : public Operation
         return ArgManifest{ArgSpec{.name = "filename"}};
     }
     std::string name() const { return "file"; }
+    std::string description() const override { return "Reads a FITS frame"; }
 };
 
 struct WriteFrame : public Operation
@@ -31,6 +32,10 @@ struct WriteFrame : public Operation
         };
     }
     std::string name() const { return "save"; }
+    std::string description() const override
+    {
+        return "Saves a FITS file, choose name with suffix if exists.";
+    }
 };
 
 } // namespace aquila::ops

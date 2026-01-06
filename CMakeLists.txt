@@ -99,7 +99,8 @@ file(GLOB_RECURSE AQNEW_SOURCES CONFIGURE_DEPENDS
 )
 add_library(aqnew SHARED ${AQNEW_SOURCES})
 target_include_directories(aqnew PUBLIC 
-    src_cpp/lib/buffer src_cpp/lib/io src_cpp/lib/interpreter src_cpp/lib/operations src_cpp/lib/values)
+    src_cpp/lib/buffer src_cpp/lib/io src_cpp/lib/interpreter 
+    src_cpp/lib/operations src_cpp/lib/values src_cpp/lib/utils)
 link_libraries(aqnew)
 
 add_executable(aqneo src_cpp/app/aqneo.cpp)

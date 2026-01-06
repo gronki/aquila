@@ -1,5 +1,6 @@
 #include "read_write_frame.hpp"
 #include "../../io/fits.hpp"
+#include "../../utils/file_utils.hpp"
 
 namespace aquila::ops
 {
@@ -13,7 +14,7 @@ ValuePtr ReadFrame::run(const String &fn) const
 REGISTER(WriteFrame);
 ValuePtr WriteFrame::run(const values::BufferValue &frame, const String &fn) const
 {
-    write_fits(fn, frame.buffer);
+    write_fits(utils::free_filename(fn), frame.buffer);
     return nullptr;
 }
 

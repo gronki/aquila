@@ -8,7 +8,7 @@ namespace aquila::ops
 
 struct ExampleOp : public Operation
 {
-    // std::unique_ptr<Value> call(const std::vector<const Value *> &) const;
+    // std::unique_ptr<Value> call(const std::vector<const Value *> &) const override;
 
     BIND_ARGS(&ExampleOp::run);
     ValuePtr run(const String &param) const;
@@ -18,7 +18,8 @@ struct ExampleOp : public Operation
         return ArgManifest{ArgSpec{.name = "param"}};
     }
 
-    std::string name() const { return "example"; }
+    std::string name() const override { return "example"; }
+    std::string description() const override { return ""; }
 };
 
 } // namespace aquila::ops

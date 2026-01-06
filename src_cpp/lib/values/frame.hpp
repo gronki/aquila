@@ -9,7 +9,7 @@ namespace aquila::values
 struct BufferValue : public interpreter::CompoundValue
 {
     Buffer<Real> buffer;
-    BufferValue(const View<Real> &v) : buffer(v) {}
+    BufferValue(Buffer<Real> v) : buffer(std::move(v)) {}
     std::unique_ptr<Value> clone() const
     {
         return std::make_unique<BufferValue>(buffer);

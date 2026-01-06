@@ -28,18 +28,20 @@ using CheckFunction = bool (*)(const Value &);
 
 struct ArgSpec
 {
-    std::string name, help = "";
-
+    std::string name;
+    
     // this might not be the prettiest way, but makes it easy
     // to build manifests with initializer lists and ensures
     // that user does not give anything crazy as defaults.
     std::optional<Int> default_int = std::nullopt;
     std::optional<Real> default_real = std::nullopt;
     std::optional<String> default_str = std::nullopt;
-
+    
     bool has_default() const;
     std::unique_ptr<Value> build_default() const;
     // CheckFunction check = default_check;
+
+    std::string help = "";
 };
 
 using ArgManifest = std::vector<ArgSpec>;
@@ -102,9 +104,9 @@ struct register_op_global
 
         if (inserted)
         {
-            std::cout << "operation " << entry.signature_str;
+            std::cout << "* " << entry.signature_str;
             if (!entry.description.empty())
-                std::cout << ": " << entry.description;
+                std::cout << " -- " << entry.description;
             std::cout << std::endl;
         }
         else

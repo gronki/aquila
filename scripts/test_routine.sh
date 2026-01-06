@@ -32,14 +32,14 @@ aqlrgb stack_L.fits testdata/m94/stack_{R,G,B}.fits -best -o lrgb.png
 test -f lrgb.fits
 test -f lrgb.png
 
-aq2 <examples/script/sho.aq2
+# aq2 <examples/script/sho.aq2
 
-test -f sho_r.fits
-test -f sho.png
+# test -f sho_r.fits
+# test -f sho.png
 
-aq2 <examples/script/stack.aq2
+# aq2 <examples/script/stack.aq2
 
-test -f bias_new.fits
-test -f stack_new.fits
+# test -f bias_new.fits
+# test -f stack_new.fits
 
 echo OK

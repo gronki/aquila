@@ -1,5 +1,7 @@
 #pragma once
-#include "types.hpp"
+
+#include "../../src_cpp/global/types.hpp"
+#include "../../src_cpp/lib/buffer/buffer.hpp"
 
 namespace aquila
 {
@@ -29,15 +31,40 @@ struct findstar_param_t
     Real max_rms = 12.;
 };
 
+struct buffer_descriptor_t
+{
+    buffer_descriptor_t(Buffer<Real> &buf) :
+        data(buf.data()), rows(buf.rows()), cols(buf.cols())
+    {
+    }
+    Real *data;
+    Int rows;
+    Int cols;
+};
+
+struct const_buffer_descriptor_t
+{
+    const_buffer_descriptor_t(const Buffer<Real> &buf) :
+        data(buf.data()), rows(buf.rows()), cols(buf.cols())
+    {
+    }
+    const Real *data;
+    Int rows;
+    Int cols;
+};
+
 extern "C"
 {
-    void register_stars_f(Real *image,
-                          Int ni,
-                          Int nj,
-                          source_t *list,
-                          Int limit,
-                          const findstar_param_t *param,
-                          Int *nstar);
+    void register_stars(const const_buffer_descriptor_t&,
+        source_t *list,
+        Int limit,
+        const findstar_param_t &param,
+        Int &nstar);
+
+    void mexhakrn(Real fwhm, const buffer_descriptor_t &);
+    void gausskrn(Real fwhm, const buffer_descriptor_t &);
+    
+    Int get_kernel_size(Real fwhm);
 };
 
 }; // namespace aquila

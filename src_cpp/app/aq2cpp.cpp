@@ -100,6 +100,8 @@ int main()
     rl_attempted_completion_function = completion;
     rl_completion_display_matches_hook = display_completions;
 
+    std::cout << "Press [TAB] twice to print available commands." << std::endl;
+
     while (true)
     {
         char *line = readline(">> ");

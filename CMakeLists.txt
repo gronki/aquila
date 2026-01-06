@@ -34,8 +34,6 @@ if (OPENMP)
 add_compile_options(-fopenmp)
 endif ()
 
-add_subdirectory(deps/task-dispatch)
-
 find_package(PNG REQUIRED)
 pkg_check_modules(CFITSIO REQUIRED cfitsio)
 pkg_check_modules(READLINE REQUIRED readline)
@@ -64,32 +62,21 @@ file(GLOB_RECURSE AQUILA_SOURCES CONFIGURE_DEPENDS
     src/utils/*.F90
     src/utils/*.c
     src/c_binding/*.hpp
+    src/c_binding/*.f90
+    src/c_binding/*.F90
 )
 
 add_library(aquila SHARED ${AQUILA_SOURCES})
 target_include_directories(aquila PUBLIC src/c_binding)
-install(TARGETS aquila DESTINATION ${CMAKE_INSTALL_LIBDIR})
+install(TARGETS aquila LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
 install(FILES src/c_binding/aquila.hpp DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
-add_library(aquila_static STATIC ${AQUILA_SOURCES})
-target_include_directories(aquila_static PUBLIC src/c_binding)
-link_libraries(aquila_static)
-
-file(GLOB_RECURSE SCRIPT_SOURCES CONFIGURE_DEPENDS
-    src/script/*.f90
-    src/script/*.F90
-    src/script/*.c
-)
+link_libraries(aquila)
 
 add_executable(aqstack app/aqstack.f90)
 add_executable(aqlrgb app/aqlrgb.F90)
 
-add_executable(aq2 app/aq2/aq2.f90 app/aq2/operation_imports.f90 
-    app/aq2/readline_binding.c app/aq2/readline_prompt.F90 ${SCRIPT_SOURCES})
-target_link_libraries(aq2 PRIVATE task_dispatch_static)
-target_link_libraries(aq2 PRIVATE ${READLINE_LIBRARIES})
-
-install(TARGETS aqstack aqlrgb aq2 DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(TARGETS aqstack aqlrgb RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 file(GLOB_RECURSE AQNEW_SOURCES CONFIGURE_DEPENDS
     src_cpp/lib/*.f90
@@ -101,13 +88,14 @@ add_library(aqnew SHARED ${AQNEW_SOURCES})
 target_include_directories(aqnew PUBLIC 
     src_cpp/lib/buffer src_cpp/lib/io src_cpp/lib/interpreter 
     src_cpp/lib/operations src_cpp/lib/values src_cpp/lib/utils)
+install(TARGETS aqnew LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
+
 link_libraries(aqnew)
 
-add_executable(aqneo src_cpp/app/aqneo.cpp)
 add_executable(aqfindstar src_cpp/app/aqfindstar.cpp)
-add_executable(aq2cpp src_cpp/app/aq2cpp.cpp)
-install(TARGETS aqneo aqfindstar aq2cpp DESTINATION ${CMAKE_INSTALL_BINDIR})
-target_link_libraries(aq2cpp PRIVATE ${READLINE_LIBRARIES})
+add_executable(aq2 src_cpp/app/aq2cpp.cpp)
+install(TARGETS aqfindstar aq2 RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+target_link_libraries(aq2 PRIVATE ${READLINE_LIBRARIES})
 
 file(GLOB TEST_SOURCES CONFIGURE_DEPENDS test/*.cpp)
 

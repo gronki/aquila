@@ -26,8 +26,7 @@ int main(int argc, char **argv)
         const Int max_stars = 256;
         source_t src[max_stars];
         findstar_param_t param;
-        register_stars_f(
-            buf.data(), buf.rows(), buf.cols(), src, max_stars, &param, &nstar);
+        register_stars(buf, src, max_stars, param, nstar);
         cout << nstar << endl;
         for (Int i = 0; i < nstar; i++)
         {

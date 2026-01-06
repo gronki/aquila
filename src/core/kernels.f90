@@ -150,4 +150,39 @@ contains
 
   !----------------------------------------------------------------------------!
 
+  function get_kernel_size_c(fwhm) result(n) bind(C, name="get_kernel_size")
+    real(fp), intent(in), value :: fwhm
+    integer(c_int64_t) :: n
+
+    n = nint(9.0 * fwhm / fwhm_over_sigma)
+    if (mod(n,2) == 0) n = n + 1
+    n = max(n, 3)
+  end function
+
+  subroutine mexhakrn_c(fwhm, kd) bind(C, name="mexhakrn")
+    use aquila_c_binding
+
+    real(fp), intent(in), value :: fwhm
+    type(buffer_descriptor_t), intent(in) :: kd
+    real(fp), pointer :: k(:,:)
+
+    k => from_descriptor(kd)
+    call mexhakrn(fwhm / fwhm_over_sigma, k)
+    
+  end subroutine
+
+
+  subroutine gausskrn_c(fwhm, kd) bind(C, name="gausskrn")
+    use aquila_c_binding
+
+    real(fp), intent(in), value :: fwhm
+    type(buffer_descriptor_t), intent(in) :: kd
+    real(fp), pointer :: k(:,:)
+
+    k => from_descriptor(kd)
+    call gausskrn(fwhm / fwhm_over_sigma, k)
+
+  end subroutine
+
+
 end module kernels

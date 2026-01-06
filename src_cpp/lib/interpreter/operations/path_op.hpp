@@ -19,6 +19,8 @@ struct PathOp : public Operation
     }
 
     std::string name() const { return "path"; }
+    std::string description() const override { return "Bash-style expansion of paths. For "
+        "example, file_{a,b}.fits --> file_a.fits file_b.fits"; }
 };
 
 } // namespace aquila::ops

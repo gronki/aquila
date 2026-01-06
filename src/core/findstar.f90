@@ -296,14 +296,30 @@ contains
       if (present(limit)) limit_ = limit
       
       allocate(list(limit_))
-      call register_stars_f(im, size(im, 1, c_size_t), size(im, 2, c_size_t), list, limit_, param, nstar)
+      call register_stars_core(im, size(im, 1, c_size_t), size(im, 2, c_size_t), list, limit_, param, nstar)
   
       list = list(:nstar)
     end subroutine
   
   !----------------------------------------------------------------------------!
 
-    subroutine register_stars_f(im, ni, nj, list, limit, param, nstar) bind(C)
+    subroutine register_stars_c(imd, list, limit, param, nstar) bind(C, name="register_stars")
+      use aquila_c_binding
+  
+      type(buffer_descriptor_t) :: imd
+      integer(c_int64_t), intent(in), value :: limit
+      type(findstar_param_t) :: param
+      type(source_t), intent(out) :: list(limit)
+      integer(c_int64_t), intent(out) :: nstar
+
+      real(fp), pointer, contiguous :: im(:,:)
+
+      im => from_descriptor(imd)
+      call register_stars_core(im, imd%rows, imd%cols, list, limit, param, nstar)
+
+    end subroutine
+
+    subroutine register_stars_core(im, ni, nj, list, limit, param, nstar) bind(C)
       use convolutions, only: convol_fix
       use kernels, only: mexhakrn_alloc, gausskrn_alloc
       use statistics, only: avsd

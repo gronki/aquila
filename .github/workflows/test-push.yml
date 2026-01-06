@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        gcc-ver: [11,13,15]
+        gcc-ver: [11,13,14]
     name: gfortran ${{ matrix.gcc-ver }}
     steps:
       - name: Checkout code
@@ -101,7 +101,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        oneapi-ver: ["2025.2", "2025.1", "2025.0"]
+        oneapi-ver: ["2025.3", "2025.2", "2025.1"]
     name: oneapi ${{ matrix.oneapi-ver }}
     steps:
       - name: Checkout code

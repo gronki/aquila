@@ -36,7 +36,7 @@ add_link_options(-fopenmp)
 endif ()
 
 if(CMAKE_Fortran_COMPILER_ID STREQUAL "Flang" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-    link_libraries(flang flangrti stdc++ m pthread)
+    link_libraries(stdc++ m pthread)
 endif()
 
 

@@ -32,7 +32,13 @@ endif()
 option(OPENMP "use OpenMP in build" OFF)
 if (OPENMP)
 add_compile_options(-fopenmp)
+add_link_options(-fopenmp)
 endif ()
+
+if(CMAKE_Fortran_COMPILER_ID STREQUAL "Flang" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    link_libraries(flang flangrti stdc++ m pthread)
+endif()
+
 
 find_package(PNG REQUIRED)
 pkg_check_modules(CFITSIO REQUIRED cfitsio)

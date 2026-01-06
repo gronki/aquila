@@ -43,7 +43,7 @@ jobs:
           rm -rf build/*
           cd build
           cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Debug -DOPENMP=Off ..
-          cmake --build . --verbose
+          cmake --build .
           sudo cmake --install .
 
       - name: Run integration test on example data
@@ -64,7 +64,7 @@ jobs:
           rm -rf build/*
           cd build
           cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release -DOPENMP=Off ..
-          cmake --build . --verbose
+          cmake --build .
           sudo cmake --install .
 
       - name: Run integration test on example data (release, no OpenMP)
@@ -85,7 +85,7 @@ jobs:
           rm -rf build/*
           cd build
           cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release -DOPENMP=On ..
-          cmake --build . --verbose
+          cmake --build .
           sudo cmake --install .
 
       - name: Run integration test on example data (release, OpenMP)
@@ -142,7 +142,7 @@ jobs:
           rm -rf build/*
           cd build
           cmake -DCMAKE_INSTALL_PREFIX=/usr ..
-          cmake --build . --verbose
+          cmake --build .
           sudo cmake --install .
   
       - name: Run integration test on example data
@@ -168,7 +168,7 @@ jobs:
           rm -rf build/*
           cd build
           cmake -DCMAKE_INSTALL_PREFIX=/usr ..
-          cmake --build . --verbose
+          cmake --build .
           sudo cmake --install .
   
       - name: Run integration test on example data (release, no OpenMP)
@@ -194,7 +194,7 @@ jobs:
           rm -rf build/*
           cd build
           cmake -DCMAKE_INSTALL_PREFIX=/usr ..
-          cmake --build . --verbose
+          cmake --build .
           sudo cmake --install .
   
       - name: Run integration test on example data (release, OpenMP)
@@ -257,7 +257,7 @@ jobs:
           rm -rf build/*
           cd build
           cmake -DCMAKE_INSTALL_PREFIX=/usr ..
-          cmake --build . --verbose
+          cmake --build .
           sudo cmake --install .
   
       - name: Run integration test on example data
@@ -281,7 +281,7 @@ jobs:
           rm -rf build/*
           cd build
           cmake -DCMAKE_INSTALL_PREFIX=/usr ..
-          cmake --build . --verbose
+          cmake --build .
           sudo cmake --install .
   
       - name: Run integration test on example data (release, no OpenMP)
@@ -305,7 +305,7 @@ jobs:
           rm -rf build/*
           cd build
           cmake -DCMAKE_INSTALL_PREFIX=/usr ..
-          cmake --build . --verbose
+          cmake --build .
           sudo cmake --install .
   
       - name: Run integration test on example data (release, OpenMP)

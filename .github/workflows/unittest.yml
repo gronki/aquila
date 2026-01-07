@@ -7,35 +7,32 @@ on:
     branches: [master]
 
 jobs:
-
-  gfortran:
+  build-multi-distro:
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
-        gcc-ver: [11,13,14]
-    name: gfortran ${{ matrix.gcc-ver }}
+        image:
+          - { name: "ubuntu:22.04", install: "apt-get update && apt-get install -y cmake g++ gfortran libcfitsio-dev libpng-dev libreadline-dev pkg-config" }
+          - { name: "ubuntu:24.04", install: "apt-get update && apt-get install -y cmake g++ gfortran libcfitsio-dev libpng-dev libreadline-dev pkg-config" }
+          - { name: "debian:trixie", install: "apt-get update && apt-get install -y cmake g++ gfortran libcfitsio-dev libpng-dev libreadline-dev pkg-config" }
+          - { name: "debian:bookworm", install: "apt-get update && apt-get install -y cmake g++ gfortran libcfitsio-dev libpng-dev libreadline-dev pkg-config" }
+          - { name: "fedora:42", install: "dnf install -y dnf install cmake g++ gfortran cfitsio-devel libpng-devel readline-devel pkg-config" }
+          - { name: "fedora:43", install: "dnf install -y dnf install cmake g++ gfortran cfitsio-devel libpng-devel readline-devel pkg-config" }
+    container:
+      image: ${{ matrix.image.name }}
+    name: Build on ${{ matrix.image.name }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           submodules: recursive
 
-      - name: Install gfortran ${{ matrix.gcc-ver }}
-        run: |
-          sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
-          sudo apt-get update
-          sudo apt-get install -y gfortran-${{ matrix.gcc-ver }} gcc-${{ matrix.gcc-ver }} g++-${{ matrix.gcc-ver }}
-
       - name: Install build dependencies
-        run: sudo apt-get install -y libcfitsio-dev libpng-dev libgnutls30 libreadline-dev
+        run: ${{ matrix.image.install }} && gcc --version
   
       - name: Build app
         run: |
-          export CC=gcc-${{ matrix.gcc-ver }} 
-          export CXX=g++-${{ matrix.gcc-ver }} 
-          export FC=gfortran-${{ matrix.gcc-ver }} 
-          
           mkdir -p build
           rm -rf build/*
           cd build
@@ -49,10 +46,6 @@ jobs:
 
       - name: Build app (Release)
         run: |
-          export CC=gcc-${{ matrix.gcc-ver }} 
-          export CXX=g++-${{ matrix.gcc-ver }} 
-          export FC=gfortran-${{ matrix.gcc-ver }} 
-          
           mkdir -p build
           rm -rf build/*
           cd build
@@ -66,10 +59,6 @@ jobs:
 
       - name: Build app (Release, OpenMP)
         run: |
-          export CC=gcc-${{ matrix.gcc-ver }} 
-          export CXX=g++-${{ matrix.gcc-ver }} 
-          export FC=gfortran-${{ matrix.gcc-ver }} 
-          
           mkdir -p build
           rm -rf build/*
           cd build

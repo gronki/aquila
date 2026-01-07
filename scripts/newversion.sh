@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 set -e
 
-if [ -n "$(git status --porcelain)" ]; then
-    echo "git tree is dirty; commit all changes before the version bump"
-    exit 1
-fi
+# if [ -n "$(git status --porcelain)" ]; then
+#     echo "git tree is dirty; commit all changes before the version bump"
+#     exit 1
+# fi
 
 if [ -z "$1" ]; then
 VERSION_STR=$(date -d '-3hours' +'%y%m%d')
@@ -39,7 +39,7 @@ sed -Ei "s/_AQUILA_VERSION_ .*$/_AQUILA_VERSION_ \"${VERSION_STR}\"/" src/versio
 # fi
 
 (
-    git add src/version.h
+    git add .
     git commit -m "Version $VERSION_STR"
 ) || echo "no changes to add"
 
@@ -48,4 +48,4 @@ git push --delete origin "$VERSION_STR" || echo "No remote tag."
 
 git tag "$VERSION_STR"
 git push
-git push --tags
+git push origin "$VERSION_STR"

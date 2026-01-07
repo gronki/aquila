@@ -95,18 +95,15 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Environment
-        run: echo "PACKAGE_NAME=aquila-${{ github.ref_name }}-${{ matrix.os }}-${{ matrix.osver }}-amd64" >> "$GITHUB_ENV"
-
       - name: Download .deb artifact
         uses: actions/download-artifact@v4
         with:
-          name: "${PACKAGE_NAME}"
+          name: "aquila-${{ github.ref_name }}-${{ matrix.os }}-${{ matrix.osver }}-amd64"
 
       - name: Install the package
         run: |
           apt update
-          apt-get install -y ./${PACKAGE_NAME}.deb
+          apt-get install -y ./aquila-${{ github.ref_name }}-${{ matrix.os }}-${{ matrix.osver }}-amd64.deb
   
       - name: Download test data
         run: scripts/get_test_data.sh
@@ -132,16 +129,13 @@ jobs:
     needs: test-deb
     steps:
   
-      - name: Environment
-        run: echo "PACKAGE_NAME=aquila-${{ github.ref_name }}-${{ matrix.os }}-${{ matrix.osver }}-amd64" >> "$GITHUB_ENV"
-
       - uses: actions/download-artifact@v4
         with:
-          name: "${PACKAGE_NAME}"
+          name: "aquila-${{ github.ref_name }}-${{ matrix.os }}-${{ matrix.osver }}-amd64"
 
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
           name: Version ${{ github.ref_name }}
           body: Automated release
-          files: "${PACKAGE_NAME}.deb"
+          files: "aquila-${{ github.ref_name }}-${{ matrix.os }}-${{ matrix.osver }}-amd64.deb"

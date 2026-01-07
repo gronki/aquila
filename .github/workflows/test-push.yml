@@ -41,7 +41,7 @@ jobs:
           cd build
           cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Debug -DOPENMP=Off ..
           cmake --build .
-          sudo cmake --install .
+          cmake --install .
 
       - name: Run integration test on example data
         run: |
@@ -58,7 +58,7 @@ jobs:
           cd build
           cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release -DOPENMP=Off ..
           cmake --build .
-          sudo cmake --install .
+          cmake --install .
 
       - name: Run integration test on example data (release, no OpenMP)
         run: |
@@ -75,7 +75,7 @@ jobs:
           cd build
           cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release -DOPENMP=On ..
           cmake --build .
-          sudo cmake --install .
+          cmake --install .
 
       - name: Run integration test on example data (release, OpenMP)
         run: |

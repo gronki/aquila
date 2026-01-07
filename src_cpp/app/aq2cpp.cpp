@@ -4,6 +4,7 @@
 #include <readline/history.h>
 #include <readline/readline.h>
 
+#include "../../src/version.h"
 #include "../lib/interpreter/interpreter.hpp"
 
 using namespace aquila;
@@ -100,6 +101,8 @@ int main()
     rl_attempted_completion_function = completion;
     rl_completion_display_matches_hook = display_completions;
 
+    std::cout << std::endl << "Aquila Script v. " << _AQUILA_VERSION_ << std::endl;
+    std::cout << "Created by DG, inspired by FK" << std::endl << std::endl;
     std::cout << "Press [TAB] twice to print available commands." << std::endl;
 
     while (true)

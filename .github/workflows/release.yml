@@ -7,39 +7,27 @@ on:
 
 
 jobs:
-  build-fpm:
-    name: Build FPM
-    runs-on: ubuntu-latest
-    steps:
-      - run: sudo apt-get update && sudo apt-get install -y gfortran curl
-      - run: curl -L https://github.com/fortran-lang/fpm/releases/download/v0.12.0/fpm-0.12.0.F90 -o fpm.F90
-      - run: gfortran -O0 -static fpm.F90 -o fpm
-      - name: Upload built fpm
-        uses: actions/upload-artifact@v4
-        with:
-          name: fpm
-          path: fpm
-          retention-days: 2
 
   build-deb:
     name: Build .deb package
     runs-on: ubuntu-latest
-    needs: build-fpm
     defaults:
       run:
         shell: bash
     strategy:
       matrix:
-        include:
-          - os: ubuntu
-            osver: noble
-            compiler: oneapi
+        - os: ubuntu
+          osver: "24.04"
+          deps: libcfitsio10, libpng16-16, libreadline8t64, libgomp1, libgfortran5
+        - os: ubuntu
+          osver: "22.04"
+          deps: libcfitsio9, libpng16-16, libreadline8, libgomp1, libgfortran5
     container:
       image: ${{ matrix.os }}:${{ matrix.osver }}
 
     steps:
       - name: Install tools
-        run: apt-get update && apt-get install -y wget git curl
+        run: apt-get update && apt-get install -y cmake g++ gfortran libcfitsio-dev libpng-dev libreadline-dev pkg-config wget git curl
 
       - name: Checkout (with submodules)
         uses: actions/checkout@v4
@@ -48,40 +36,34 @@ jobs:
           fetch-depth: 0
 
       - name: Environment
-        run: echo "PACKAGE_NAME=aquila-${{ github.ref_name }}-${{ matrix.os }}-${{ matrix.osver }}-amd64-${{ matrix.compiler }}" >> "$GITHUB_ENV"
-
-      - name: Install oneapi
-        run: . scripts/actions/${{ matrix.os }}-${{ matrix.osver }}/${{ matrix.compiler }}/setup.sh
-          
-      - name: Install build dependencies
-        run: apt-get install -y libcfitsio-dev libpng-dev libgnutls30 libreadline-dev
-          
-      - name: Download fpm
-        uses: actions/download-artifact@v4
-        with:
-          name: fpm
-      - run: chmod +x fpm
+        run: echo "PACKAGE_NAME=aquila-${{ github.ref_name }}-${{ matrix.os }}-${{ matrix.osver }}-amd64" >> "$GITHUB_ENV"
 
       - name: Build and install the app
         run: |
-          . scripts/actions/${{ matrix.os }}-${{ matrix.osver }}/${{ matrix.compiler }}/env.sh
-          ./fpm install --prefix ${PWD}/deb-package/${PACKAGE_NAME}/usr
+          rm -rf build
+          cd build
+          cmake .. -DCMAKE_INSTALL_PREFIX=${PWD}/deb-package/${PACKAGE_NAME}/usr \
+            -DOPENMP=On \
+            -DCMAKE_C_FLAGS="-O3 -ffast-math -g1" \
+            -DCMAKE_CXX_FLAGS="-O3 -ffast-math -g1" \
+            -DCMAKE_Fortran_FLAGS="-O3 -funsafe-math-optimizations -g1"
+          cmake --build . --verbose
+          cmake --install .
 
       - name: Create deb package
         run: |
-          . scripts/actions/${{ matrix.os }}-${{ matrix.osver }}/${{ matrix.compiler }}/env.sh
-          cd deb-package
-          cp -r ../packaging/deb/DEBIAN ${PACKAGE_NAME}/
+          cd build/deb-package
+          cp -r ../../packaging/deb/DEBIAN ${PACKAGE_NAME}/
           sed -i "s/___VERSION___/${{ github.ref_name }}/g" ${PACKAGE_NAME}/DEBIAN/control
-          sed -i "s/___DEPS___/${DEP_PACKAGES}/g" ${PACKAGE_NAME}/DEBIAN/control
+          sed -i "s/___DEPS___/${{ matrix.deps }}/g" ${PACKAGE_NAME}/DEBIAN/control
           sed -i "s/___ARCH___/amd64/g" ${PACKAGE_NAME}/DEBIAN/control
           dpkg-deb --build ${PACKAGE_NAME}
   
       - name: Upload .deb artifact
         uses: actions/upload-artifact@v4
         with:
-          name: "deb-${{ matrix.os }}-${{ matrix.osver }}-${{ matrix.compiler }}-amd64"
-          path: deb-package/*.deb
+          name: "${PACKAGE_NAME}"
+          path: build/deb-package/${PACKAGE_NAME}.deb
 
   test-deb:
     name: Test .deb package
@@ -92,10 +74,10 @@ jobs:
         shell: bash
     strategy:
       matrix:
-        include:
-          - os: ubuntu
-            osver: noble
-            compiler: oneapi
+        - os: ubuntu
+          osver: "24.04"
+        - os: ubuntu
+          osver: "22.04"
     container:
       image: ${{ matrix.os }}:${{ matrix.osver }}
 
@@ -110,15 +92,18 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Environment
+        run: echo "PACKAGE_NAME=aquila-${{ github.ref_name }}-${{ matrix.os }}-${{ matrix.osver }}-amd64" >> "$GITHUB_ENV"
+
       - name: Download .deb artifact
         uses: actions/download-artifact@v4
         with:
-          name: "deb-${{ matrix.os }}-${{ matrix.osver }}-${{ matrix.compiler }}-amd64"
+          name: "${PACKAGE_NAME}"
 
       - name: Install the package
         run: |
           apt update
-          apt-get install -y ./aquila-${{ github.ref_name }}-${{ matrix.os }}-${{ matrix.osver }}-amd64-${{ matrix.compiler }}.deb
+          apt-get install -y ./${PACKAGE_NAME}.deb
   
       - name: Download test data
         run: scripts/get_test_data.sh
@@ -134,15 +119,25 @@ jobs:
   release:
     name: Automated release
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        - os: ubuntu
+          osver: "24.04"
+        - os: ubuntu
+          osver: "22.04"
     needs: test-deb
     steps:
+  
+      - name: Environment
+        run: echo "PACKAGE_NAME=aquila-${{ github.ref_name }}-${{ matrix.os }}-${{ matrix.osver }}-amd64" >> "$GITHUB_ENV"
+
       - uses: actions/download-artifact@v4
         with:
-          name: "deb-ubuntu-noble-oneapi-amd64"
+          name: "${PACKAGE_NAME}"
 
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
           name: Version ${{ github.ref_name }}
           body: Automated release
-          files: "*.deb"
+          files: "${PACKAGE_NAME}.deb"

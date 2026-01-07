@@ -23,8 +23,7 @@ if [ ! -f fpm.toml ]; then
     exit 1
 fi
 
-sed -Ei "s/version =.*$/version = '${VERSION_STR}'/" src/globals/globals.F90
-sed -Ei "s/version =.*$/version = \"${VERSION_STR}\"/" fpm.toml
+sed -Ei "s/_AQUILA_VERSION_ .*$/_AQUILA_VERSION_ \"${VERSION_STR}\"/" src/version.h
 
 if [ -z "$(git status --porcelain)" ]; then
     echo "git does not see any changes; probably version $VERSION_STR already exists:"
@@ -41,7 +40,7 @@ if [ -z "$(git status --porcelain)" ]; then
 fi
 
 (
-    git add src/globals/globals.F90 fpm.toml
+    git add src/version.h
     git commit -m "Version $VERSION_STR"
 ) || echo "no changes to add"
 

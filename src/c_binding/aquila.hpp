@@ -2,9 +2,12 @@
 
 #include "../../src_cpp/global/types.hpp"
 #include "../../src_cpp/lib/buffer/buffer.hpp"
+#include "../version.h"
 
 namespace aquila
 {
+
+static const std::string AQUILA_VERSION = _AQUILA_VERSION_;
 
 constexpr Int N_SOURCE_MOMENTS = 3;
 

@@ -12,39 +12,40 @@ else
 VERSION_STR=$1
 fi
 
-
 if [ -n "$(git tag -l \"$VERSION_STR\")" ]; then
     echo "Tag $VERSION_STR already exists."
     exit 1
 fi
 
-if [ ! -f fpm.toml ]; then
+if [ ! -f src/version.h ]; then
     echo "this script must be run from repo root directory"
     exit 1
 fi
 
 sed -Ei "s/_AQUILA_VERSION_ .*$/_AQUILA_VERSION_ \"${VERSION_STR}\"/" src/version.h
 
-if [ -z "$(git status --porcelain)" ]; then
-    echo "git does not see any changes; probably version $VERSION_STR already exists:"
-    echo
-    head -n 5 fpm.toml
-    echo
-    grep version src/globals/globals.F90 | head -n 1
-    echo "Do you want to continue? (y/n)"
-    read ANS
-    case "$ANS" in
-        [yY]) ;;
-        *) exit 1 ;;
-    esac
-fi
+# if [ -z "$(git status --porcelain)" ]; then
+#     echo "git does not see any changes; probably version $VERSION_STR already exists:"
+#     echo
+#     head -n 5 fpm.toml
+#     echo
+#     grep version src/globals/globals.F90 | head -n 1
+#     echo "Do you want to continue? (y/n)"
+#     read ANS
+#     case "$ANS" in
+#         [yY]) ;;
+#         *) exit 1 ;;
+#     esac
+# fi
 
 (
     git add src/version.h
     git commit -m "Version $VERSION_STR"
 ) || echo "no changes to add"
 
-git tag "$VERSION_STR"
+git tag --delete "$VERSION_STR" || echo "Tag does not exist. creating..."
+git push --delete origin "$VERSION_STR" || echo "No remote tag."
 
+git tag "$VERSION_STR"
 git push
 git push --tags

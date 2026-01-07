@@ -16,12 +16,13 @@ jobs:
         shell: bash
     strategy:
       matrix:
-        - os: ubuntu
-          osver: "24.04"
-          deps: libcfitsio10, libpng16-16, libreadline8t64, libgomp1, libgfortran5
-        - os: ubuntu
-          osver: "22.04"
-          deps: libcfitsio9, libpng16-16, libreadline8, libgomp1, libgfortran5
+        include:
+          - os: ubuntu
+            osver: "24.04"
+            deps: libcfitsio10, libpng16-16, libreadline8t64, libgomp1, libgfortran5
+          - os: ubuntu
+            osver: "22.04"
+            deps: libcfitsio9, libpng16-16, libreadline8, libgomp1, libgfortran5
     container:
       image: ${{ matrix.os }}:${{ matrix.osver }}
 
@@ -40,7 +41,8 @@ jobs:
 
       - name: Build and install the app
         run: |
-          rm -rf build
+          mkdir -p build
+          rm -rf build/*
           cd build
           cmake .. -DCMAKE_INSTALL_PREFIX=${PWD}/deb-package/${PACKAGE_NAME}/usr \
             -DOPENMP=On \
@@ -74,10 +76,11 @@ jobs:
         shell: bash
     strategy:
       matrix:
-        - os: ubuntu
-          osver: "24.04"
-        - os: ubuntu
-          osver: "22.04"
+        include:
+          - os: ubuntu
+            osver: "24.04"
+          - os: ubuntu
+            osver: "22.04"
     container:
       image: ${{ matrix.os }}:${{ matrix.osver }}
 
@@ -121,10 +124,11 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        - os: ubuntu
-          osver: "24.04"
-        - os: ubuntu
-          osver: "22.04"
+        include:
+          - os: ubuntu
+            osver: "24.04"
+          - os: ubuntu
+            osver: "22.04"
     needs: test-deb
     steps:
   

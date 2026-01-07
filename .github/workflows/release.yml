@@ -64,8 +64,8 @@ jobs:
       - name: Upload .deb artifact
         uses: actions/upload-artifact@v4
         with:
-          name: "${PACKAGE_NAME}"
-          path: build/deb-package/${PACKAGE_NAME}.deb
+          name: "aquila-${{ github.ref_name }}-${{ matrix.os }}-${{ matrix.osver }}-amd64"
+          path: build/deb-package/aquila-${{ github.ref_name }}-${{ matrix.os }}-${{ matrix.osver }}-amd64.deb
 
   test-deb:
     name: Test .deb package

@@ -23,13 +23,13 @@ jobs:
       image: ${{ matrix.image.name }}
     name: Build on ${{ matrix.image.name }}
     steps:
+      - name: Install build dependencies
+        run: ${{ matrix.image.install }} wget git curl && gcc --version
+  
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           submodules: recursive
-
-      - name: Install build dependencies
-        run: ${{ matrix.image.install }} && gcc --version
   
       - name: Download test data
         run: scripts/get_test_data.sh

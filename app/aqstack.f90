@@ -98,12 +98,15 @@ program aqstack
       if (flat_fn /= "") then
         if (strategy == "flat") print '(a)', cf("Achtung!", "1") // " why subtract flat from flat?"
         call frame_flat % read_fits(flat_fn)
-        associate (n1 => size(frame_flat % data, 1), n2 => size(frame_flat % data, 2))
+        block
+          integer :: n1, n2
+          n1 = size(frame_flat % data, 1)
+          n2 = size(frame_flat % data, 2)
           associate (calibarea => frame_flat % data(33:n1-32, 33:n2-32))
             frame_flat % data(:,:) = frame_flat % data &
               / average_safe(calibarea)
           end associate
-        end associate
+        end block
         print '(a12,": ",a)', 'flat', trim(flat_fn)
       end if
 

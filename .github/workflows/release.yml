@@ -5,9 +5,7 @@ on:
     tags:
       - '*'
 
-
 jobs:
-
   build-deb:
     name: Build .deb package
     runs-on: ubuntu-latest
@@ -17,18 +15,24 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: ubuntu
-            osver: "24.04"
-            deps: libcfitsio10, libpng16-16, libreadline8t64, libgomp1, libgfortran5
-          - os: ubuntu
-            osver: "22.04"
-            deps: libcfitsio9, libpng16-16, libreadline8, libgomp1, libgfortran5
+          - {os: "ubuntu", osver: "24.04"}
+          - {os: "ubuntu", osver: "22.04"}
+          - {os: "debian", osver: "bookworm"}
+          - {os: "debian", osver: "trixie"}
     container:
       image: ${{ matrix.os }}:${{ matrix.osver }}
 
     steps:
       - name: Install tools
-        run: apt-get update && apt-get install -y cmake g++ gfortran libcfitsio-dev libpng-dev libreadline-dev pkg-config wget git curl
+        run: |
+          if [ ${{ matrix.os }} == ubuntu ]; then
+            apt-get update && apt-get install -y --no-install-recommends git curl wget
+          elif [ ${{ matrix.os }} == debian ]; then
+            apt-get update && apt-get install -y --no-install-recommends git curl wget
+          else
+            echo "Unknown os"
+            exit 1
+          fi
 
       - name: Checkout (with submodules)
         uses: actions/checkout@v4
@@ -36,8 +40,10 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
-      - name: Environment
-        run: echo "PACKAGE_NAME=aquila-${{ github.ref_name }}-${{ matrix.os }}-${{ matrix.osver }}-amd64" >> "$GITHUB_ENV"
+      - name: Setup
+        run: |
+          echo "PACKAGE_NAME=aquila-${{ github.ref_name }}-${{ matrix.os }}-${{ matrix.osver }}-amd64" >> "$GITHUB_ENV"
+          bash packaging/${{ matrix.os }}/setup.sh
 
       - name: Build and install the app
         run: |
@@ -54,10 +60,11 @@ jobs:
 
       - name: Create deb package
         run: |
+          . packaging/${{ matrix.os }}/${{ matrix.osver }}/vars.sh
           cd build/deb-package
           cp -r ../../packaging/deb/DEBIAN ${PACKAGE_NAME}/
           sed -i "s/___VERSION___/${{ github.ref_name }}/g" ${PACKAGE_NAME}/DEBIAN/control
-          sed -i "s/___DEPS___/${{ matrix.deps }}/g" ${PACKAGE_NAME}/DEBIAN/control
+          sed -i "s/___DEPS___/${DEPS}/g" ${PACKAGE_NAME}/DEBIAN/control
           sed -i "s/___ARCH___/amd64/g" ${PACKAGE_NAME}/DEBIAN/control
           dpkg-deb --build ${PACKAGE_NAME}
   
@@ -77,10 +84,10 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: ubuntu
-            osver: "24.04"
-          - os: ubuntu
-            osver: "22.04"
+          - {os: "ubuntu", osver: "24.04"}
+          - {os: "ubuntu", osver: "22.04"}
+          - {os: "debian", osver: "bookworm"}
+          - {os: "debian", osver: "trixie"}
     container:
       image: ${{ matrix.os }}:${{ matrix.osver }}
 
@@ -122,10 +129,10 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: ubuntu
-            osver: "24.04"
-          - os: ubuntu
-            osver: "22.04"
+          - {os: "ubuntu", osver: "24.04"}
+          - {os: "ubuntu", osver: "22.04"}
+          - {os: "debian", osver: "bookworm"}
+          - {os: "debian", osver: "trixie"}
     needs: test-deb
     env:
       GH_TOKEN: ${{ github.token }}
@@ -146,8 +153,8 @@ jobs:
           # check if release exists
           if ! gh release view ${{ github.ref_name }} >/dev/null 2>&1; then
             gh release create ${{ github.ref_name }} \
-              -t "Version ${{ github.ref_name }}" \
-              -n "Automated release"
+              -t "Aquila v.${{ github.ref_name }}" \
+              -n "Download packages for your Linux distribution here!"
           fi
 
       - name: Upload artifact

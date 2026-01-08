@@ -1,4 +1,0 @@
-FROM ubuntu:noble
-ENV DEBIAN_FRONTEND=noninteractive
-ENV OMP_NUM_THREADS=2
-WORKDIR /work

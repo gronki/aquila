@@ -26,11 +26,9 @@ jobs:
       - name: Install tools
         run: |
           if [ ${{ matrix.os }} == ubuntu ]; then
-            apt-get update && apt-get install -y --no-install-recommends git curl wget ca-certificates
-            update-ca-certificates
+            apt-get update && apt-get install -y git curl wget ca-certificates
           elif [ ${{ matrix.os }} == debian ]; then
-            apt-get update && apt-get install -y --no-install-recommends git curl wget ca-certificates
-            update-ca-certificates
+            apt-get update && apt-get install -y git curl wget ca-certificates
           else
             echo "Unknown os"
             exit 1
@@ -156,7 +154,10 @@ jobs:
           if ! gh release view ${{ github.ref_name }} >/dev/null 2>&1; then
             gh release create ${{ github.ref_name }} \
               -t "Aquila v.${{ github.ref_name }}" \
-              -n "Download packages for your Linux distribution here!"
+              -n "Download packages for your Linux distribution here!" \
+              --draft=false
+           else
+            gh release edit ${{ github.ref_name }} --draft=false
           fi
 
       - name: Upload artifact

@@ -26,9 +26,11 @@ jobs:
       - name: Install tools
         run: |
           if [ ${{ matrix.os }} == ubuntu ]; then
-            apt-get update && apt-get install -y --no-install-recommends git curl wget
+            apt-get update && apt-get install -y --no-install-recommends git curl wget ca-certificates
+            update-ca-certificates
           elif [ ${{ matrix.os }} == debian ]; then
-            apt-get update && apt-get install -y --no-install-recommends git curl wget
+            apt-get update && apt-get install -y --no-install-recommends git curl wget ca-certificates
+            update-ca-certificates
           else
             echo "Unknown os"
             exit 1

@@ -5,7 +5,7 @@ implicit none
 private
 public :: transform_t
 
-integer, parameter :: TRANSFORM_MAX_PAR = 16
+integer, parameter, public :: TRANSFORM_MAX_PAR = 16
 
 type, abstract :: transform_t
    real(fp) :: scale = 1

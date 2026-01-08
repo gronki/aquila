@@ -34,6 +34,16 @@ struct findstar_param_t
     Real max_rms = 12.;
 };
 
+constexpr int TRANSFORM_MAX_PAR = 16;
+
+struct transform_t
+{
+    char type[8];
+    double scale = 1;
+    int npar = 0;
+    double vec[TRANSFORM_MAX_PAR]{0};
+};
+
 struct buffer_descriptor_t
 {
     buffer_descriptor_t(Buffer<Real> &buf) :
@@ -58,7 +68,7 @@ struct const_buffer_descriptor_t
 
 extern "C"
 {
-    void register_stars(const const_buffer_descriptor_t&,
+    void register_stars(const const_buffer_descriptor_t &,
         source_t *list,
         Int limit,
         const findstar_param_t &param,
@@ -66,8 +76,16 @@ extern "C"
 
     void mexhakrn(Real fwhm, const buffer_descriptor_t &);
     void gausskrn(Real fwhm, const buffer_descriptor_t &);
-    
+
     Int get_kernel_size(Real fwhm);
+
+    void classic_align(const source_t *lst0,
+        size_t n0,
+        const source_t *lst,
+        size_t n,
+        const char *align_method,
+        transform_t &,
+        int &);
 };
 
 }; // namespace aquila

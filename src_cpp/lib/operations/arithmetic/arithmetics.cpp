@@ -12,8 +12,7 @@ std::unique_ptr<Value> AddOp::call(const std::vector<const Value *> &args) const
     ValuePtr result = std::make_unique<RealValue>(0);
     for (const Value *arg : args)
     {
-        result = apply_binary(
-            *result, *arg, [](real_buf_t a, real_buf_t b) -> real_buf_t { return a + b; });
+        result = apply_binary(*result, *arg, [](auto a, auto b) { return a + b; });
     }
     return result;
 }
@@ -24,8 +23,7 @@ std::unique_ptr<Value> MulOp::call(const std::vector<const Value *> &args) const
     ValuePtr result = std::make_unique<RealValue>(1);
     for (const Value *arg : args)
     {
-        result = apply_binary(
-            *result, *arg, [](real_buf_t a, real_buf_t b) -> real_buf_t { return a * b; });
+        result = apply_binary(*result, *arg, [](auto a, auto b) { return a * b; });
     }
     return result;
 }
@@ -43,8 +41,7 @@ std::unique_ptr<Value> MixOp::call(const std::vector<const Value *> &args) const
         result = apply_tertiary(*result,
             *args[iarg],
             *args[iarg + 1],
-            [](real_buf_t a, real_buf_t b, real_buf_t c) -> real_buf_t
-            { return a + b * c; });
+            [](auto a, auto b, auto c) { return a + b * c; });
     }
     return result;
 }

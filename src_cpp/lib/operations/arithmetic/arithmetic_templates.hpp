@@ -50,19 +50,19 @@ ValuePtr apply_binary(const Value &a, const Value &b, F op, Args &&...args)
 
     if (scalar_ptr_a && buffer_ptr_b)
     {
-        auto scalar = scalar_ptr_a->value;
+        real_buf_t xa = scalar_ptr_a->value;
         return std::make_unique<values::BufferValue>(
             apply(buffer_ptr_b->buffer.view(),
-                [scalar, op](real_buf_t x) -> real_buf_t { return op(scalar, x); }),
+                [xa, op](real_buf_t xb) -> real_buf_t { return op(xa, xb); }),
             args...);
     }
 
     if (buffer_ptr_a && scalar_ptr_b)
     {
-        auto scalar = scalar_ptr_b->value;
+        real_buf_t xb = scalar_ptr_b->value;
         return std::make_unique<values::BufferValue>(
             apply(buffer_ptr_a->buffer.view(),
-                [scalar, op](real_buf_t x) -> real_buf_t { return op(x, scalar); }),
+                [xb, op](real_buf_t xa) -> real_buf_t { return op(xa, xb); }),
             args...);
     }
 
@@ -120,7 +120,8 @@ ValuePtr apply_tertiary(const Value &a, const Value &b, const Value &c, F op, Ar
         return std::make_unique<values::BufferValue>(
             apply(buffer_ptr_b->buffer.view(),
                 buffer_ptr_c->buffer.view(),
-                [xa, op](real_buf_t xb, real_buf_t xc) -> real_buf_t { return op(xa, xb, xc); }),
+                [xa, op](real_buf_t xb, real_buf_t xc) -> real_buf_t
+                { return op(xa, xb, xc); }),
             args...);
     }
 
@@ -135,7 +136,8 @@ ValuePtr apply_tertiary(const Value &a, const Value &b, const Value &c, F op, Ar
         return std::make_unique<values::BufferValue>(
             apply(buffer_ptr_a->buffer.view(),
                 buffer_ptr_c->buffer.view(),
-                [xb, op](real_buf_t xa, real_buf_t xc) -> real_buf_t { return op(xa, xb, xc); }),
+                [xb, op](real_buf_t xa, real_buf_t xc) -> real_buf_t
+                { return op(xa, xb, xc); }),
             args...);
     }
 
@@ -150,7 +152,8 @@ ValuePtr apply_tertiary(const Value &a, const Value &b, const Value &c, F op, Ar
         return std::make_unique<values::BufferValue>(
             apply(buffer_ptr_a->buffer.view(),
                 buffer_ptr_b->buffer.view(),
-                [xc, op](real_buf_t xa, real_buf_t xb) -> real_buf_t { return op(xa, xb, xc); }),
+                [xc, op](real_buf_t xa, real_buf_t xb) -> real_buf_t
+                { return op(xa, xb, xc); }),
             args...);
     }
 

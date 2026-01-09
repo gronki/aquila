@@ -86,7 +86,7 @@ struct SimpleValue : public AnySimpleValue
         return a.value != b.value;
     }
 
-    virtual bool dyn_compare(const AnySimpleValue &other) const
+    virtual bool dyn_compare(const AnySimpleValue &other) const override
     {
         std::cout << "Dynamic compare called between " << *this << " and " << other
                   << std::endl;

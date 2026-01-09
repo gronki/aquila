@@ -4,11 +4,13 @@
 
 set -e
 
-mkdir -p build
-rm -rf build/*
-cd build
-cmake .. -DCMAKE_BUILD_TYPE=Native -DOPENMP=On -DCMAKE_INSTALL_PREFIX=/opt/aquila
-cmake --build . -j $(nproc) --verbose
-ctest . --output-on-failure
-sudo cmake --install .
+PROJ_DIR=$(pwd)
+
+(
+    cd $(mktemp -d)
+    cmake "$PROJ_DIR" -DCMAKE_BUILD_TYPE=Native -DOPENMP=On -DCMAKE_INSTALL_PREFIX=/opt/aquila
+    cmake --build . -j $(nproc) --verbose
+    ctest . --output-on-failure
+    sudo cmake --install .
+)
 

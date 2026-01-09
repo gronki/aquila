@@ -50,11 +50,9 @@ jobs:
           mkdir -p build
           rm -rf build/*
           cd build
-          cmake .. -DCMAKE_INSTALL_PREFIX=${PWD}/deb-package/${PACKAGE_NAME}/usr \
-            -DOPENMP=On \
-            -DCMAKE_C_FLAGS="-O3 -ffast-math -g1" \
-            -DCMAKE_CXX_FLAGS="-O3 -ffast-math -g1" \
-            -DCMAKE_Fortran_FLAGS="-O3 -funsafe-math-optimizations -g1"
+          cmake .. \
+            -DCMAKE_INSTALL_PREFIX=${PWD}/deb-package/${PACKAGE_NAME}/usr \
+            -DCMAKE_BUILD_TYPE=Release -DOPENMP=On 
           cmake --build .
           cmake --install .
 

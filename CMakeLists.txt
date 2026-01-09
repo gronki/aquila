@@ -13,11 +13,14 @@ include(GNUInstallDirs)
 find_package(PkgConfig REQUIRED)
 
 set(CMAKE_C_FLAGS_DEBUG   "-g3 -O0 -Wall -Wextra -Wpedantic -Werror=return-type -Werror=uninitialized -Werror=maybe-uninitialized -Wno-unused-parameter")
-set(CMAKE_C_FLAGS_RELEASE "-O3 -ffast-math -march=native -DNDEBUG -g1")
+set(CMAKE_C_FLAGS_RELEASE "-O3 -ffast-math -DNDEBUG -g1")
+set(CMAKE_C_FLAGS_NATIVE "-O3 -ffast-math -DNDEBUG -g1 -march=native -mtune=native")
 set(CMAKE_CXX_FLAGS_DEBUG   "-g3 -O0 -Wall -Wextra -Wpedantic -Werror=return-type -Werror=uninitialized -Werror=maybe-uninitialized -Werror=delete-incomplete -Wnon-virtual-dtor -Wno-unused-parameter")
-set(CMAKE_CXX_FLAGS_RELEASE "-O3 -ffast-math -march=native -DNDEBUG -g1")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -ffast-math -DNDEBUG -g1")
+set(CMAKE_CXX_FLAGS_NATIVE "-O3 -ffast-math -DNDEBUG -g1 -march=native -mtune=native")
 set(CMAKE_Fortran_FLAGS_DEBUG   "-g3 -O0 -fcheck=all -Wall -Wextra -Wno-unused-dummy-argument")
-set(CMAKE_Fortran_FLAGS_RELEASE "-O3 -funsafe-math-optimizations -march=native -DNDEBUG -g1")
+set(CMAKE_Fortran_FLAGS_RELEASE "-O3 -funsafe-math-optimizations -DNDEBUG -g1")
+set(CMAKE_Fortran_FLAGS_NATIVE "-O3 -funsafe-math-optimizations -DNDEBUG -g1 -march=native -mtune=native")
 
 option(OPENMP "use OpenMP in build" OFF)
 if (OPENMP)
@@ -65,7 +68,7 @@ file(GLOB_RECURSE AQUILA_SOURCES CONFIGURE_DEPENDS
 add_library(aquila SHARED ${AQUILA_SOURCES})
 target_include_directories(aquila PUBLIC src/c_binding)
 install(TARGETS aquila LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
-install(FILES src/c_binding/aquila.hpp DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+install(FILES src/c_binding/aquila.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
 link_libraries(aquila)
 

@@ -17,12 +17,13 @@ if [ -n "$(git tag -l \"$VERSION_STR\")" ]; then
     exit 1
 fi
 
-if [ ! -f src/version.h ]; then
+if [ ! -f scripts/newversion.sh ]; then
     echo "this script must be run from repo root directory"
     exit 1
 fi
 
-sed -Ei "s/_AQUILA_VERSION_ .*$/_AQUILA_VERSION_ \"${VERSION_STR}\"/" src/version.h
+sed -Ei "s/define AQUILA_VERSION .*$/define AQUILA_VERSION \"${VERSION_STR}\"/" src/c_binding/aquila.h
+sed -Ei "s/version = .*$/version = \"${VERSION_STR}\"/" src/globals/globals.F90
 
 # if [ -z "$(git status --porcelain)" ]; then
 #     echo "git does not see any changes; probably version $VERSION_STR already exists:"

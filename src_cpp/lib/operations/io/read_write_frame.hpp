@@ -9,7 +9,7 @@ namespace aquila::ops
 struct ReadFrame : public Operation
 {
     BIND_ARGS(&ReadFrame::run);
-    ValuePtr run(const String &fn) const;
+    ValuePtr run(const std::string &fn) const;
 
     std::optional<ArgManifest> arg_manifest() const override
     {
@@ -22,7 +22,7 @@ struct ReadFrame : public Operation
 struct WriteFrame : public Operation
 {
     BIND_ARGS(&WriteFrame::run);
-    ValuePtr run(const values::BufferValue &frame, const String &fn) const;
+    ValuePtr run(const values::BufferValue &frame, const std::string &fn) const;
 
     std::optional<ArgManifest> arg_manifest() const override
     {

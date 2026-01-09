@@ -13,7 +13,7 @@ module frame_m
   !----------------------------------------------------------------------------!
 
   type, public :: frame_t
-    real(fp), allocatable :: data(:,:)
+    real(buf_k), allocatable :: data(:,:)
   contains
     procedure :: read_fits, write_fits, check_shape
     procedure, private :: read_image_data
@@ -52,7 +52,7 @@ contains
 
   function frame_t_ctor_buf(buf) result(fr)
     type(frame_t):: fr
-    real(fp), intent(in) :: buf(:,:)
+    real(buf_k), intent(in) :: buf(:,:)
 
     fr % data = buf
   end function
@@ -89,7 +89,7 @@ contains
     allocate(tmpbuf(sz(1), sz(2)))
     flatptr(1:size(tmpbuf)) => tmpbuf
 
-    call ftgpv(un, 1, 1, product(sz), 0._fp, flatptr, anyf, ftiostat)
+    call ftgpv(un, 1, 1, product(sz), 0._buf_k, flatptr, anyf, ftiostat)
 
     if (ftiostat == 0) then
       allocate(self % data(sz(2), sz(1)))
@@ -192,9 +192,9 @@ contains
     character(len = *), intent(in) :: fn
     integer, intent(inout), optional :: errno
     integer :: ftiostat, un, iostat, bufshape(2)
-    real(fp) :: buf(:,:)
-    real(kind=fp), allocatable, target :: tmpbuf(:,:)
-    real(kind=fp), pointer, contiguous :: flatptr(:)
+    real(buf_k) :: buf(:,:)
+    real(kind=buf_k), allocatable, target :: tmpbuf(:,:)
+    real(kind=buf_k), pointer, contiguous :: flatptr(:)
 
     iostat = 0
     open (99, file = fn, status = 'old', iostat = iostat)

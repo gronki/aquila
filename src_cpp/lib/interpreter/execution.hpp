@@ -30,10 +30,10 @@ public:
 
 class RefNode : public ExecNode
 {
-    String refname;
+    std::string refname;
 
 public:
-    RefNode(const String &refname, Namespace &ns) : ExecNode(ns), refname(refname) {}
+    RefNode(const std::string &refname, Namespace &ns) : ExecNode(ns), refname(refname) {}
 
     const Value *yield() override { return &ns.get(refname); }
 };
@@ -80,7 +80,7 @@ class OpNode : public ExecNode
 public:
     OpNode(std::unique_ptr<Operation> op,
         std::vector<std::unique_ptr<ExecNode>> args,
-        const std::vector<String> &keys,
+        const std::vector<std::string> &keys,
         Namespace &ns) : ExecNode(ns), op(std::move(op)), args(std::move(args))
     {
         std::optional<ArgManifest> maybe_manifest = this->op->arg_manifest();

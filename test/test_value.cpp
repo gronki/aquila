@@ -9,9 +9,9 @@ TEST(simple)
     IntValue iv1{4}, iv2{4}, iv3{5};
 
     REQUIRE(iv1 == iv2);
-    REQUIRE(iv1 == (Int)4);
-    REQUIRE((Int)4 == iv2);
-    REQUIRE((Int)4 != iv3);
+    REQUIRE(iv1 == (std::int64_t)4);
+    REQUIRE((std::int64_t)4 == iv2);
+    REQUIRE((std::int64_t)4 != iv3);
     REQUIRE(iv2 != iv3);
 
     std::cout << iv1 << std::endl;

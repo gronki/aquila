@@ -6,17 +6,19 @@
 #include <iostream>
 #include <set>
 #include <vector>
+#include <cstdint>
 
 #include "../../global/check.hpp"
-#include "../../global/types.hpp"
+
+#include "../../../src/c_binding/aquila.h"
 
 namespace aquila
 {
 
-inline Int wrap_idx(Int i, std::size_t idxmax)
+inline std::int64_t wrap_idx(std::int64_t i, std::size_t idxmax)
 {
-    check(i <= static_cast<Int>(idxmax));
-    check(i >= -static_cast<Int>(idxmax));
+    check(i <= static_cast<std::int64_t>(idxmax));
+    check(i >= -static_cast<std::int64_t>(idxmax));
     return i >= 0 ? i : i + idxmax + 1;
 }
 
@@ -30,19 +32,19 @@ template <typename T>
 class Buffer
 {
     std::vector<T> buffer;
-    Int nx, ny;
+    std::int64_t nx, ny;
 
 public:
-    Buffer(Int nx, Int ny) : buffer(nx * ny), nx(nx), ny(ny) {}
+    Buffer(std::int64_t nx, std::int64_t ny) : buffer(nx * ny), nx(nx), ny(ny) {}
 
-    Buffer(Int nx, Int ny, T value) : buffer(nx * ny), nx(nx), ny(ny)
+    Buffer(std::int64_t nx, std::int64_t ny, T value) : buffer(nx * ny), nx(nx), ny(ny)
     {
         std::fill(buffer.begin(), buffer.end(), value);
     }
 
     Buffer(const View<T> &view) : buffer(view.nx * view.ny), nx(view.nx), ny(view.ny)
     {
-        for (Int ivec = 0; ivec < view.vecs(); ivec++)
+        for (std::int64_t ivec = 0; ivec < view.vecs(); ivec++)
         {
             const T *srcrow = view.vec(ivec);
             T *dstrow = vec(ivec);
@@ -50,36 +52,36 @@ public:
         }
     }
 
-    T &operator[](const Int i) noexcept
+    T &operator[](const std::int64_t i) noexcept
     {
         check(i >= 0);
         check(i < buffer.size());
         return buffer[i];
     }
 
-    const T &operator[](const Int i) const noexcept
+    const T &operator[](const std::int64_t i) const noexcept
     {
         check(i >= 0);
         check(i < buffer.size());
         return buffer[i];
     }
 
-    Int cols() const noexcept { return nx; }
-    Int rows() const noexcept { return ny; }
-    Int size() const noexcept { return nx * ny; }
+    std::int64_t cols() const noexcept { return nx; }
+    std::int64_t rows() const noexcept { return ny; }
+    std::int64_t size() const noexcept { return nx * ny; }
     T *data() noexcept { return buffer.data(); }
     const T *data() const noexcept { return buffer.data(); }
 
-    Int vecs() const noexcept { return nx; }
-    Int nvec() const noexcept { return ny; }
+    std::int64_t vecs() const noexcept { return nx; }
+    std::int64_t nvec() const noexcept { return ny; }
 
-    T *vec(Int ivec) noexcept
+    T *vec(std::int64_t ivec) noexcept
     {
         check(ivec >= 0);
         check(ivec < vecs());
         return buffer.data() + nvec() * ivec;
     }
-    const T *vec(Int ivec) const noexcept
+    const T *vec(std::int64_t ivec) const noexcept
     {
         check(ivec >= 0);
         check(ivec < vecs());
@@ -87,13 +89,13 @@ public:
     }
 
     View<T> view() const { return {*this}; }
-    View<T> view(Int ix_lo, Int ix_hi, Int iy_lo, Int iy_hi) const
+    View<T> view(std::int64_t ix_lo, std::int64_t ix_hi, std::int64_t iy_lo, std::int64_t iy_hi) const
     {
         return {*this, ix_lo, ix_hi, iy_lo, iy_hi};
     }
 
     View<T> mut_view() { return {*this}; }
-    View<T> mut_view(Int ix_lo, Int ix_hi, Int iy_lo, Int iy_hi)
+    View<T> mut_view(std::int64_t ix_lo, std::int64_t ix_hi, std::int64_t iy_lo, std::int64_t iy_hi)
     {
         return {*this, ix_lo, ix_hi, iy_lo, iy_hi};
     }
@@ -111,7 +113,7 @@ template <typename T>
 class View
 {
     const Buffer<T> *buf = nullptr;
-    const Int off_x, off_y, nx, ny, buf_nx, buf_ny;
+    const std::int64_t off_x, off_y, nx, ny, buf_nx, buf_ny;
 
 public:
     View(const Buffer<T> &buf) :
@@ -120,7 +122,7 @@ public:
     {
     }
 
-    View(const Buffer<T> &buf, Int ix_lo, Int ix_hi, Int iy_lo, Int iy_hi) :
+    View(const Buffer<T> &buf, std::int64_t ix_lo, std::int64_t ix_hi, std::int64_t iy_lo, std::int64_t iy_hi) :
         buf(&buf), buf_nx(buf.nx), buf_ny(buf.ny), off_x(wrap_idx(ix_lo, buf.cols())),
         off_y(wrap_idx(iy_lo, buf.rows())), nx(wrap_idx(ix_hi, buf.cols()) - off_x),
         ny(wrap_idx(iy_hi, buf.rows()) - off_y)
@@ -136,7 +138,7 @@ public:
         check(ny > 0);
     }
 
-    View(const View<T> &view, Int ix_lo, Int ix_hi, Int iy_lo, Int iy_hi) :
+    View(const View<T> &view, std::int64_t ix_lo, std::int64_t ix_hi, std::int64_t iy_lo, std::int64_t iy_hi) :
         buf(view.buf), buf_nx(view.buf_nx), buf_ny(view.buf_ny),
         off_x(view.off_x + wrap_idx(ix_lo, view.cols())),
         off_y(view.off_y + wrap_idx(iy_lo, view.rows())),
@@ -159,7 +161,7 @@ public:
     {
     }
 
-    const T &operator()(const Int ix, const Int iy) const noexcept
+    const T &operator()(const std::int64_t ix, const std::int64_t iy) const noexcept
     {
         check(ix >= 0);
         check(ix < nx);
@@ -168,14 +170,14 @@ public:
         return buf->buffer[buf_ny * (ix + off_x) + (iy + off_y)];
     }
 
-    Int cols() const noexcept { return nx; }
-    Int rows() const noexcept { return ny; }
-    Int size() const noexcept { return nx * ny; }
+    std::int64_t cols() const noexcept { return nx; }
+    std::int64_t rows() const noexcept { return ny; }
+    std::int64_t size() const noexcept { return nx * ny; }
     bool is_contiguous() const noexcept { return (ny == buf_ny) && (off_y == 0); }
 
-    Int vecs() const noexcept { return nx; }
-    Int nvec() const noexcept { return ny; }
-    const T *vec(Int ivec) const noexcept
+    std::int64_t vecs() const noexcept { return nx; }
+    std::int64_t nvec() const noexcept { return ny; }
+    const T *vec(std::int64_t ivec) const noexcept
     {
         check(ivec < vecs());
         return &(buf->buffer[off_y + buf_ny * (ivec + off_x)]);
@@ -187,7 +189,7 @@ public:
         return vec(0);
     }
 
-    View<T> view(Int ix_lo, Int ix_hi, Int iy_lo, Int iy_hi)
+    View<T> view(std::int64_t ix_lo, std::int64_t ix_hi, std::int64_t iy_lo, std::int64_t iy_hi)
     {
         return {*this, ix_lo, ix_hi, iy_lo, iy_hi};
     }
@@ -206,7 +208,7 @@ template <typename T>
 class MutableView
 {
     Buffer<T> *buf = nullptr;
-    const Int off_x, off_y, nx, ny, buf_nx, buf_ny;
+    const std::int64_t off_x, off_y, nx, ny, buf_nx, buf_ny;
 
 public:
     MutableView(Buffer<T> &buf) :
@@ -215,7 +217,7 @@ public:
     {
     }
 
-    MutableView(Buffer<T> &buf, Int ix_lo, Int ix_hi, Int iy_lo, Int iy_hi) :
+    MutableView(Buffer<T> &buf, std::int64_t ix_lo, std::int64_t ix_hi, std::int64_t iy_lo, std::int64_t iy_hi) :
         buf(&buf), buf_nx(buf.nx), buf_ny(buf.ny), off_x(wrap_idx(ix_lo, buf.cols())),
         off_y(wrap_idx(iy_lo, buf.rows())), nx(wrap_idx(ix_hi, buf.cols()) - off_x),
         ny(wrap_idx(iy_hi, buf.rows()) - off_y)
@@ -231,7 +233,7 @@ public:
         check(ny > 0);
     }
 
-    MutableView(const MutableView<T> &view, Int ix_lo, Int ix_hi, Int iy_lo, Int iy_hi) :
+    MutableView(const MutableView<T> &view, std::int64_t ix_lo, std::int64_t ix_hi, std::int64_t iy_lo, std::int64_t iy_hi) :
         buf(view.buf), buf_nx(view.buf_nx), buf_ny(view.buf_ny),
         off_x(view.off_x + wrap_idx(ix_lo, view.cols())),
         off_y(view.off_y + wrap_idx(iy_lo, view.rows())),
@@ -249,7 +251,7 @@ public:
         check(ny > 0);
     }
 
-    T &operator()(const Int ix, const Int iy) noexcept
+    T &operator()(const std::int64_t ix, const std::int64_t iy) noexcept
     {
         check(ix >= 0);
         check(ix < nx);
@@ -258,7 +260,7 @@ public:
         return buf->buffer[buf_ny * (ix + off_x) + (iy + off_y)];
     }
 
-    const T &operator()(const Int ix, const Int iy) const noexcept
+    const T &operator()(const std::int64_t ix, const std::int64_t iy) const noexcept
     {
         check(ix >= 0);
         check(ix < nx);
@@ -267,19 +269,19 @@ public:
         return buf->buffer[buf_ny * (ix + off_x) + (iy + off_y)];
     }
 
-    Int cols() const noexcept { return nx; }
-    Int rows() const noexcept { return ny; }
-    Int size() const noexcept { return nx * ny; }
+    std::int64_t cols() const noexcept { return nx; }
+    std::int64_t rows() const noexcept { return ny; }
+    std::int64_t size() const noexcept { return nx * ny; }
     bool is_contiguous() const noexcept { return (ny == buf_ny) && (off_y == 0); }
 
-    Int vecs() const noexcept { return nx; }
-    Int nvec() const noexcept { return ny; }
-    T *vec(Int ivec) noexcept
+    std::int64_t vecs() const noexcept { return nx; }
+    std::int64_t nvec() const noexcept { return ny; }
+    T *vec(std::int64_t ivec) noexcept
     {
         check(ivec < vecs());
         return &(buf->buffer[off_y + buf_ny * (ivec + off_x)]);
     }
-    const T *vec(Int ivec) const noexcept
+    const T *vec(std::int64_t ivec) const noexcept
     {
         check(ivec < vecs());
         return &(buf->buffer[off_y + buf_ny * (ivec + off_x)]);
@@ -299,7 +301,7 @@ public:
 
     MutableView<T> &operator=(T val)
     {
-        for (Int irow = 0; irow < vecs(); irow++)
+        for (std::int64_t irow = 0; irow < vecs(); irow++)
         {
             T *onerow = vec(irow);
             std::fill(onerow, onerow + nvec(), val);
@@ -311,7 +313,7 @@ public:
     {
         check(rows() == other.rows());
         check(cols() == other.cols());
-        for (Int irow = 0; irow < vecs(); irow++)
+        for (std::int64_t irow = 0; irow < vecs(); irow++)
         {
             T *myrow = vec(irow);
             const T *otherrow = other.vec(irow);
@@ -320,7 +322,7 @@ public:
         return *this;
     }
 
-    MutableView<T> view(Int ix_lo, Int ix_hi, Int iy_lo, Int iy_hi)
+    MutableView<T> view(std::int64_t ix_lo, std::int64_t ix_hi, std::int64_t iy_lo, std::int64_t iy_hi)
     {
         return {*this, ix_lo, ix_hi, iy_lo, iy_hi};
     }
@@ -336,9 +338,9 @@ public:
 template <typename U>
 std::ostream &operator<<(std::ostream &os, const View<U> &buf)
 {
-    for (Int nj = 0; nj < buf.rows(); nj++)
+    for (std::int64_t nj = 0; nj < buf.rows(); nj++)
     {
-        for (Int ni = 0; ni < buf.cols(); ni++)
+        for (std::int64_t ni = 0; ni < buf.cols(); ni++)
         {
             std::cout << std::setw(9) << buf(ni, nj);
         }
@@ -350,8 +352,8 @@ std::ostream &operator<<(std::ostream &os, const View<U> &buf)
 template <typename T, typename F>
 inline auto apply(const View<T> &one, F f)
 {
-    Int nx = one.cols();
-    Int ny = one.rows();
+    std::int64_t nx = one.cols();
+    std::int64_t ny = one.rows();
 
     using U = decltype(f(std::declval<T>()));
     Buffer<U> result(nx, ny);
@@ -361,19 +363,19 @@ inline auto apply(const View<T> &one, F f)
         const T *__restrict one_data = one.data();
         U *__restrict result_data = result.data();
 #pragma omp simd
-        for (Int i = 0; i < result.size(); i++)
+        for (std::int64_t i = 0; i < result.size(); i++)
         {
             result_data[i] = f(one_data[i]);
         }
         return result;
     }
 
-    for (Int ivec = 0; ivec < one.vecs(); ivec++)
+    for (std::int64_t ivec = 0; ivec < one.vecs(); ivec++)
     {
         const T *__restrict one_vec = one.vec(ivec);
         U *__restrict result_vec = result.vec(ivec);
 #pragma omp simd
-        for (Int lvec = 0; lvec < one.nvec(); lvec++)
+        for (std::int64_t lvec = 0; lvec < one.nvec(); lvec++)
         {
             result_vec[lvec] = f(one_vec[lvec]);
         }
@@ -384,8 +386,8 @@ inline auto apply(const View<T> &one, F f)
 template <typename T, typename U, typename F>
 inline auto apply(const View<T> &one, const View<U> &other, F f)
 {
-    Int nx = one.cols();
-    Int ny = one.rows();
+    std::int64_t nx = one.cols();
+    std::int64_t ny = one.rows();
     check(nx == other.cols());
     check(ny == other.rows());
 
@@ -398,20 +400,20 @@ inline auto apply(const View<T> &one, const View<U> &other, F f)
         const U *__restrict other_data = other.data();
         V *__restrict result_data = result.data();
 #pragma omp simd
-        for (Int i = 0; i < result.size(); i++)
+        for (std::int64_t i = 0; i < result.size(); i++)
         {
             result_data[i] = f(one_data[i], other_data[i]);
         }
         return result;
     }
 
-    for (Int ivec = 0; ivec < one.vecs(); ivec++)
+    for (std::int64_t ivec = 0; ivec < one.vecs(); ivec++)
     {
         const T *__restrict one_vec = one.vec(ivec);
         const U *__restrict other_vec = other.vec(ivec);
         V *__restrict result_vec = result.vec(ivec);
 #pragma omp simd
-        for (Int lvec = 0; lvec < one.nvec(); lvec++)
+        for (std::int64_t lvec = 0; lvec < one.nvec(); lvec++)
         {
             result_vec[lvec] = f(one_vec[lvec], other_vec[lvec]);
         }
@@ -422,8 +424,8 @@ inline auto apply(const View<T> &one, const View<U> &other, F f)
 template <typename T, typename U, typename V, typename F>
 inline auto apply(const View<T> &one, const View<U> &other, const View<V> &onemore, F f)
 {
-    Int nx = one.cols();
-    Int ny = one.rows();
+    std::int64_t nx = one.cols();
+    std::int64_t ny = one.rows();
     check(nx == other.cols());
     check(ny == other.rows());
     check(nx == onemore.cols());
@@ -439,21 +441,21 @@ inline auto apply(const View<T> &one, const View<U> &other, const View<V> &onemo
         const V *__restrict onemore_data = onemore.data();
         W *__restrict result_data = result.data();
 #pragma omp simd
-        for (Int i = 0; i < result.size(); i++)
+        for (std::int64_t i = 0; i < result.size(); i++)
         {
             result_data[i] = f(one_data[i], other_data[i], onemore_data[i]);
         }
         return result;
     }
 
-    for (Int ivec = 0; ivec < one.vecs(); ivec++)
+    for (std::int64_t ivec = 0; ivec < one.vecs(); ivec++)
     {
         const T *__restrict one_vec = one.vec(ivec);
         const U *__restrict other_vec = other.vec(ivec);
         const V *__restrict onemore_vec = onemore.vec(ivec);
         W *__restrict result_vec = result.vec(ivec);
 #pragma omp simd
-        for (Int lvec = 0; lvec < one.nvec(); lvec++)
+        for (std::int64_t lvec = 0; lvec < one.nvec(); lvec++)
         {
             result_vec[lvec] = f(one_vec[lvec], other_vec[lvec], onemore_vec[lvec]);
         }

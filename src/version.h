@@ -1,1 +1,0 @@
-#define _AQUILA_VERSION_ "260107"

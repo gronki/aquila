@@ -15,7 +15,7 @@ subroutine align_polygon(xy1, xy2, nstars, nmatches, t)
    class(transform_xyr_t), intent(inout) :: t
    type(source_t), intent(in) :: xy1(:), xy2(:)
    integer, intent(in) :: nstars, nmatches
-   real(fp) :: init_dx, init_dy, init_r
+   real(r64_k) :: init_dx, init_dy, init_r
 
    call find_transform_polygons(xy1, xy2, nstars, nmatches, init_dx, init_dy, init_r)
    t%vec(:3) = [init_dx, init_dy, init_r * t%scale]
@@ -27,8 +27,8 @@ subroutine classic_align(lst0, lst, align_method, r0, tx, errno)
    character(len=*), intent(in) :: align_method
    type(transform_xyr_t), intent(inout) :: tx
    integer, intent(out) :: errno
-   real(fp) :: r0
-   real(fp) :: a
+   real(r64_k) :: r0
+   real(r64_k) :: a
 
    errno = 0
    select case (align_method)
@@ -40,7 +40,7 @@ subroutine classic_align(lst0, lst, align_method, r0, tx, errno)
      ! find an initial estimate for a transform
      call align_polygon(lst0, lst, 24, 8, tx)
      ! fine-tune the transform between frames
-     call align_gravity(lst0, lst, tx, 2.0_fp)
+     call align_gravity(lst0, lst, tx, 2.0_r64_k)
 
    case ('gravity_only')
      a = 0.25 * (2 * r0)
@@ -48,8 +48,8 @@ subroutine classic_align(lst0, lst, align_method, r0, tx, errno)
        call align_gravity(lst0, lst, tx, a)
      end if
 
-     call align_gravity(lst0, lst, tx, 10.0_fp)
-     call align_gravity(lst0, lst, tx, 2.0_fp)
+     call align_gravity(lst0, lst, tx, 10.0_r64_k)
+     call align_gravity(lst0, lst, tx, 2.0_r64_k)
      
    case default
       print *, 'align: unknown method: ', align_method
@@ -64,8 +64,8 @@ subroutine align_gravity(xy, xy0, v0, k0)
    class(transform_t), intent(inout) :: v0
    type(source_t) :: xy1(size(xy))
    integer :: ii, npar
-   real(fp) :: k0, y0, lam
-   real(fp) :: y0_dv(v0%npar()), y0n_dv(v0%npar())
+   real(r64_k) :: k0, y0, lam
+   real(r64_k) :: y0_dv(v0%npar()), y0n_dv(v0%npar())
    ! maximum dF/dx at x = k0 / sqrt(2)
 
    npar = v0%npar()
@@ -101,11 +101,11 @@ subroutine align_gravity(xy, xy0, v0, k0)
 contains
 
    subroutine minimize_along_vec(x, dx_0)
-      real(fp), intent(inout) :: x
-      real(fp), intent(in) :: dx_0
+      real(r64_k), intent(inout) :: x
+      real(r64_k), intent(in) :: dx_0
       integer :: i, ii
-      real(fp) :: dx
-      real(fp) :: y, y_dx, y_dv(npar)
+      real(r64_k) :: dx
+      real(r64_k) :: y, y_dx, y_dv(npar)
       class(transform_t), allocatable :: v
       integer, parameter :: u = 8
 
@@ -140,9 +140,9 @@ contains
    subroutine comp_ydv(v, y, y_dv)
 
       class(transform_t), intent(in) :: v
-      real(fp), intent(out) :: y, y_dv(npar)
-      real(fp) :: aa, bb, y_dx1, y_dy1
-      real(fp), dimension(npar) :: x1_dv, y1_dv
+      real(r64_k), intent(out) :: y, y_dv(npar)
+      real(r64_k) :: aa, bb, y_dx1, y_dy1
+      real(r64_k), dimension(npar) :: x1_dv, y1_dv
       integer :: i0, i
 
       y = 0
@@ -156,7 +156,7 @@ contains
          do i0 = 1, size(xy0)
             aa = sqrt((xy1(i) % x - xy0(i0) % x)**2 &
             &   + (xy1(i) % y - xy0(i0) % y)**2 + k0**2)
-            bb = (xy0(i0) % flux * xy(i) % flux)**0.25_fp * k0
+            bb = (xy0(i0) % flux * xy(i) % flux)**0.25_r64_k * k0
             y = y + bb / aa
             y_dx1 = - (xy1(i) % x - xy0(i0) % x) * bb / aa**3
             y_dy1 = - (xy1(i) % y - xy0(i0) % y) * bb / aa**3

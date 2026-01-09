@@ -44,7 +44,7 @@ public:
 
 //     std::unique_ptr<Value> run(const std::vector<const RealValue *> &a)
 //     {
-//         Real result = 0;
+//         double result = 0;
 //         for (const auto &aa : a)
 //         {
 //             result += aa->value;
@@ -58,7 +58,7 @@ class DirectCastOp : public Operation
 public:
     BIND_ARGS(&DirectCastOp::run);
 
-    std::unique_ptr<Value> run(const Real &a, const Int &b) const
+    std::unique_ptr<Value> run(const double &a, const std::int64_t &b) const
     {
         return std::make_unique<RealValue>(a * b);
     }

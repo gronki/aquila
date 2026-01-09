@@ -8,8 +8,8 @@ contains
   !----------------------------------------------------------------------------!
 
   pure subroutine convol(x,k,y)
-    real(fp), dimension(:,:), intent(in), contiguous :: x, k
-    real(fp), dimension(:,:), intent(out), contiguous :: y
+    real(buf_k), dimension(:,:), intent(in), contiguous :: x, k
+    real(buf_k), dimension(:,:), intent(out), contiguous :: y
     integer :: i, j, ri, rj
 
     if (mod(size(k,1), 2) == 0 .or. mod(size(k,2), 2) == 0)     &
@@ -26,9 +26,9 @@ contains
   !----------------------------------------------------------------------------!
 
   pure subroutine convol_fix(x,k,y,method)
-    real(fp), dimension(:,:), intent(in), contiguous :: x, k
-    real(fp), dimension(:,:), intent(out), contiguous :: y
-    real(fp), dimension(:,:), allocatable :: tmpx
+    real(buf_k), dimension(:,:), intent(in), contiguous :: x, k
+    real(buf_k), dimension(:,:), intent(out), contiguous :: y
+    real(buf_k), dimension(:,:), allocatable :: tmpx
     character(*), intent(in) :: method
     integer :: ri, rj, i, j
 
@@ -96,7 +96,7 @@ end module convolutions
 
 module deconvolutions
 
-  use globals, only: fp
+  use globals, only: buf_k
   implicit none
 
 contains
@@ -105,12 +105,12 @@ contains
     use convolutions, only: convol, convol_fix
     use ieee_arithmetic, only: ieee_is_normal
 
-    real(fp), dimension(:,:), intent(in), contiguous :: im1, psf
-    real(fp), dimension(:,:), intent(out), contiguous :: im2
-    real(fp), intent(in) :: strength
+    real(buf_k), dimension(:,:), intent(in), contiguous :: im1, psf
+    real(buf_k), dimension(:,:), intent(out), contiguous :: im2
+    real(buf_k), intent(in) :: strength
     integer, intent(in) :: maxiter
-    real(fp), dimension(:,:), allocatable :: buf1, buf2, psf_inv
-    real(fp) :: err1, err2, err01, err02
+    real(buf_k), dimension(:,:), allocatable :: buf1, buf2, psf_inv
+    real(buf_k) :: err1, err2, err01, err02
     integer :: i
 
     if (size(im1,1) /= size(im2,1) .or. size(im1,2) /= size(im2,2)) &
@@ -141,8 +141,8 @@ contains
         err2 = sqrt(sum((buf2 - 1)**2) / size(im1))
 
         write (0, '(i5, 4f12.5)') i, &
-        err1, merge(err1 / err01 - 1, 0.0_fp, i > 1), &
-        err2, merge(err2 / err02 - 1, 0.0_fp, i > 1)
+        err1, merge(err1 / err01 - 1, 0.0_buf_k, i > 1), &
+        err2, merge(err2 / err02 - 1, 0.0_buf_k, i > 1)
 
         err01 = err1
         err02 = err2

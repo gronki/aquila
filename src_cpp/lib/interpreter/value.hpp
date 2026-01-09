@@ -7,8 +7,9 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include <cstdint>
 
-#include "../../global/types.hpp"
+
 
 namespace aquila::interpreter
 {
@@ -108,9 +109,9 @@ inline void SimpleValue<std::string>::write(std::ostream &os) const
     os << "\"" << value << "\"";
 }
 
-using IntValue = SimpleValue<Int>;
-using RealValue = SimpleValue<Real>;
-using StrValue = SimpleValue<String>;
+using IntValue = SimpleValue<std::int64_t>;
+using RealValue = SimpleValue<double>;
+using StrValue = SimpleValue<std::string>;
 
 struct CompoundValue : public Value
 {

@@ -18,7 +18,7 @@ static std::unique_ptr<OpNode> build_op_node(
 
     std::vector<std::unique_ptr<ExecNode>> args;
     args.reserve(ast_op_node.args.size());
-    std::vector<String> keys;
+    std::vector<std::string> keys;
     keys.reserve(ast_op_node.args.size());
     for (const auto &arg : ast_op_node.args)
     {

@@ -3,7 +3,7 @@ program example
   use globals
   implicit none
 
-  real(fp), allocatable :: im(:,:), im2(:,:)
+  real(buf_k), allocatable :: im(:,:), im2(:,:)
   integer :: bsize, ndim, errno = 0
   logical :: anyf
   integer :: sz(2)

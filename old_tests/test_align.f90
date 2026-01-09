@@ -11,7 +11,7 @@ program test_align
 
   generate_stars: block
     integer :: n
-    real(fp), allocatable :: x(:)
+    real(buf_k), allocatable :: x(:)
 
     n = number_of_stars()
     allocate(stars1(n), stars2(n), x(n))
@@ -30,7 +30,7 @@ program test_align
 contains
 
   integer function number_of_stars() result(n)
-    real(fp) :: x
+    real(buf_k) :: x
     call random_number(x)
     n = nint(30 * x) + 30
   end function
@@ -41,11 +41,11 @@ contains
     type(source_t), dimension(:), intent(in) :: xy0, xy
     type(source_t), dimension(:), allocatable :: xy1
 
-    real(fp), intent(in) :: k0
-    real(fp), intent(out) :: U, U_dv(:)
-    real(fp), dimension(size(U_dv)) :: dx1_dv, dy1_dv
+    real(buf_k), intent(in) :: k0
+    real(buf_k), intent(out) :: U, U_dv(:)
+    real(buf_k), dimension(size(U_dv)) :: dx1_dv, dy1_dv
 
-    real(fp) :: aa, bb, U_dx1, U_dy1
+    real(buf_k) :: aa, bb, U_dx1, U_dy1
     integer :: i0, i1
 
     U = 0

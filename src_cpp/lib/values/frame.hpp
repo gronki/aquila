@@ -8,8 +8,8 @@ namespace aquila::values
 
 struct BufferValue : public interpreter::CompoundValue
 {
-    Buffer<Real> buffer;
-    BufferValue(Buffer<Real> v) : buffer(std::move(v)) {}
+    Buffer<real_buf_t> buffer;
+    BufferValue(Buffer<real_buf_t> v) : buffer(std::move(v)) {}
     std::unique_ptr<Value> clone() const
     {
         return std::make_unique<BufferValue>(buffer);
@@ -21,3 +21,18 @@ struct BufferValue : public interpreter::CompoundValue
 };
 
 }; // namespace aquila::values
+
+namespace aquila
+{
+
+inline buffer_descriptor_t c_buf(Buffer<real_buf_t> &buf)
+{
+    return {buf.data(), buf.rows(), buf.cols()};
+}
+
+inline const_buffer_descriptor_t c_const_buf(const Buffer<real_buf_t> &buf)
+{
+    return {buf.data(), buf.rows(), buf.cols()};
+}
+
+}; // namespace aquila

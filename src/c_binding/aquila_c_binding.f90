@@ -1,20 +1,20 @@
 module aquila_c_binding
 
 use iso_c_binding
-use globals, only: fp
+use globals
 implicit none
 
 type, bind(c) :: buffer_descriptor_t
    type(c_ptr) :: data
-   integer(c_int64_t) :: rows, cols
+   integer(i64_k) :: rows, cols
 end type
 
 contains
 
 function from_descriptor(descr)
    type(buffer_descriptor_t), intent(in) :: descr
-   real(fp), pointer, contiguous :: from_descriptor(:,:)
-   integer(c_int64_t) :: arrshape(2)
+   real(buf_k), pointer, contiguous :: from_descriptor(:,:)
+   integer(i64_k) :: arrshape(2)
 
    arrshape(1) = descr%rows
    arrshape(2) = descr%cols

@@ -3,8 +3,8 @@ program background
   use globals
   implicit none
 
-  real(fp), dimension(:,:), allocatable :: im
-  real(fp), dimension(:,:,:), allocatable :: imout
+  real(buf_k), dimension(:,:), allocatable :: im
+  real(buf_k), dimension(:,:,:), allocatable :: imout
   integer :: bsize, ndim, errno = 0
   logical :: anyf
   integer :: sz(2)
@@ -29,9 +29,9 @@ program background
     use statistics, only: outliers, quickselect, avsd
 
     integer, parameter :: mrad = 15
-    real(fp), dimension(4 * mrad**2 + 4 * mrad + 1) :: k
+    real(buf_k), dimension(4 * mrad**2 + 4 * mrad + 1) :: k
     logical :: mskt(2 * mrad + 1, 2 * mrad + 1)
-    real(fp) :: blur(2 * mrad + 1, 2 * mrad + 1)
+    real(buf_k) :: blur(2 * mrad + 1, 2 * mrad + 1)
     integer i, j, ni, nj
     logical, allocatable :: msk(:,:)
 
@@ -44,8 +44,8 @@ program background
 
     prepare: block
       integer, parameter :: nb = 96
-      real(fp), dimension(nb**2) :: k
-      real(fp) :: mean, median, stdev
+      real(buf_k), dimension(nb**2) :: k
+      real(buf_k) :: mean, median, stdev
       integer :: ioff, joff
 
       ioff = mod(ni,nb) / 2
@@ -61,14 +61,14 @@ program background
                   imo => imout(max(i, 1) : min(i + nb - 1, ni),     &
                                max(j, 1) : min(j + nb - 1, nj), :))
             associate (n => size(imc))
-              call outliers(imc, mskc, 5.0_fp, 16, mean, stdev)
+              call outliers(imc, mskc, 5.0_buf_k, 16, mean, stdev)
               imo(:,:,2) = imc(:,:) - mean
               ! imo(:,:,3) = imc(:,:) - (mean + stdev)
               k(1:n) = reshape(imc, [n])
               median = quickselect(k(1:n), (n + 1) / 2)
               imo(:,:,3) = imc(:,:) - median
               imo(:,:,4) = imc(:,:) - (3 * mean - 2 * median)
-              imo(:,:,5) = merge(imc(:,:), 0.0_fp, imc >= mean + 5 * stdev)
+              imo(:,:,5) = merge(imc(:,:), 0.0_buf_k, imc >= mean + 5 * stdev)
             end associate
           end associate
         end do
@@ -81,9 +81,9 @@ program background
       use convolutions, only: convol, convol_fix
       ! fwhm = 2.355 * sigma
       ! kernel size for gaussian: 2.5 * fwhm
-      real(fp) :: krn(7,7), krn2(3,3), krn3(15,15), stdev, mean
-      real(fp), allocatable :: tmp(:,:)
-      real(fp) :: fwhm = 3.0
+      real(buf_k) :: krn(7,7), krn2(3,3), krn3(15,15), stdev, mean
+      real(buf_k), allocatable :: tmp(:,:)
+      real(buf_k) :: fwhm = 3.0
       krn2 = reshape([0,-1,0,-1,4,-1,0,-1,0], shape(krn2))
       call gausskrn(fwhm / 2.355, krn)
       allocate(tmp, source = im)

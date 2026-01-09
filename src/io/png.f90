@@ -3,7 +3,7 @@ module png
     !------------------------------------------------------------------------------------!
 
     use iso_c_binding
-    use globals, only: fp
+    use globals, only: buf_k
 
     !------------------------------------------------------------------------------------!
 
@@ -98,7 +98,7 @@ contains
 
     subroutine write_png(fn, im, bits, errno)
         character(len = *), intent(in) :: fn
-        real(fp), intent(in) :: im(:,:,:)
+        real(buf_k), intent(in) :: im(:,:,:)
         integer, intent(in), optional :: bits
         integer, intent(inout), optional :: errno
 
@@ -182,14 +182,14 @@ contains
     !------------------------------------------------------------------------------------!
 
     elemental function sc8(x) result(y)
-        real(fp), intent(in) :: x
+        real(buf_k), intent(in) :: x
         integer(c_int8_t) :: y
         integer, parameter :: ymax = 2 * huge(y) + 1
         y = transfer(max(0, min(ymax, nint(x * ymax))), y)
     end function
 
     elemental function sc16(x) result(y)
-        real(fp), intent(in) :: x
+        real(buf_k), intent(in) :: x
         integer(c_int16_t) :: y
         integer, parameter :: ymax = 2 * huge(y) + 1
         y = transfer(max(0, min(ymax, nint(x * ymax))), y)

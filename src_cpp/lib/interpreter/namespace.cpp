@@ -3,12 +3,12 @@
 namespace aquila::interpreter
 {
 
-void Namespace::push(const String &name, std::unique_ptr<Value> v)
+void Namespace::push(const std::string &name, std::unique_ptr<Value> v)
 {
     vault.insert_or_assign(name, std::move(v));
 }
 
-const Value &Namespace::get(const String &name) const
+const Value &Namespace::get(const std::string &name) const
 {
     auto it = vault.find(name);
     if (it != vault.end())
@@ -18,7 +18,7 @@ const Value &Namespace::get(const String &name) const
     throw std::runtime_error(std::string("No reference to ") + name + " found");
 }
 
-bool Namespace::contains(const String &name) const
+bool Namespace::contains(const std::string &name) const
 {
     auto it = vault.find(name);
     if (it != vault.end())

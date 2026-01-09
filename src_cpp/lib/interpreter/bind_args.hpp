@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <vector>
+#include <cstdint>
 
 #include "value.hpp"
 
@@ -40,19 +41,19 @@ inline const T &cast_simple_value(const Value &v)
 }
 
 template <>
-inline const Real &cast_value<Real>(const Value &v)
+inline const double &cast_value<double>(const Value &v)
 {
-    return cast_simple_value<Real>(v);
+    return cast_simple_value<double>(v);
 }
 
 template <>
-inline const Int &cast_value<Int>(const Value &v)
+inline const std::int64_t &cast_value<std::int64_t>(const Value &v)
 {
-    return cast_simple_value<Int>(v);
+    return cast_simple_value<std::int64_t>(v);
 }
 
 template <>
-inline const String &cast_value<std::string>(const Value &v)
+inline const std::string &cast_value<std::string>(const Value &v)
 {
     return cast_simple_value<std::string>(v);
 }

@@ -4,16 +4,17 @@ module globals
   use iso_fortran_env, stderr => error_unit, stdout => output_unit
 
   implicit none
-# ifdef SINGLE
-  integer, parameter :: fp = c_float
-# else
-  integer, parameter :: fp = c_double
-# endif
+
+  integer, parameter :: r32_k = c_float
+  integer, parameter :: r64_k = c_double
+  integer, parameter :: i64_k = c_int64_t
+  integer, parameter :: sz_k = c_size_t
+  integer, parameter :: buf_k = r32_k
 
   character(len = *), parameter :: hlp_fmt = '(a25, 2x, a)', hlp_fmtc = '(27x, a)'
   character(len = *), parameter :: fmthlp = '(a25, 2x, a, :/, *(27x, a, :/))'
-# include "../version.h"
-  character(len = *), parameter :: version = _AQUILA_VERSION_
+
+  character(len = *), parameter :: version = "260107"
 
   character(len = *), parameter :: perf_fmt = '("PERF", a10, 1x, "=", f7.3)'
 

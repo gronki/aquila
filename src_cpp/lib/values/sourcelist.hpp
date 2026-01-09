@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../../src/c_binding/aquila.hpp"
+#include "../../../src/c_binding/aquila.h"
 #include "../buffer/buffer.hpp"
 #include "../interpreter/value.hpp"
 

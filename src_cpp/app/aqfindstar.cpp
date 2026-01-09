@@ -1,5 +1,5 @@
 
-#include <aquila.hpp>
+#include <aquila.h>
 #include <buffer.hpp>
 #include <cmath>
 #include <fits.hpp>
@@ -8,6 +8,17 @@
 
 using namespace aquila;
 using std::cout, std::cerr, std::endl;
+
+
+static buffer_descriptor_t c_buf(Buffer<real_buf_t> &buf)
+{
+    return {buf.data(), buf.rows(), buf.cols()};
+}
+
+static const_buffer_descriptor_t c_const_buf(const Buffer<real_buf_t> &buf)
+{
+    return {buf.data(), buf.rows(), buf.cols()};
+}
 
 int main(int argc, char **argv)
 {
@@ -22,13 +33,13 @@ int main(int argc, char **argv)
     {
         auto buf = read_fits(argv[1]);
 
-        Int nstar;
-        const Int max_stars = 256;
+        std::int64_t nstar;
+        const std::int64_t max_stars = 256;
         source_t src[max_stars];
         findstar_param_t param;
-        register_stars(buf, src, max_stars, param, nstar);
+        register_stars(c_const_buf(buf), src, max_stars, param, nstar);
         cout << nstar << endl;
-        for (Int i = 0; i < nstar; i++)
+        for (std::int64_t i = 0; i < nstar; i++)
         {
             const auto &star = src[i];
             std::cout << std::fixed << std::setprecision(2) << std::setw(12)

@@ -10,13 +10,13 @@ struct FindstarOp : public Operation
 {
     BIND_ARGS(&FindstarOp::run);
     ValuePtr run(const values::BufferValue &frame,
-        const Int &limit,
-        const Real &blur_radius,
-        const Int &margin,
-        const Real &max_rms,
-        const String &rejection,
-        const Int &rslice,
-        const Real &thresh_sd) const;
+        const std::int64_t &limit,
+        const double &blur_radius,
+        const std::int64_t &margin,
+        const double &max_rms,
+        const std::string &rejection,
+        const std::int64_t &rslice,
+        const double &thresh_sd) const;
 
     std::optional<ArgManifest> arg_manifest() const override
     {

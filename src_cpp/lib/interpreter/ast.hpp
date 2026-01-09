@@ -19,7 +19,7 @@ struct AstNode
     AstNode() {}
 
     virtual ~AstNode() = default;
-    virtual void _print(std::ostream &, Int indent) const = 0;
+    virtual void _print(std::ostream &, std::int64_t indent) const = 0;
     friend std::ostream &operator<<(std::ostream &os, const AstNode &node)
     {
         node._print(os, 0);
@@ -36,7 +36,7 @@ struct AstValueNode : public AstNode
     {
     }
 
-    virtual void _print(std::ostream &os, Int indent) const
+    virtual void _print(std::ostream &os, std::int64_t indent) const
     {
         if (constant)
         {
@@ -66,7 +66,7 @@ struct AstExpandNode : public AstNode
     {
     }
 
-    virtual void _print(std::ostream &os, Int indent) const
+    virtual void _print(std::ostream &os, std::int64_t indent) const
     {
         os << (kind == Kind::EXPANSION ? EXPAND_DELIM : CONTRACT_DELIM);
         if (expandable)
@@ -89,7 +89,7 @@ struct AstRefNode : public AstNode
     {
     }
 
-    virtual void _print(std::ostream &os, Int indent) const
+    virtual void _print(std::ostream &os, std::int64_t indent) const
     {
         if (refname != "")
         {
@@ -118,7 +118,7 @@ struct AstOpNode : public AstNode
     {
     }
 
-    virtual void _print(std::ostream &os, Int indent) const
+    virtual void _print(std::ostream &os, std::int64_t indent) const
     {
         std::string padding(std::size_t(indent), ' ');
         std::string padding_arg(std::size_t(indent + 4), ' ');

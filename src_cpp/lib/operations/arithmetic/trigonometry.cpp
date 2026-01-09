@@ -9,19 +9,19 @@ namespace aquila::ops
 REGISTER(SinOp);
 ValuePtr SinOp::run(const Value &x) const
 {
-    return apply_unitary(x, [](Real xi) -> Real { return std::sin(xi); });
+    return apply_unitary(x, [](auto xi) -> auto { return std::sin(xi); });
 }
 
 REGISTER(CosOp);
 ValuePtr CosOp::run(const Value &x) const
 {
-    return apply_unitary(x, [](Real xi) -> Real { return std::cos(xi); });
+    return apply_unitary(x, [](auto xi) -> auto { return std::cos(xi); });
 }
 
 REGISTER(AsinhOp);
 ValuePtr AsinhOp::run(const Value &x) const
 {
-    return apply_unitary(x, [](Real xi) -> Real { return std::asinh(xi); });
+    return apply_unitary(x, [](auto xi) -> auto { return std::asinh(xi); });
 }
 
 } // namespace aquila::ops

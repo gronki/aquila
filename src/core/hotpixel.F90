@@ -10,19 +10,19 @@ contains
   subroutine find_hot(im, sigma_max, hot_mask)
     use statistics, only: outliers, avsd
 
-    real(fp), contiguous, intent(in) :: im(:,:)
-    real(fp), intent(in) :: sigma_max
+    real(buf_k), contiguous, intent(in) :: im(:,:)
+    real(buf_k), intent(in) :: sigma_max
     logical, contiguous, intent(out) :: hot_mask(:,:)
-    real(fp) :: av, sd, sg
+    real(buf_k) :: av, sd, sg
     integer :: i
 
     hot_mask(:,:) = .true.
-    call outliers(im, hot_mask, 3.0_fp, 4, av, sd)
+    call outliers(im, hot_mask, 3.0_buf_k, 4, av, sd)
 
 if (cfg_verbose) then
     write (*, '("#", a5, a8)') 'kap', 'nhot'
     do i = 0, 12
-      sg = i * 1.0_fp
+      sg = i * 1.0_buf_k
       hot_mask = im > av + sg * sd
       write (*, '(f6.1, i8)') sg, count(hot_mask)
     end do
@@ -36,12 +36,12 @@ end if
 
   pure subroutine fix_hot(im, hot_mask)
     ! use statistics, only: quickselect
-    real(fp), contiguous, intent(inout) :: im(:,:)
+    real(buf_k), contiguous, intent(inout) :: im(:,:)
     logical, intent(in) :: hot_mask(:,:)
     logical, allocatable :: not_hot_mask(:,:)
     integer :: i, j, n, ilo, ihi, jlo, jhi
     integer, parameter :: r = 3
-    real(fp) :: a((2 * r + 1)**2)
+    real(buf_k) :: a((2 * r + 1)**2)
 
     not_hot_mask = .not. hot_mask
 
@@ -68,13 +68,13 @@ end if
   !----------------------------------------------------------------------------!
 
   subroutine optimize_dark_frame(light, dark, xlo0, xhi0, xm, msk)
-    real(fp), intent(IN) :: light(:,:), dark(:,:)
+    real(buf_k), intent(IN) :: light(:,:), dark(:,:)
     logical, intent(in), optional :: msk(:,:)
-    real(fp), intent(in) :: xlo0, xhi0
+    real(buf_k), intent(in) :: xlo0, xhi0
     ! logical, intent(IN) :: is_log
-    real(fp), intent(out) :: xm
-    real(fp) :: xlo, xhi, ylo, yhi, ym
-    real(fp) :: dark_norm(size(light,1), size(light,2))
+    real(buf_k), intent(out) :: xm
+    real(buf_k) :: xlo, xhi, ylo, yhi, ym
+    real(buf_k) :: dark_norm(size(light,1), size(light,2))
     integer :: it
 
     dark_norm(:,:) = dark
@@ -121,8 +121,8 @@ endif
 
       pure subroutine normalize(x)
         use statistics, only: avsd
-        real(fp), intent(inout) :: x(:,:)
-        real(fp) :: av, sd
+        real(buf_k), intent(inout) :: x(:,:)
+        real(buf_k) :: av, sd
         if (present(msk)) then
           call avsd(x, msk, av, sd)
         else
@@ -132,9 +132,9 @@ endif
       end subroutine
     
       pure function F(x)
-        real(fp), intent(in) :: x
-        real(fp) :: f
-        real(fp) :: light_norm(size(light,1), size(light,2))
+        real(buf_k), intent(in) :: x
+        real(buf_k) :: f
+        real(buf_k) :: light_norm(size(light,1), size(light,2))
 
         light_norm = light - x * dark
         call normalize(light_norm)
@@ -148,12 +148,12 @@ endif
 
   pure subroutine optimize_dark_frame_fast(light, dark, a, msk)
     use iso_fortran_env, only: int64
-    real(fp), intent(IN) :: light(:,:), dark(:,:)
+    real(buf_k), intent(IN) :: light(:,:), dark(:,:)
     logical, intent(in), optional :: msk(:,:)
     ! logical, intent(IN) :: is_log
-    real(fp), intent(out) :: a
+    real(buf_k), intent(out) :: a
     integer(int64) :: n
-    real(fp) :: light_av, dark_av
+    real(buf_k) :: light_av, dark_av
 
     n = size(light)
     if (present(msk)) n = count(msk)
@@ -167,7 +167,8 @@ endif
   !----------------------------------------------------------------------------!
 
   subroutine fix_hot_median(im, im2)
-    real(fp) :: im(:,:), im2(:,:), av, sd
+    real(buf_k) :: im(:,:), im2(:,:)
+    real(buf_k) :: av, sd
     integer :: i, j, i1, i2, j1, j2, n1, n2
 
     n1 = size(im, 1)
@@ -186,7 +187,7 @@ endif
       &  + im(i-1, j  )**2                  + im(i+1, j  )**2 &
       &  + im(i-1, j+1)**2 + im(i, j+1)**2  + im(i+1, j+1)**2
       sd = sd / 8
-      sd = sqrt(max(0._fp, sd - av * av)) 
+      sd = sqrt(max(0._buf_k, sd - av * av)) 
       im2(i,j) = merge(im(i, j), av, im(i,j) < av + 3 * sd)
     end do
   end subroutine

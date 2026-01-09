@@ -11,7 +11,7 @@ struct ExampleOp : public Operation
     // std::unique_ptr<Value> call(const std::vector<const Value *> &) const override;
 
     BIND_ARGS(&ExampleOp::run);
-    ValuePtr run(const String &param) const;
+    ValuePtr run(const std::string &param) const;
 
     std::optional<ArgManifest> arg_manifest() const override
     {

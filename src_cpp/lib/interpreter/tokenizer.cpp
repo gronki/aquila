@@ -111,7 +111,7 @@ Token Tokenizer::next_token_()
     return Token(TokenType::END); // to silence warning
 }
 
-std::vector<Token> tokenize(const TokenStr &buffer, Int start_line)
+std::vector<Token> tokenize(const TokenStr &buffer, std::int64_t start_line)
 {
     Tokenizer tokenizer(buffer, start_line);
     std::vector<Token> tokens;
@@ -127,7 +127,7 @@ std::vector<Token> tokenize(const TokenStr &buffer, Int start_line)
     return tokens;
 }
 
-Token LazyTokenArray::peek_token(Int offset)
+Token LazyTokenArray::peek_token(std::int64_t offset)
 {
     if (offset + pos < 0)
         throw std::runtime_error("may not rewind before the first token");
@@ -144,7 +144,7 @@ Token LazyTokenArray::cur_token()
     return peek_token(0);
 }
 
-Token LazyTokenArray::next_token(Int offset)
+Token LazyTokenArray::next_token(std::int64_t offset)
 {
     const Token &t = peek_token(offset);
     pos += offset;

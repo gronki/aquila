@@ -6,6 +6,7 @@
 #include <optional>
 #include <stdexcept>
 #include <string>
+#include <cstdint>
 
 #include "bind_args.hpp"
 #include "value.hpp"
@@ -33,9 +34,9 @@ struct ArgSpec
     // this might not be the prettiest way, but makes it easy
     // to build manifests with initializer lists and ensures
     // that user does not give anything crazy as defaults.
-    std::optional<Int> default_int = std::nullopt;
-    std::optional<Real> default_real = std::nullopt;
-    std::optional<String> default_str = std::nullopt;
+    std::optional<std::int64_t> default_int = std::nullopt;
+    std::optional<double> default_real = std::nullopt;
+    std::optional<std::string> default_str = std::nullopt;
     
     bool has_default() const;
     std::unique_ptr<Value> build_default() const;
@@ -82,7 +83,7 @@ struct OpDbEntry
     OpFactory factory;
     std::string signature_str, description;
 };
-using OpDatabase = std::map<String, OpDbEntry>;
+using OpDatabase = std::map<std::string, OpDbEntry>;
 
 OpDatabase &global_op_db();
 

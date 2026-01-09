@@ -3,7 +3,7 @@ program test_findstar
   use globals
   implicit none
 
-  real(fp), allocatable :: im(:,:), im2(:,:,:)
+  real(buf_k), allocatable :: im(:,:), im2(:,:,:)
   integer :: bsize, ndim, errno = 0
   logical :: anyf
   integer :: sz(2)
@@ -30,13 +30,13 @@ program test_findstar
     use convolutions, only: convol_fix
 
     type(source_t), allocatable :: list(:)
-    real(fp), allocatable :: imcv(:,:)
-    real(fp), dimension(5,5) :: krn = &
+    real(buf_k), allocatable :: imcv(:,:)
+    real(buf_k), dimension(5,5) :: krn = &
                  reshape([  0, -1, -2, -1,  0, &
                            -1,  0,  2,  0, -1, &
                            -2,  2,  8,  2, -2, &
                            -1,  0,  2,  0, -1, &
-                            0, -1, -2, -1,  0  ], [5,5]) / 64.0_fp
+                            0, -1, -2, -1,  0  ], [5,5]) / 64.0_buf_k
     integer :: nstars, i
 
     allocate(im2(size(im,1), size(im,2), 2), imcv(size(im,1), size(im,2)))

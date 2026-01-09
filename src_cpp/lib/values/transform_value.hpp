@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../../src/c_binding/aquila.hpp"
+#include "../../../src/c_binding/aquila.h"
 #include "../interpreter/value.hpp"
 
 namespace aquila::values

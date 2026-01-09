@@ -12,8 +12,8 @@ program test_align_2
   call random_seed()
 
   generate_stars: block
-    real(fp), dimension(256) :: a
-    real(fp) :: dx, dy, dr
+    real(buf_k), dimension(256) :: a
+    real(buf_k) :: dx, dy, dr
 
     allocate(stars0(size(a)), stars1(size(a)))
 
@@ -47,7 +47,7 @@ program test_align_2
 
   test_legacy: block
     use legacy_align
-    real(fp) :: mx(2,3)
+    real(buf_k) :: mx(2,3)
 
     call cpu_time(t1)
     call align_xyr(stars0, stars1, mx)
@@ -63,7 +63,7 @@ program test_align_2
 
     v % scale = 500
     call cpu_time(t1)
-    call align_gravity(stars0, stars1, v, 2.0_fp)
+    call align_gravity(stars0, stars1, v, 2.0_buf_k)
     call cpu_time(t2)
 
     print '(a12,2f9.3,es12.3)', 'MODERN =', v % vec(1:2), v % vec(3) / v % scale

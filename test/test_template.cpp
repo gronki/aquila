@@ -1,8 +1,6 @@
-#include "../src_cpp/global/types.hpp"
-
 #include "testmacros.hpp"
 
-using namespace aquila;
+// using namespace aquila;
 
 TEST(example)
 {

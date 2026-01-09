@@ -12,7 +12,7 @@ struct AlignOp : public Operation
     BIND_ARGS(&AlignOp::run);
     ValuePtr run(const values::SourceListValue &lst0,
         const values::SourceListValue &lst,
-        const String &method) const;
+        const std::string &method) const;
 
     std::optional<ArgManifest> arg_manifest() const override
     {

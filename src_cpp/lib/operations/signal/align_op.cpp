@@ -6,7 +6,7 @@ namespace aquila::ops
 REGISTER(AlignOp);
 ValuePtr AlignOp::run(const values::SourceListValue &lst0,
     const values::SourceListValue &lst,
-    const String &method) const
+    const std::string &method) const
 {
 
     transform_t trans;

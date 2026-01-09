@@ -44,18 +44,18 @@ contains
   !----------------------------------------------------------------------------!
 
   subroutine aqfindstar(im, master_mask, ni, nj, list, limit, param, nstar) bind(C)
-    integer(c_int64_t), intent(in), value :: ni, nj, limit
+    integer(i64_k), intent(in), value :: ni, nj, limit
     type(findstar_param_t) :: param
-    real(fp), dimension(:,:), intent(in) :: im(ni,nj)
+    real(buf_k), dimension(:,:), intent(in) :: im(ni,nj)
     logical(c_bool), intent(inout) :: master_mask(:,:)
     type(source_t), intent(out) :: list(limit)
-    integer(c_int64_t), intent(out) :: nstar
+    integer(i64_k), intent(out) :: nstar
     
     type(source_t) :: star
     logical(c_bool), dimension(:,:), allocatable :: mask
-    real(fp), dimension(:,:), allocatable :: xx, yy
-    integer :: i, j, imax, jmax, xymax(2)
-    integer :: ilo, ihi, jlo, jhi
+    real(r64_k), dimension(:,:), allocatable :: xx, yy
+    integer(i64_k) :: i, j, imax, jmax, xymax(2)
+    integer(i64_k) :: ilo, ihi, jlo, jhi
 
     nstar = 0
 
@@ -63,7 +63,7 @@ contains
     allocate(xx(ni, nj), yy(ni, nj))
 
     do concurrent (i = 1:ni, j = 1:nj)
-      call ij_to_xy(real(i, fp), real(j, fp), int(ni), int(nj), 1.0_fp, xx(i, j), yy(i, j))
+      call ij_to_xy(real(i, r64_k), real(j, r64_k), int(ni, i64_k), int(nj, i64_k), 1.0_r64_k, xx(i, j), yy(i, j))
     end do
 
     extract_stars: do
@@ -116,7 +116,7 @@ contains
           end associate
       end associate
 
-      call xy_to_ij(star % x, star % y, int(ni), int(nj), 1.0_fp, star % iy, star % ix)
+      call xy_to_ij(star % x, star % y, int(ni, i64_k), int(nj, i64_k), 1.0_r64_k, star % iy, star % ix)
 
       nstar = nstar + 1
       list(nstar) = star
@@ -168,7 +168,7 @@ contains
       type(source_t), intent(in) :: list(:)
       logical(c_bool), intent(out) :: mask(:)
       logical(c_bool), allocatable :: new_mask(:)
-      real(fp), allocatable :: moments(:,:)
+      real(r64_k), allocatable :: moments(:,:)
       integer :: n_star
       integer :: i
       character(*), parameter :: fmt1 = '("iter =", i3, 3x, "asymm = ", f5.3, 3x, "max = ", f5.3)'
@@ -205,10 +205,10 @@ contains
 
       type(source_t) :: list(:)
       logical(c_bool) :: mask(:), mask_out(:)
-      real(fp) :: moments(:,:)
+      real(r64_k) :: moments(:,:)
       integer :: n_star, n_star_mask
-      real(fp) :: asymmetry_av(size(moments, 2)), asymmetry_sd(size(moments, 2)), asymmetry_av_dev
-      real(fp), allocatable :: asymmetry_dev(:)
+      real(r64_k) :: asymmetry_av(size(moments, 2)), asymmetry_sd(size(moments, 2)), asymmetry_av_dev
+      real(r64_k), allocatable :: asymmetry_dev(:)
       integer :: i
 
       n_star = size(list)
@@ -219,7 +219,8 @@ contains
         return
       end if
 
-      allocate(asymmetry_dev(n_star), source=0._fp)
+      allocate(asymmetry_dev(n_star), &
+        source=real(0, kind=kind(asymmetry_dev)))
 
       do i = 1, size(moments, 2)
         asymmetry_av(i) = sum(moments(:,i), mask) / n_star_mask
@@ -245,7 +246,7 @@ contains
       logical(c_bool) :: mask(:)
       type(source_t) :: list(:)
       integer :: ix_max
-      real(fp) :: deviation
+      real(r64_k) :: deviation
       integer :: i
       character(*), parameter :: fmt1 = '("iter =", i3, 3x, "asymm = ", f5.3, 3x, "max = ", f5.3)'
 
@@ -284,9 +285,9 @@ contains
       use convolutions, only: convol_fix
       use kernels, only: mexhakrn_alloc
   
-      real(fp), intent(in), contiguous :: im(:,:)
+      real(buf_k), intent(in), contiguous :: im(:,:)
       type(source_t), intent(out), allocatable :: list(:)
-      real(fp), allocatable :: im2(:,:), krn(:,:)
+      real(buf_k), allocatable :: im2(:,:), krn(:,:)
       integer, intent(in), optional :: limit
       integer(c_int64_t) :: limit_, nstar
       integer(c_int64_t), parameter :: rslice = 32, margin = 5
@@ -312,7 +313,7 @@ contains
       type(source_t), intent(out) :: list(limit)
       integer(c_int64_t), intent(out) :: nstar
 
-      real(fp), pointer, contiguous :: im(:,:)
+      real(buf_k), pointer, contiguous :: im(:,:)
 
       im => from_descriptor(imd)
       call register_stars_core(im, imd%rows, imd%cols, list, limit, param, nstar)
@@ -326,15 +327,15 @@ contains
   
       integer(c_int64_t), intent(in), value :: ni, nj, limit
       type(findstar_param_t) :: param
-      real(fp), dimension(:,:), intent(in) :: im(ni,nj)
+      real(buf_k), dimension(:,:), intent(in) :: im(ni,nj)
       type(source_t), intent(out) :: list(limit)
       integer(c_int64_t), intent(out) :: nstar
       logical(c_bool), allocatable :: master_mask(:,:)
-      real(fp) :: av, sd
+      real(buf_k) :: av, sd
   
-      real(fp), dimension(:,:), allocatable :: im2(:,:), im3(:,:), krn(:,:)
+      real(buf_k), dimension(:,:), allocatable :: im2(:,:), im3(:,:), krn(:,:)
   
-      krn = mexhakrn_alloc(real(param%blur_radius, fp))
+      krn = mexhakrn_alloc(real(param%blur_radius, r64_k))
   
       allocate(im2(size(im,1), size(im,2)))
       allocate(im3(size(im,1), size(im,2)))

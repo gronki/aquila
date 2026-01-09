@@ -12,7 +12,7 @@ module image_frame_m
   !----------------------------------------------------------------------------!
 
   type, extends(frame_t), public :: image_frame_t
-    real(fp) :: exptime = 0, ccdtemp
+    real(r64_k) :: exptime = 0, ccdtemp
     character(len = 16) :: frametyp = ""
     character(len = 256) :: fn = ""
     type(fhdict) :: hdr
@@ -93,7 +93,7 @@ contains
 
   function image_frame_t_ctor_buf(buf) result(fr)
     type(image_frame_t):: fr
-    real(fp), target, intent(in) :: buf(:,:)
+    real(buf_k), target, intent(in) :: buf(:,:)
 
     fr % data = buf
   end function

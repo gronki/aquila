@@ -16,7 +16,7 @@ contains
     real(fp) :: k0, y0, y0_dv(3), y0n_dv(3), v0(3)
     real(fp) :: lam, r0
     real(fp) :: x0m, y0m
-    real(fp), parameter :: k0min = 0.8, k0decr = 1 / 2**(1.0_fp / 8)
+    real(fp), parameter :: k0min = 0.8, k0decr = 1 / 2**(1.0_r32_k / 8)
 
     x0m = sum(xy0 % x) / size(xy0)
     y0m = sum(xy0 % y) / size(xy0)
@@ -43,7 +43,7 @@ contains
 
       lam = -0.01
 
-      call minimize_along_vec(lam, 1.0_fp)
+      call minimize_along_vec(lam, 1.0_r32_k)
       v0 = v0 + y0n_dv * lam
 
       if (cfg_verbose) write (0, '(i4, f7.2, f9.4, 3f9.4)') ii, k0, lam, v0

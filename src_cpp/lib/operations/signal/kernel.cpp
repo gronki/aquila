@@ -1,5 +1,5 @@
 #include "kernel.hpp"
-#include "../../../../src/c_binding/aquila.hpp"
+#include "../../../../src/c_binding/aquila.h"
 #include "../../buffer/buffer.hpp"
 #include "../../values/frame.hpp"
 
@@ -9,18 +9,18 @@ namespace aquila::ops
 {
 
 REGISTER(KernelOp);
-ValuePtr KernelOp::run(const Real &fwhm, const String &type) const
+ValuePtr KernelOp::run(const double &fwhm, const std::string &type) const
 {
-    Int pixels = get_kernel_size(fwhm);
-    Buffer<Real> krn(pixels, pixels);
+    std::int64_t pixels = get_kernel_size(fwhm);
+    Buffer<real_buf_t> krn(pixels, pixels);
 
     if (type == "gauss")
     {
-        gausskrn(fwhm, krn);
+        gausskrn(fwhm, c_buf(krn));
     }
     else if (type == "mexha")
     {
-        mexhakrn(fwhm, krn);
+        mexhakrn(fwhm, c_buf(krn));
     }
     else
     {

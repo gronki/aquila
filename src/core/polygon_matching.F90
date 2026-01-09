@@ -248,7 +248,7 @@ end if
   !--------------------------------------------------------------------------!
 
   function cosine_coherence(cosrot, sinrot) result(coh)
-    real(fp) :: cosrot(:), sinrot(:), coh, mx(size(cosrot), size(cosrot))
+    real(r64_k) :: cosrot(:), sinrot(:), coh, mx(size(cosrot), size(cosrot))
     integer :: i, j
     do concurrent (i = 1:size(cosrot), j=1:size(cosrot))
       mx(i,j) = cosrot(i) * cosrot(i) + sinrot(i) * sinrot(j)
@@ -295,7 +295,7 @@ end if
       + sum((match_result%transy(:) - match_result%transyav)**2) / (2 * num_poly_vertices))
     match_result%cosine_score = cosine_coherence(match_result%cosrot(:), match_result%sinrot(:))
 
-    match_result%passed = ( match_result%cosine_score > 0.999 ) .and. ( match_result%varxy < 1._fp )
+    match_result%passed = ( match_result%cosine_score > 0.999 ) .and. ( match_result%varxy < 1 )
 
 if (cfg_verbose) then
 print *, ' ------ POSSIBLE MATCH ------ '

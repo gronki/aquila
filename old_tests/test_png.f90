@@ -3,12 +3,12 @@ program test_png
   use png
   use iso_c_binding
   implicit none
-  real(fp) :: im(300, 200, 4)
+  real(buf_k) :: im(300, 200, 4)
   integer :: i, j
 
   do concurrent (i = 1:size(im,1), j = 1:size(im,2))
-    associate (x => real(i + 25, fp) / 50, y => real(j - 11, fp) / 50, &
-               z => real(i + j - 80, fp) / (50 * sqrt(2.0)))
+    associate (x => real(i + 25, buf_k) / 50, y => real(j - 11, buf_k) / 50, &
+               z => real(i + j - 80, buf_k) / (50 * sqrt(2.0)))
       im(i, j, 1) = 0.6 + 0.4 * cos(2 * 3.14 * x)
       im(i, j, 2) = 0.5 + 0.5 * cos(2 * 3.14 * z)
       im(i, j, 3) = 0.4 + 0.4 * cos(2 * 3.14 * y)

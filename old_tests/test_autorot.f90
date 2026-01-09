@@ -7,7 +7,7 @@ program test_autorot
   implicit none
 
   integer, parameter :: num_stars = 100, n = 4, ntries = 100
-  real(fp), parameter :: d = 1000, pi = 4 * atan(1.0_fp), reliability = 0.95, &
+  real(buf_k), parameter :: d = 1000, pi = 4 * atan(1.0_buf_k), reliability = 0.95, &
   &     max_shift = 0.05 * d
   logical :: flip = .false.
   integer :: it, nfail = 0, npass = 0
@@ -24,8 +24,8 @@ program test_autorot
     end block
 
     generate_stars: block
-      real(fp), dimension(num_stars) :: a
-      real(fp) :: dx, dy, dr
+      real(buf_k), dimension(num_stars) :: a
+      real(buf_k) :: dx, dy, dr
 
       allocate(stars0(size(a)), stars1(size(a)))
 
@@ -38,7 +38,7 @@ program test_autorot
 
       call random_number(dx); dx = max_shift * (2 * dx - 1)
       call random_number(dy); dy = max_shift * (2 * dy - 1)
-      call random_number(dr); dr = 0.5 * max_shift / (d / 2) * (2 * dr - 1) + merge(pi, 0.0_fp, flip)
+      call random_number(dr); dr = 0.5 * max_shift / (d / 2) * (2 * dr - 1) + merge(pi, 0.0_buf_k, flip)
 
       print '(a12,2f9.3,es12.3)', 'TRANSFORM =', dx, dy, dr
 
@@ -68,7 +68,7 @@ program test_autorot
 
     block
       use fftw
-      complex(fp), dimension(n,n) :: ft0, ft1, ft01, ft10, ft10a, fti
+      complex(buf_k), dimension(n,n) :: ft0, ft1, ft01, ft10, ft10a, fti
       integer :: i, j
       logical :: pass
       type(C_PTR) :: plan
@@ -129,13 +129,13 @@ contains
   subroutine stars_ft(stars, wx, wy, ft)
     integer :: i, j
     type(source_t) :: stars(:)
-    complex(fp) :: ft(:,:)
+    complex(buf_k) :: ft(:,:)
     real :: wx, wy
-    real(fp) :: a(size(stars))
+    real(buf_k) :: a(size(stars))
 
     do concurrent (i = 1:size(ft,1), j = 1:size(ft,2))
       a(:) = 2 * pi * ((i - 1) * stars(:) % x / wx + (j - 1) * stars(:) % y / wy)
-      ft(i,j) = sum(stars(:) % flux * cmplx(cos(a(:)), sin(a(:)), fp)) / size(stars)
+      ft(i,j) = sum(stars(:) % flux * cmplx(cos(a(:)), sin(a(:)), buf_k)) / size(stars)
     end do
   end subroutine
 

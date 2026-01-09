@@ -30,8 +30,9 @@ program aqstack
   logical :: cfg_resampling = .false.
   logical :: cfg_temperature_filter = .false.
   logical :: cfg_is_cfa = .false.
-  real(fp) :: resample_factor = 1.5, cfg_temperature_point = 0, cfg_temperature_tolerance = 0.5
-  real(fp) :: hotpixel_threshold_sigma = 5.0, darkopt_sigma = 0.0
+  real(r64_k) :: resample_factor = 1.5
+  real(buf_k) :: cfg_temperature_point = 0, cfg_temperature_tolerance = 0.5
+  real(buf_k) :: hotpixel_threshold_sigma = 5.0, darkopt_sigma = 0.0
   integer :: margin = 10
   real(real64) :: t1, t2
 
@@ -63,7 +64,7 @@ program aqstack
     type(image_frame_t) :: frame_bias, frame_dark, frame_flat
     logical, allocatable :: fix_mask(:,:)
     integer :: i, errno
-    real(fp), allocatable :: buffers_to_stack(:,:,:)
+    real(buf_k), allocatable :: buffers_to_stack(:,:,:)
     integer :: nx, ny
 
 
@@ -189,7 +190,7 @@ program aqstack
           if (.not. cfg_dark_is_dirty) then
             dark_scaling: block
   
-              real(fp) :: a, av, sd, amax
+              real(buf_k) :: a, av, sd, amax
               logical, allocatable :: darkopt_msk(:,:)
 
               a = 1.0
@@ -248,7 +249,7 @@ program aqstack
 
         ! print some frame statistics for quick check
         frame_stats: block
-          real(fp) :: avg, std
+          real(buf_k) :: avg, std
 
           call avsd(cur_frame % data, avg, std)
 
@@ -284,10 +285,10 @@ program aqstack
         type(source_t), dimension(:), allocatable :: lst0, lst
         integer :: i, istart, errno, npar
         type(transform_xyr_t) :: tx
-        real(fp) :: r0
+        real(r64_k) :: r0
 
         ! r0 is roughly half of frame's dimension
-        r0 = sqrt(real(nx, kind=fp)**2 + real(ny, kind=fp)**2) / sqrt(8.0_fp)
+        r0 = sqrt(real(nx, kind=r64_k)**2 + real(ny, kind=r64_k)**2) / sqrt(8.0_r64_k)
 
         if (cfg_resampling) then
           print '("WARNING ", a)', 'resampling may require a lot of memory'
@@ -367,7 +368,7 @@ program aqstack
     if (cfg_normalize) then
       call cpu_time(t1)
       call normalize_offset_gain(buffers_to_stack(:, :, 1:nframes), &
-        ceiling(margin * merge(resample_factor, 1.0_fp, cfg_resampling)))
+        ceiling(margin * merge(resample_factor, 1.0_r64_k, cfg_resampling)))
       call cpu_time(t2)
       print perf_fmt, 'norm', t2 - t1
     end if

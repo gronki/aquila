@@ -14,8 +14,6 @@ namespace aquila::ops
 #include <string>
 #include <vector>
 
-using String = std::string;
-
 struct PathElement
 {
     std::string snippet;
@@ -35,7 +33,7 @@ struct PathElement
     }
 };
 
-using StrIter = String::const_iterator;
+using StrIter = std::string::const_iterator;
 using EndCondition = std::function<bool(const StrIter &)>;
 
 static std::unique_ptr<PathElement> parse_seq(
@@ -74,7 +72,7 @@ static std::unique_ptr<PathElement> parse_seq(
     {
         if (end_condition(cur))
         {
-            elem->snippet = String(start, cur);
+            elem->snippet = std::string(start, cur);
             // std::cout << "snippet: <" << elem->snippet << ">" << std::endl;
             return elem;
         }
@@ -82,7 +80,7 @@ static std::unique_ptr<PathElement> parse_seq(
             throw std::runtime_error("pattern expansion: unexpected end");
         if (*cur == '{')
         {
-            elem->snippet = String(start, cur);
+            elem->snippet = std::string(start, cur);
             // std::cout << "snippet: <" << elem->snippet << ">" << std::endl;
             elem->options = parse_option(cur, end);
             cur++;
@@ -96,16 +94,16 @@ static std::unique_ptr<PathElement> parse_seq(
 }
 
 static void expand_options(
-    const PathElement &elem, String base, std::vector<String> &expanded)
+    const PathElement &elem, std::string base, std::vector<std::string> &expanded)
 {
-    String base_snippet = base + elem.snippet;
+    std::string base_snippet = base + elem.snippet;
     if (elem.options.size() == 0 && !elem.remainder)
     {
         expanded.push_back(base_snippet);
         return;
     }
 
-    std::vector<String> expanded_options;
+    std::vector<std::string> expanded_options;
 
     for (const auto &option : elem.options)
     {
@@ -125,7 +123,7 @@ static void expand_options(
     }
 }
 
-std::vector<String> expand_expression(const String &str)
+std::vector<std::string> expand_expression(const std::string &str)
 {
     auto cur = str.begin();
     auto end = str.end();
@@ -133,13 +131,13 @@ std::vector<String> expand_expression(const String &str)
 #ifndef NDEBUG
     std::cout << opts->str() << std::endl;
 #endif
-    std::vector<String> expanded;
+    std::vector<std::string> expanded;
     expand_options(*opts, "", expanded);
     return expanded;
 }
 
 REGISTER(PathOp);
-ValuePtr PathOp::run(const String &path) const
+ValuePtr PathOp::run(const std::string &path) const
 {
     auto expanded = expand_expression(path);
     std::vector<std::unique_ptr<Value>> items;

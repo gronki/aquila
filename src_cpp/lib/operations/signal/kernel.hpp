@@ -9,7 +9,7 @@ namespace aquila::ops
 struct KernelOp : public Operation
 {
     BIND_ARGS(&KernelOp::run);
-    ValuePtr run(const Real &fwhm, const String &type) const;
+    ValuePtr run(const double &fwhm, const std::string &type) const;
 
     std::optional<ArgManifest> arg_manifest() const override
     {

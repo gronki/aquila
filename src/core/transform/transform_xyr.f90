@@ -26,7 +26,7 @@ contains
 
 function transform_xyr_ctor(scale) result(self)
    type(transform_xyr_t) :: self
-   real(fp), intent(in), optional :: scale
+   real(r64_k), intent(in), optional :: scale
 
    if (present(scale)) self%scale = scale
 end function
@@ -34,9 +34,9 @@ end function
 
 elemental subroutine xyr_apply(t, x1, y1, x2, y2)
    class(transform_xyr_t), intent(in) :: t
-   real(fp), intent(in) :: x1, y1
-   real(fp), intent(out) :: x2, y2
-   real(fp) :: th
+   real(r64_k), intent(in) :: x1, y1
+   real(r64_k), intent(out) :: x2, y2
+   real(r64_k) :: th
 
    th = t % vec(3) / t % scale
    x2 = t % vec(1) + cos(th) * x1 - sin(th) * y1
@@ -46,9 +46,9 @@ end subroutine
 
 pure subroutine xyr_pder(t, x, y, dx, dy)
    class(transform_xyr_t), intent(in) :: t
-   real(fp), intent(in) :: x, y
-   real(fp), dimension(:), intent(out) :: dx, dy
-   real(fp) :: th
+   real(r64_k), intent(in) :: x, y
+   real(r64_k), dimension(:), intent(out) :: dx, dy
+   real(r64_k) :: th
 
    dx(1) = 1
    dy(1) = 0

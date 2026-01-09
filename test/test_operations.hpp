@@ -12,7 +12,7 @@ struct AddOp : Operation
 {
     BIND_ARGS(&AddOp::run);
 
-    std::unique_ptr<Value> run(const Real &a, const Real &b) const
+    std::unique_ptr<Value> run(const double &a, const double &b) const
     {
         return std::make_unique<RealValue>(a + b);
     }
@@ -34,7 +34,7 @@ struct MulOp : Operation
 {
     BIND_ARGS(&MulOp::run);
 
-    std::unique_ptr<Value> run(const Real &a, const Real &b) const
+    std::unique_ptr<Value> run(const double &a, const double &b) const
     {
         return std::make_unique<RealValue>(a * b);
     }
@@ -55,7 +55,7 @@ struct PowOp : Operation
 {
     BIND_ARGS(&PowOp::run);
 
-    std::unique_ptr<Value> run(const Real &a, const Real &p) const
+    std::unique_ptr<Value> run(const double &a, const double &p) const
     {
         return std::make_unique<RealValue>(std::pow(a, p));
     }

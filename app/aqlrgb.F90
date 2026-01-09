@@ -14,12 +14,12 @@ program aqlrgb
   logical :: cfg_equalize = .false.
   logical :: cfg_color_smooth = .false.
   logical :: cfg_save_cube = .true.
-        integer :: margin = 64
-        logical :: cfg_background = .false.
+  integer :: margin = 64
+  logical :: cfg_background = .false.
   logical :: cfg_transf_lum = .false.
-  real(fp) :: smooth_fwhm = 2.0, curve_param = 3.
-        real(fp) :: sharpen_strngth = 0.5, sharpen_fwhm = 1.3
-        integer :: i, nx, ny
+  real(buf_k) :: curve_param = 3., sharpen_strngth = 0.5
+  real(r64_k) :: sharpen_fwhm = 1.3, smooth_fwhm = 2.0
+  integer :: i, nx, ny
 
   call greeting('aq' // cf('l','1') // cf('r','1;91') // cf('g','1;92') // cf('b','1;94'))
 
@@ -192,11 +192,11 @@ program aqlrgb
         use statistics, only: outliers, avsd
         use ieee_arithmetic, only: ieee_is_normal
         logical, dimension(:,:), allocatable :: mask, maskbg
-        real(fp), dimension(:,:), allocatable :: L
-        real(fp) :: coeff, av, sd, bg_off, xsq_sum
-        real(fp), allocatable :: x(:,:), y(:,:)
-        real(fp), dimension(nch) :: bg, sg
-        real(fp), parameter :: a = 2.0, b = 0.5
+        real(buf_k), dimension(:,:), allocatable :: L
+        real(buf_k) :: coeff, av, sd, bg_off, xsq_sum
+        real(buf_k), allocatable :: x(:,:), y(:,:)
+        real(buf_k), dimension(nch) :: bg, sg
+        real(buf_k), parameter :: a = 2.0, b = 0.5
 
 
         allocate(mask(ny, nx), source=.true.)
@@ -210,7 +210,7 @@ program aqlrgb
         print *, shape(L)
         print *, shape(maskbg)
 
-        call outliers(L, maskbg, 3._fp, 32, av, sd)
+        call outliers(L, maskbg, 3._buf_k, 32, av, sd)
         ! maskbg = mask .and. (L < av + 2 * sd)
         mask = mask .and. (L > av + 3 * sd)
         ! cube(:,:,4) = thrfun((L - av) / sd - 4)
@@ -266,7 +266,7 @@ program aqlrgb
 
     if (cfg_color_smooth) then
       perform_color_smooth: block
-        real(fp), dimension(:,:), allocatable :: krn, buf
+        real(buf_k), dimension(:,:), allocatable :: krn, buf
 
         if (.not. allocated(frame_l % data)) then
           frame_l % data = Lum(frame_r % data, frame_g % data, frame_b % data)
@@ -293,7 +293,7 @@ program aqlrgb
         use convolutions, only: convol_fix
         use deconvolutions, only: deconvol_lr
 
-        real(fp), allocatable :: krn(:,:), lum2(:,:)
+        real(buf_k), allocatable :: krn(:,:), lum2(:,:)
 
         if (.not. allocated(frame_l % data)) then
           frame_l%data = Lum(frame_r % data, frame_g % data, frame_b % data)
@@ -333,7 +333,7 @@ program aqlrgb
 
     if (allocated(frame_l % data)) then
       do_lrgb: block
-        real(fp), allocatable :: x(:,:)
+        real(buf_k), allocatable :: x(:,:)
         x = (frame_l % data) / Lum(frame_r % data, frame_g % data, frame_b % data)
         frame_r % data(:,:) = x * frame_r % data(:,:)
         frame_g % data(:,:) = x * frame_g % data(:,:)
@@ -348,8 +348,8 @@ program aqlrgb
         use statistics, only: avsd, outliers
 
         integer :: i
-        real(fp), allocatable :: x(:,:), y(:,:)
-        real(fp) :: a, b, av, sd
+        real(buf_k), allocatable :: x(:,:), y(:,:)
+        real(buf_k) :: a, b, av, sd
 
         write(*, '("performing ",a," curve transform on the image: ",a)') &
             trim(merge('luminance', 'color    ', cfg_transf_lum)), curve
@@ -360,7 +360,7 @@ program aqlrgb
           x = Lum(frame_r % data, frame_g % data, frame_b % data)
         end if
 
-        call outliers(x(1+margin:ny-margin, 1+margin:nx-margin), 3._fp, 10, av, sd)
+        call outliers(x(1+margin:ny-margin, 1+margin:nx-margin), 3._buf_k, 10, av, sd)
         b = av - curve_param * sd
         a = curve_param * sd 
 
@@ -386,8 +386,8 @@ program aqlrgb
       block
         use png
 
-        real(fp) :: vmin, vmax, av, sd
-        real(fp), allocatable :: l(:,:), cube(:,:,:), cube2(:,:,:)
+        real(buf_k) :: vmin, vmax, av, sd
+        real(buf_k), allocatable :: l(:,:), cube(:,:,:), cube2(:,:,:)
 
         allocate(cube(ny, nx, 3))
 
@@ -424,17 +424,17 @@ program aqlrgb
 
 contains
 
-  elemental real(fp) function Lum(R,G,B) result(L)
-    real(fp), intent(in) :: R, G, B
-    real(fp), parameter :: wr = 0.9, wg = 1.1, wb = 0.7
+  elemental real(buf_k) function Lum(R,G,B) result(L)
+    real(buf_k), intent(in) :: R, G, B
+    real(buf_k), parameter :: wr = 0.9, wg = 1.1, wb = 0.7
     L = (wr * R + wg * G + wb * B) / (wr + wg + wb)
   end function
 
   elemental subroutine apply_curve(tt, x, a, b, y)
     character(len = *), intent(in) :: tt
-    real(fp), intent(in) :: x, a, b
-    real(fp), intent(out) :: y
-    real(fp) :: x1
+    real(buf_k), intent(in) :: x, a, b
+    real(buf_k), intent(out) :: y
+    real(buf_k) :: x1
 
     x1 = merge(x, b, x >= b)
 
@@ -479,7 +479,7 @@ contains
     use framehandling, only: frame_t
     use iso_fortran_env, only: real32
     ! class(frame_t), intent(in) :: frame_r, frame_g, frame_b
-    real(fp), intent(in) :: cube(:,:,:)
+    real(buf_k), intent(in) :: cube(:,:,:)
     character(len = *), intent(in) :: fn
     integer, intent(inout), optional :: errno
     integer :: ftiostat, un, iostat

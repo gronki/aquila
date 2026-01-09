@@ -4,7 +4,7 @@ namespace aquila::ops
 {
 
 // REGISTER(ExampleOp);
-ValuePtr ExampleOp::run(const String &param) const
+ValuePtr ExampleOp::run(const std::string &param) const
 {
     /**
      * operation implementation

@@ -14,11 +14,11 @@ contains
 
     class(transform_t), intent(in) :: tx
     integer, intent(in) :: nx, ny
-    real(fp) :: rx, ry, sx, sy
+    real(r64_k) :: rx, ry, sx, sy
     integer :: margin
 
-    rx = 0.5_fp * (nx - 1)
-    ry = 0.5_fp * (ny - 1)
+    rx = 0.5_r64_k * (nx - 1)
+    ry = 0.5_r64_k * (ny - 1)
 
     margin = 0
     call tx % apply(-rx, -ry, sx, sy)
@@ -62,11 +62,11 @@ contains
   subroutine normalize_offset_gain(buffer, margin)
     use statistics, only: linfit, outliers_2d_mask
 
-    real(fp), intent(inout) :: buffer(:,:,:)
+    real(buf_k), intent(inout) :: buffer(:,:,:)
     integer, intent(in) :: margin
     
-    real(fp) :: a, b, av, sd
-    real(fp), allocatable :: imref(:,:), xx(:), yy(:)
+    real(buf_k) :: a, b, av, sd
+    real(buf_k), allocatable :: imref(:,:), xx(:), yy(:)
     logical, allocatable :: mask(:,:)
     integer :: i, j, np, sz(3), nstack
 
@@ -83,7 +83,7 @@ contains
     allocate(mask(sz(1), sz(2)))
     mask(:,:) = .true.
     call mask_margins(mask, margin)
-    ! call outliers_2d_mask(imref, mask, 3.0_fp, 10, av, sd)
+    ! call outliers_2d_mask(imref, mask, 3.0_buf_k, 10, av, sd)
     mask(:,:) = mask .and. imref < (minval(imref, mask=mask) + maxval(imref, mask=mask)) / 2
 
     ! pack it into 1-d array
@@ -106,7 +106,7 @@ contains
     use framehandling, only: image_frame_t
 
     character(len = *), intent(in) :: strategy, method
-    real(fp), intent(in) :: buffer(:,:,:)
+    real(buf_k), intent(in) :: buffer(:,:,:)
     type(image_frame_t), intent(in) :: frames(:)
     type(image_frame_t), intent(out) :: frame_out
     real(real64) :: t1, t2
@@ -135,13 +135,13 @@ contains
 
     if ((strategy == 'bias' .or. strategy == 'dark') .and. nstack > 1) then
       estimate_noise: block
-        real(fp) :: rms
+        real(buf_k) :: rms
 
         rms = estimate_differential_noise(buffer)
 
         write (*, '("RMS = ", f10.2)') rms
         call frame_out % hdr % add_real('RMS', real(rms))
-        call frame_out % hdr % add_real('STACKRMS', real(rms / sqrt(1.0_fp * nstack)))
+        call frame_out % hdr % add_real('STACKRMS', real(rms / sqrt(1.0_buf_k * nstack)))
       end block estimate_noise
     end if
 
@@ -155,7 +155,7 @@ contains
     use framehandling, only: image_frame_t
 
     class(image_frame_t), intent(in) :: frames(:)
-    real(kind=fp), allocatable :: buffer(:,:,:)
+    real(kind=buf_k), allocatable :: buffer(:,:,:)
     integer :: n_frames, i, ni, nj
 
     n_frames = size(frames)
@@ -193,11 +193,11 @@ contains
   subroutine stack_buffer(method, buffer, buffer_out)
     use statistics, only: quickselect, sigclip2
 
-    real(fp), intent(in) :: buffer(:,:,:)
-    real(fp), intent(out) :: buffer_out(:,:)
+    real(buf_k), intent(in) :: buffer(:,:,:)
+    real(buf_k), intent(out) :: buffer_out(:,:)
     character(len = *), intent(in) :: method
     integer :: i, j, nstack
-    real(fp) :: a(size(buffer, 3))
+    real(buf_k) :: a(size(buffer, 3))
 
     nstack = size(buffer, 3)
 
@@ -218,7 +218,7 @@ contains
         do i = 1, size(buffer, 1)
           ! forall (k = 1:nstack) a(k) = frames(k) % data(i, j)
           ! call sigclip2(a(:), frame_out % data(i, j))
-          buffer_out(i, j) = sigclip2(buffer(i, j, 1:nstack), 3._fp)
+          buffer_out(i, j) = sigclip2(buffer(i, j, 1:nstack), 3._buf_k)
         end do
       end do
       !$omp end parallel do
@@ -256,8 +256,8 @@ contains
 
   pure function estimate_differential_noise(buffer) result(rms)
     use iso_fortran_env, only: int64
-    real(fp), intent(in) :: buffer(:,:,:)
-    real(fp) :: rms, av(size(buffer, 3))
+    real(buf_k), intent(in) :: buffer(:,:,:)
+    real(buf_k) :: rms, av(size(buffer, 3))
     integer :: i, n
     integer(int64) :: nxny
 

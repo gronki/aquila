@@ -53,7 +53,7 @@ ValuePtr apply_binary(const Value &a, const Value &b, F op, Args &&...args)
         auto scalar = scalar_ptr_a->value;
         return std::make_unique<values::BufferValue>(
             apply(buffer_ptr_b->buffer.view(),
-                [scalar, op](Real x) -> Real { return op(scalar, x); }),
+                [scalar, op](real_buf_t x) -> real_buf_t { return op(scalar, x); }),
             args...);
     }
 
@@ -62,7 +62,7 @@ ValuePtr apply_binary(const Value &a, const Value &b, F op, Args &&...args)
         auto scalar = scalar_ptr_b->value;
         return std::make_unique<values::BufferValue>(
             apply(buffer_ptr_a->buffer.view(),
-                [scalar, op](Real x) -> Real { return op(x, scalar); }),
+                [scalar, op](real_buf_t x) -> real_buf_t { return op(x, scalar); }),
             args...);
     }
 
@@ -116,11 +116,11 @@ ValuePtr apply_tertiary(const Value &a, const Value &b, const Value &c, F op, Ar
             throw std::runtime_error(std::string("buffers do not match in dimensions: ")
                 + b.str() + " and " + c.str());
         }
-        auto xa = scalar_ptr_a->value;
+        real_buf_t xa = scalar_ptr_a->value;
         return std::make_unique<values::BufferValue>(
             apply(buffer_ptr_b->buffer.view(),
                 buffer_ptr_c->buffer.view(),
-                [xa, op](Real xb, Real xc) -> Real { return op(xa, xb, xc); }),
+                [xa, op](real_buf_t xb, real_buf_t xc) -> real_buf_t { return op(xa, xb, xc); }),
             args...);
     }
 
@@ -131,11 +131,11 @@ ValuePtr apply_tertiary(const Value &a, const Value &b, const Value &c, F op, Ar
             throw std::runtime_error(std::string("buffers do not match in dimensions: ")
                 + a.str() + " and " + c.str());
         }
-        auto xb = scalar_ptr_b->value;
+        real_buf_t xb = scalar_ptr_b->value;
         return std::make_unique<values::BufferValue>(
             apply(buffer_ptr_a->buffer.view(),
                 buffer_ptr_c->buffer.view(),
-                [xb, op](Real xa, Real xc) -> Real { return op(xa, xb, xc); }),
+                [xb, op](real_buf_t xa, real_buf_t xc) -> real_buf_t { return op(xa, xb, xc); }),
             args...);
     }
 
@@ -146,11 +146,11 @@ ValuePtr apply_tertiary(const Value &a, const Value &b, const Value &c, F op, Ar
             throw std::runtime_error(std::string("buffers do not match in dimensions: ")
                 + a.str() + " and " + b.str());
         }
-        auto xc = scalar_ptr_c->value;
+        real_buf_t xc = scalar_ptr_c->value;
         return std::make_unique<values::BufferValue>(
             apply(buffer_ptr_a->buffer.view(),
                 buffer_ptr_b->buffer.view(),
-                [xc, op](Real xa, Real xb) -> Real { return op(xa, xb, xc); }),
+                [xc, op](real_buf_t xa, real_buf_t xb) -> real_buf_t { return op(xa, xb, xc); }),
             args...);
     }
 
@@ -158,31 +158,31 @@ ValuePtr apply_tertiary(const Value &a, const Value &b, const Value &c, F op, Ar
 
     if (buffer_ptr_a && scalar_ptr_b && scalar_ptr_c)
     {
-        auto xb = scalar_ptr_b->value;
-        auto xc = scalar_ptr_c->value;
+        real_buf_t xb = scalar_ptr_b->value;
+        real_buf_t xc = scalar_ptr_c->value;
         return std::make_unique<values::BufferValue>(
             apply(buffer_ptr_a->buffer.view(),
-                [xb, xc, op](Real xa) -> Real { return op(xa, xb, xc); }),
+                [xb, xc, op](real_buf_t xa) -> real_buf_t { return op(xa, xb, xc); }),
             args...);
     }
 
     if (scalar_ptr_a && buffer_ptr_b && scalar_ptr_c)
     {
-        auto xa = scalar_ptr_a->value;
-        auto xc = scalar_ptr_c->value;
+        real_buf_t xc = scalar_ptr_c->value;
+        real_buf_t xa = scalar_ptr_a->value;
         return std::make_unique<values::BufferValue>(
             apply(buffer_ptr_b->buffer.view(),
-                [xa, xc, op](Real xb) -> Real { return op(xa, xb, xc); }),
+                [xa, xc, op](real_buf_t xb) -> real_buf_t { return op(xa, xb, xc); }),
             args...);
     }
 
     if (scalar_ptr_a && scalar_ptr_b && buffer_ptr_c)
     {
-        auto xa = scalar_ptr_a->value;
-        auto xb = scalar_ptr_b->value;
+        real_buf_t xa = scalar_ptr_a->value;
+        real_buf_t xb = scalar_ptr_b->value;
         return std::make_unique<values::BufferValue>(
             apply(buffer_ptr_c->buffer.view(),
-                [xa, xb, op](Real xc) -> Real { return op(xa, xb, xc); }),
+                [xa, xb, op](real_buf_t xc) -> real_buf_t { return op(xa, xb, xc); }),
             args...);
     }
 

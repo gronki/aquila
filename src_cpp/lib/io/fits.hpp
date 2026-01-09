@@ -1,12 +1,11 @@
 #pragma once
 
-#include "../../global/types.hpp"
 #include "../../lib/buffer/buffer.hpp"
 
 namespace aquila
 {
 
-Buffer<Real> read_fits(const String &filename);
-void write_fits(const String &filename, const View<Real> &img);
+Buffer<real_buf_t> read_fits(const std::string &filename);
+void write_fits(const std::string &filename, const View<real_buf_t> &img);
 
 }; // namespace aquila

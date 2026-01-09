@@ -1,11 +1,12 @@
 #pragma once
 
-#include "../../global/types.hpp"
+
 #include <iostream>
 #include <map>
 #include <ostream>
 #include <sstream>
 #include <stdexcept>
+#include <cstdint>
 
 namespace aquila::interpreter
 {
@@ -31,8 +32,8 @@ const std::map<TokenType, std::string> TOKENTYPE_STR{{TokenType::DELIM, "DELIM"}
 struct TokenLoc
 {
     TokenLoc() {}
-    TokenLoc(Int line, Int offset) : line(line), offset(offset) {}
-    Int line = -1, offset = -1;
+    TokenLoc(std::int64_t line, std::int64_t offset) : line(line), offset(offset) {}
+    std::int64_t line = -1, offset = -1;
 };
 
 struct Token

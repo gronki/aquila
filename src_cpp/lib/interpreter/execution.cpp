@@ -8,7 +8,7 @@ namespace aquila::interpreter
 static std::vector<const Value *> make_ith_argument(
     const std::vector<const SequenceValue *> &sequences,
     const std::vector<const Value *> &args,
-    Int iseq)
+    std::int64_t iseq)
 {
     std::vector<const Value *> argvec(sequences.size());
 
@@ -63,8 +63,8 @@ static std::unique_ptr<Value> op_call_with_sequencing(const Operation &op,
     std::vector<const SequenceValue *> sequences;
 
     sequences.reserve(args.size());
-    constexpr Int SEQUENCE_NOT_FOUND = -1;
-    Int sequence_len = SEQUENCE_NOT_FOUND;
+    constexpr std::int64_t SEQUENCE_NOT_FOUND = -1;
+    std::int64_t sequence_len = SEQUENCE_NOT_FOUND;
 
     for (size_t iarg = 0; iarg < args.size(); iarg++)
     {
@@ -81,7 +81,7 @@ static std::unique_ptr<Value> op_call_with_sequencing(const Operation &op,
         {
             sequence_len = seq_arg->size();
         }
-        else if (sequence_len != Int(seq_arg->size()))
+        else if (sequence_len != std::int64_t(seq_arg->size()))
         {
             throw std::runtime_error(
                 std::string("sequence length must be the same but got: ")
@@ -94,7 +94,7 @@ static std::unique_ptr<Value> op_call_with_sequencing(const Operation &op,
 
     std::vector<std::unique_ptr<Value>> result(sequence_len);
 
-    for (Int iseq = 0; iseq < sequence_len; iseq++)
+    for (std::int64_t iseq = 0; iseq < sequence_len; iseq++)
     {
         result[iseq] = op_call_with_debug(op, make_ith_argument(sequences, args, iseq));
     }

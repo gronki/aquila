@@ -1,6 +1,7 @@
 module convolutions
 
   use globals
+  use fastconv
   implicit none
 
 contains
@@ -15,12 +16,8 @@ contains
     if (mod(size(k,1), 2) == 0 .or. mod(size(k,2), 2) == 0)     &
         error stop "kernel must have uneven dimensions"
 
-    ri = (size(k,1) - 1) / 2
-    rj = (size(k,2) - 1) / 2
+    call conv2d_pad(x, padded_2d_kernel(k, 4_size_k), size(k, 1, size_k), .true., y)
 
-    do concurrent (j = 1 + rj:size(x,2) - rj, i = 1 + ri:size(x,1) - ri)
-      y(i, j) = sum(k * x(i - ri : i + ri, j - rj : j + rj))
-    end do
   end subroutine
 
   !----------------------------------------------------------------------------!
@@ -57,11 +54,7 @@ contains
       error stop "method must be: clone or reflect"
     end select
 
-    do concurrent (i = 1:size(x,1), j = 1:size(x,2))
-      y(i, j) = sum(k * tmpx(i - ri : i + ri, j - rj : j + rj))
-    end do
-
-    deallocate(tmpx)
+    call conv2d_pad(tmpx, padded_2d_kernel(k, 4_size_k), size(k, 1, size_k), .false., y)
 
   contains
 

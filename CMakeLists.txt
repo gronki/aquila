@@ -72,6 +72,14 @@ install(FILES src/c_binding/aquila.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
 link_libraries(aquila)
 
+file(GLOB TEST_CORE_SOURCES CONFIGURE_DEPENDS test_core/*.[fF]90)
+
+foreach(test_src ${TEST_CORE_SOURCES})
+    get_filename_component(test_name ${test_src} NAME_WE)
+    add_executable(${test_name} ${test_src})
+    add_test(NAME ${test_name} COMMAND ${test_name})
+endforeach()
+
 add_executable(aqstack app/aqstack.f90)
 add_executable(aqlrgb app/aqlrgb.F90)
 

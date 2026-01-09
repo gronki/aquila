@@ -202,7 +202,7 @@ pure subroutine conv1d_pad_core(x, k, kernel_size, y)
    !> Width of the padding. For zero this will be a normal convolution.
    integer(size_k), intent(in) :: kernel_size
    !> Output.
-   real(real_k), intent(out), contiguous :: y(:)
+   real(real_k), intent(inout), contiguous :: y(:)
 
    integer(size_k) :: input_size, padding, output_size_raw
 
@@ -239,7 +239,7 @@ pure subroutine conv1d_pad(x, k, kernel_size, keep_shape, y)
    !> Whether to keep the same output dimensions as input.
    logical, intent(in) :: keep_shape
    !> Output.
-   real(real_k), intent(out), contiguous :: y(:)
+   real(real_k), intent(inout), contiguous :: y(:)
 
    integer(size_k) :: expected_output_shape, output_shape_raw, output_offset, input_shape
 
@@ -297,24 +297,24 @@ end function
  !> Compute convolution for kernel which is padded with zeros.
  !> This is good for performance reasons, as such kernels can
  !> be better vectorized into SIMD instructions.
-pure subroutine conv2d_pad(x, k, kernel_dim_1, keep_shape, y)
+pure subroutine conv2d_pad(x, k, size_k_1, keep_shape, y)
    !> Input vector.
    real(real_k), intent(in), contiguous :: x(:,:)
    !> Reversed kernel padded with zeros.
    real(real_k), intent(in), contiguous :: k(:,:)
    !> Width of the padding. For zero this will be a normal convolution.
-   integer(size_k), intent(in) :: kernel_dim_1
+   integer(size_k), intent(in) :: size_k_1
    !> Whether to keep the same output dimensions as input.
    logical, intent(in) :: keep_shape
    !> Output.
-   real(real_k), intent(out), contiguous :: y(:,:)
+   real(real_k), intent(inout), contiguous :: y(:,:)
 
    real(real_k), allocatable :: buf(:)
    integer(size_k) :: expected_output_shape(2), output_shape_raw(2), output_offset(2), &
       input_shape(2), kernel_shape(2), ix, ik
 
    input_shape = shape(x)
-   kernel_shape = [kernel_dim_1, size(k, 2, size_k)]
+   kernel_shape = [size_k_1, size(k, 2, size_k)]
    output_shape_raw = input_shape + 1_size_k - kernel_shape
    expected_output_shape = input_shape + merge(0_size_k, 1_size_k - kernel_shape, keep_shape)
    output_offset = merge((kernel_shape - 1_size_k) / 2_size_k, 0_size_k, keep_shape)
@@ -338,7 +338,7 @@ pure subroutine conv2d_pad(x, k, kernel_dim_1, keep_shape, y)
          1 + output_offset(1) : output_shape_raw(1) + output_offset(1), &
          ix + output_offset(2)))
          do ik = 1, kernel_shape(2)
-            call conv1d_pad_core(x(:, ix + ik - 1), k(:,ik), kernel_dim_1, buf)
+            call conv1d_pad_core(x(:, ix + ik - 1), k(:,ik), size_k_1, buf)
             if (ik == 1) then
                y_row(:) = buf
             else
@@ -350,7 +350,7 @@ pure subroutine conv2d_pad(x, k, kernel_dim_1, keep_shape, y)
 
 end subroutine
 
-subroutine conv2d_ref(x, k, keep_shape, y)
+pure subroutine conv2d_ref(x, k, keep_shape, y)
    real(real_k), intent(in), contiguous :: x(:,:), k(:,:)
    real(real_k), intent(inout), contiguous :: y(:,:)
    logical, intent(in) :: keep_shape

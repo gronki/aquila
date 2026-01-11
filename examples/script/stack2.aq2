@@ -1,0 +1,1 @@
+path("testdata/m94/Light/L/m94_Light_L_600_secs_00{1,2,3,4,5,6,7,8}.fits") | file() | findstar() | align(file("testdata/m94/Light/L/m94_Light_L_600_secs_001.fits") | findstar())

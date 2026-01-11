@@ -318,7 +318,7 @@ program aqlrgb
           error stop 'wrong sharpen mode'
         end select
 
-#       if _DEBUG
+#       ifndef NDEBUG
         call print_kernel(krn)
 #       endif
 

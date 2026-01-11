@@ -3,9 +3,10 @@
 
 #include <readline/history.h>
 #include <readline/readline.h>
+#include <unistd.h>
 
-#include "../lib/interpreter/interpreter.hpp"
 #include "../../src/c_binding/aquila.h"
+#include "../lib/interpreter/interpreter.hpp"
 
 using namespace aquila;
 using namespace aquila::interpreter;
@@ -105,6 +106,8 @@ int main()
     std::cout << "Created by DG, inspired by FK" << std::endl << std::endl;
     std::cout << "Press [TAB] twice to print available commands." << std::endl;
 
+    bool abort_on_failure = !isatty(STDIN_FILENO);
+
     while (true)
     {
         char *line = readline(">> ");
@@ -137,6 +140,8 @@ int main()
         catch (const std::exception &e)
         {
             std::cerr << "error: " << e.what() << std::endl;
+            if (abort_on_failure)
+                exit(1);
         }
     }
 

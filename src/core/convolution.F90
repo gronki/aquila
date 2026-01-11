@@ -194,23 +194,17 @@ subroutine deconvol_lr(im1, psf, strength, maxiter, im2)
    real(buf_k), dimension(:,:), intent(out), contiguous :: im2
    real(buf_k), intent(in) :: strength
    integer, intent(in) :: maxiter
-   real(buf_k), dimension(:,:), allocatable :: buf1, buf2, psf_inv, psf_pad, psf_inv_pad, im2_exp, buf1_exp
+   real(buf_k), dimension(:,:), allocatable :: buf1, buf2, psf_inv
    real(buf_k) :: err1, err2, err01, err02
-   integer(size_k) :: i, size_k_1
+   integer(size_k) :: i
 
    if (size(im1,1) /= size(im2,1) .or. size(im1,2) /= size(im2,2)) &
       error stop "shape(im1) /= shape(im2)"
 
-   size_k_1 = size(psf, 1)
-   psf_pad = padded_2d_kernel(psf, 8_size_k)
    psf_inv = psf(size(psf,1):1:-1, size(psf,2):1:-1)
-   psf_inv_pad = padded_2d_kernel(psf_inv, 8_size_k)
 
    allocate(buf1, source=im1)
    allocate(buf2, source=im1)
-
-   allocate(im2_exp(size(im1,1) + size(psf,1) - 1, size(im1,2) + size(psf,2) - 1))
-   allocate(buf1_exp(size(im1,1) + size(psf,1) - 1, size(im1,2) + size(psf,2) - 1))
 
    im2(:,:) = im1
 
@@ -223,11 +217,9 @@ subroutine deconvol_lr(im1, psf, strength, maxiter, im2)
 
    deconv_loop: do i = 1, maxiter
       ! actual deconvolution
-      call expand_image(im2, shape(psf, kind=size_k), 'e', im2_exp)
-      call conv2d_pad(im2_exp, psf_pad, size_k_1, .false., buf1)
+      call conv2d_fix(im2, psf, 'e', buf1)
       where (buf1 /= 0) buf1 = im1 / buf1
-      call expand_image(buf1, shape(psf, kind=size_k), 'e', buf1_exp)
-      call conv2d_pad(buf1_exp, psf_inv_pad, size_k_1, .false., buf2)
+      call conv2d_fix(buf1, psf_inv, 'e', buf2)
       im2(:,:) = im2 * buf2 * strength + im1 * (1 - strength)
 
 #     ifndef NDEBUG

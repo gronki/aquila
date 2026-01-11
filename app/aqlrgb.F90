@@ -2,7 +2,7 @@ program aqlrgb
 
   use globals
   use framehandling
-  use convolutions, only: convol_fix
+  use convolutions, only: conv2d_fix
   use kernels, only: gausskrn_alloc
   use str_utils_m
 
@@ -276,13 +276,13 @@ program aqlrgb
         !$omp parallel sections private(buf)
         !$omp section
         buf = frame_r % data
-        call convol_fix(buf, krn, frame_r % data, 'e')
+        call conv2d_fix(buf, krn, 'e', frame_r % data)
         !$omp section
         buf = frame_g % data
-        call convol_fix(buf, krn, frame_g % data, 'e')
+        call conv2d_fix(buf, krn, 'e', frame_g % data)
         !$omp section
         buf = frame_b % data
-        call convol_fix(buf, krn, frame_b % data, 'e')
+        call conv2d_fix(buf, krn, 'e', frame_b % data)
         !$omp end parallel sections
       end block perform_color_smooth
     end if
@@ -290,7 +290,7 @@ program aqlrgb
     if ( sharpen /= '' ) then
       do_unsharp_lum: block
         use kernels, only: mexhakrn_alloc, gausskrn_alloc, print_kernel
-        use convolutions, only: convol_fix
+        use convolutions, only: conv2d_fix
         use deconvolutions, only: deconvol_lr
 
         real(buf_k), allocatable :: krn(:,:), lum2(:,:)
@@ -303,7 +303,7 @@ program aqlrgb
         select case (sharpen)
         case ('wavelet')
           krn = mexhakrn_alloc(sharpen_fwhm)
-          call convol_fix(frame_l % data, krn, lum2, 'r')
+          call conv2d_fix(frame_l % data, krn, 'r', lum2)
           frame_l % data(:,:) = sharpen_strngth * lum2 + (1 - sharpen_strngth) * (frame_l % data)
         case ('deconv')
           krn = gausskrn_alloc(sharpen_fwhm)
@@ -311,7 +311,7 @@ program aqlrgb
           frame_l % data(:,:) = lum2
         case ('unsharp')
           krn = gausskrn_alloc(sharpen_fwhm)
-          call convol_fix(frame_l % data, krn, lum2, 'r')
+          call conv2d_fix(frame_l % data, krn, 'r', lum2)
           lum2(:,:) = frame_L % data - lum2 / sum(krn)
           frame_l % data(:,:) = sharpen_strngth * lum2 + (1 - sharpen_strngth) * (frame_l % data)
         case default

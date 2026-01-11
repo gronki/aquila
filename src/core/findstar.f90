@@ -282,7 +282,6 @@ contains
   !----------------------------------------------------------------------------!
 
     subroutine register_stars(im, list, limit)
-      use convolutions, only: convol_fix
       use kernels, only: mexhakrn_alloc
   
       real(buf_k), intent(in), contiguous :: im(:,:)
@@ -321,7 +320,7 @@ contains
     end subroutine
 
     subroutine register_stars_core(im, ni, nj, list, limit, param, nstar) bind(C)
-      use convolutions, only: convol_fix
+      use convolutions, only: conv2d_fix
       use kernels, only: mexhakrn_alloc, gausskrn_alloc
       use statistics, only: avsd
   
@@ -342,7 +341,7 @@ contains
       allocate(master_mask(size(im,1), size(im,2)))
   
       call fix_hot_median(im, im2)
-      call convol_fix(im2, krn, im3, 'r')
+      call conv2d_fix(im2, krn, 'r', im3)
       where (im3 < 0) im3 = 0
   
       sd = sum(abs(im3)) / size(im3)

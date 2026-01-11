@@ -8,7 +8,7 @@ contains
 
  !----------------------------------------------------------------------------!
 
-pure subroutine convol(x,k,y)
+subroutine convol(x,k,y)
    real(buf_k), dimension(:,:), intent(in), contiguous :: x, k
    real(buf_k), dimension(:,:), intent(out), contiguous :: y
    integer :: i, j, ri, rj
@@ -22,32 +22,45 @@ end subroutine
 
  !----------------------------------------------------------------------------!
 
-pure subroutine expand_image(x, shape_k, method, y)
+pure subroutine build_image_expansion(x, lo_bound, hi_bound, method, y)
    real(buf_k), dimension(:,:), intent(in), contiguous :: x
    real(buf_k), dimension(:,:), intent(inout), contiguous :: y
-   character(*), intent(in) :: method
-   integer(size_k), intent(in) :: shape_k(2)
-   integer(size_k) ::  in_shape(2), offset(2), &
-      out_shape(2), expected_out_shape(2), i ,j
+   character(len=*), intent(in) :: method
+   integer(size_k), intent(in) :: lo_bound(2), hi_bound(2)
+   integer(size_k) ::  in_shape(2), &
+      out_shape(2), expected_out_shape(2), i ,j, yi, yj
+   real(buf_k) :: fillval
 
    in_shape = shape(x)
-   expected_out_shape = in_shape + shape_k - 1
-   offset = (shape_k - 1) / 2
+   expected_out_shape = 1 + hi_bound - lo_bound
    out_shape = shape(y)
    if (any(out_shape /= expected_out_shape)) &
       error stop "wrong dimension"
 
    select case (method)
-   case ("clone","expand","E",'e')
-      do concurrent (i = 1:out_shape(1), j = 1:out_shape(2))
-         y(i,j) = x(ixlim(i - offset(1), in_shape(1)), ixlim(j - offset(2), in_shape(2)))
+   case ('e')
+      do concurrent (i = lo_bound(1):hi_bound(1), j = lo_bound(2):hi_bound(2))
+         yi = i - lo_bound(1) + 1
+         yj = j - lo_bound(2) + 1
+         y(yi,yj) = x(ixlim(i, in_shape(1)), ixlim(j, in_shape(2)))
       end do
-   case ("reflect","reflection","R",'r')
-      do concurrent (i = 1:out_shape(1), j = 1:out_shape(2))
-         y(i,j) = x(ixrefl(i - offset(1), in_shape(1)), ixrefl(j - offset(2), in_shape(2)))
+   case ('r')
+      do concurrent (i = lo_bound(1):hi_bound(1), j = lo_bound(2):hi_bound(2))
+         yi = i - lo_bound(1) + 1
+         yj = j - lo_bound(2) + 1
+         y(yi,yj) = x(ixrefl(i, in_shape(1)), ixrefl(j, in_shape(2)))
       end do
    case default
-      error stop "method must be: clone or reflect"
+      read(method, *) fillval
+      do concurrent (i = lo_bound(1):hi_bound(1), j = lo_bound(2):hi_bound(2))
+         yi = i - lo_bound(1) + 1
+         yj = j - lo_bound(2) + 1
+         if (i < 1 .or. i > in_shape(1) .or. j < 1 .or. j > in_shape(2)) then
+            y(yi,yj) = fillval
+         else
+            y(yi,yj) = x(i,j)
+         end if
+      end do
    end select
 
 contains
@@ -77,19 +90,84 @@ contains
    end function
 end subroutine
 
-pure subroutine convol_fix(x,k,y,method)
+pure subroutine expand_image(x, shape_k, method, y)
+   real(buf_k), dimension(:,:), intent(in), contiguous :: x
+   real(buf_k), dimension(:,:), intent(inout), contiguous :: y
+   character(*), intent(in) :: method
+   integer(size_k), intent(in) :: shape_k(2)
+   integer(size_k) ::  in_shape(2), offset(2)
+
+   in_shape = shape(x)
+   offset = (shape_k - 1) / 2
+   call build_image_expansion(x, &
+      1 - offset, in_shape + offset, &
+      method, y)
+
+end subroutine
+
+pure subroutine conv2d_fix(x,k,method,y)
    real(buf_k), dimension(:,:), intent(in), contiguous :: x, k
    real(buf_k), dimension(:,:), intent(inout), contiguous :: y
    character(*), intent(in) :: method
 
-   real(buf_k), dimension(:,:), allocatable :: tmpx
+   real(buf_k), allocatable :: padded_kernel(:,:), temp_input(:,:)
+   integer(size_k) :: offset(2), input_shape(2)
 
-   if (mod(size(k,1), 2) == 0 .or. mod(size(k,2), 2) == 0)     &
+   if (any(mod(shape(k), 2) == 0))     &
       error stop "kernel must have uneven dimensions"
 
-   allocate(tmpx(size(x, 1) + size(k, 1) - 1, size(x, 2) + size(k, 2) - 1))
-   call expand_image(x, shape(k, kind=size_k), method, tmpx)
-   call conv2d_pad(tmpx, padded_2d_kernel(k, 8_size_k), size(k, 1, size_k), .false., y)
+   input_shape = shape(x, size_k)
+   if (any(input_shape /= shape(y))) &
+      error stop "input and output shapes must match"
+
+   offset = (shape(k, size_k) - 1) / 2
+   padded_kernel = padded_2d_kernel(k, 8_size_k)
+
+   call conv2d_pad(x, padded_kernel, size(k, 1, size_k), .false., &
+      y(1 + offset(1) : input_shape(1) - offset(1), &
+   & 1 + offset(2) : input_shape(2) - offset(2)))
+
+
+   if (offset(2) > 0) then
+      allocate(temp_input(input_shape(1) + 2 * offset(1), 3 * offset(2)))
+
+      ! left strip
+      call build_image_expansion(x, 1 - offset, &
+         [input_shape(1) + offset(1), 2 * offset(2)], method, temp_input)
+      call conv2d_pad(temp_input, padded_kernel, size(k, 1, size_k), .false., &
+         y(:, :offset(2)))
+
+      ! roght strip
+      call build_image_expansion(x, &
+         [1 - offset(1), input_shape(2) - 2 * offset(2) + 1], &
+         input_shape + offset, &
+         method, temp_input)
+      call conv2d_pad(temp_input, padded_kernel, size(k, 1, size_k), .false., &
+         y(:, input_shape(2) - offset(2) + 1:))
+      deallocate(temp_input)
+   end if
+
+   if (offset(1) > 0) then
+      allocate(temp_input(3 * offset(1), input_shape(2)))
+
+      ! top padding
+      call build_image_expansion(x, &
+         [1 - offset(1), 1_size_k], &
+         [2 * offset(1), input_shape(2)], &
+         method, temp_input)
+      call conv2d_nopad(temp_input, k, .false., &
+         y(:offset(1), 1 + offset(2) : input_shape(2) - offset(2)))
+
+      ! bottom padding
+      call build_image_expansion(x, &
+         [input_shape(1) - 2 * offset(1) + 1, 1_size_k], &
+         [input_shape(1) + offset(1), input_shape(2)], &
+         method, temp_input)
+      call conv2d_nopad(temp_input, k, .false., &
+         y(input_shape(1) - offset(1) + 1:, 1 + offset(2) : input_shape(2) - offset(2)))
+
+      deallocate (temp_input)
+   end if
 
 end subroutine
 

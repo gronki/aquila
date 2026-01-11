@@ -2,6 +2,7 @@ module fastconv
 
 use iso_c_binding
 use iso_fortran_env, only: error_unit
+use to_str_m
 
 implicit none (type, external)
 
@@ -27,7 +28,9 @@ pure subroutine conv1d_core(x, k, y)
 
 #       ifndef NDEBUG
    if (size(y, kind=size_k) /= output_size_raw) &
-      error stop 'incorrect output shape for 1D convolution'
+      error stop 'incorrect output shape for 1D convolution: ' &
+      // to_str(int(input_size)) // " vs " &
+      // to_str(int(output_size_raw))
 #       endif
 
    if (modulo(kernel_size, 16) == 0) then
@@ -186,7 +189,7 @@ pure function padded_1d_kernel(k, pad_modulo) result(padded_kernel)
    kernel_size = size(k, kind=size_k)
    padded_size = padded_dimension(kernel_size, pad_modulo)
 
-   padded_kernel(1:kernel_size) = k(kernel_size:1:-1)
+   padded_kernel(1:kernel_size) = k(:)
    if (padded_size > kernel_size) padded_kernel(kernel_size + 1 :) = 0
 
 end function
@@ -211,10 +214,17 @@ pure subroutine conv1d_pad_core(x, k, kernel_size, y)
    output_size_raw = input_size - kernel_size + 1_size_k
 
 #       ifndef NDEBUG
-   if (padding < 0) error stop "conv1d_pad_core: padding parameter must be >= 0"
+   if (padding < 0) error stop "conv1d_pad_core: padding parameter must be >= 0, not " // to_str(padding)
    if (size(y) /= output_size_raw) &
-      error stop 'incorrect output shape for 1D convolution'
+      error stop 'incorrect output shape for 1D convolution: ' &
+      // to_str(size(y)) // " vs " // to_str(output_size_raw)
 #       endif
+
+   ! corner case when the input is ultra-short, actually shorter than the padding
+   if (output_size_raw - padding < 1) then
+      call conv1d_core(x, k(:kernel_size), y)
+      return
+   end if
 
    call conv1d_core(x, k, y(:output_size_raw - padding))
 
@@ -260,7 +270,8 @@ pure subroutine conv1d_pad(x, k, kernel_size, keep_shape, y)
    end if
 #   endif
 
-   call conv1d_pad_core(x, k, kernel_size, y(1+output_offset:output_shape_raw+output_offset))
+   call conv1d_pad_core(x, k, kernel_size, &
+      y(1 + output_offset : output_shape_raw + output_offset))
 
 end subroutine
 
@@ -279,20 +290,16 @@ pure function padded_2d_kernel(k, pad_modulo) result(padded_kernel)
       padded_dimension(size(k, 1, kind=size_k), pad_modulo), &
       size(k, 2, kind=size_k))
 
-   integer(kind=size_k) :: kernel_size(2), padded_size(2), j
+   integer(kind=size_k) :: kernel_size(2), padded_size(2)
 
    kernel_size = shape(k, kind=size_k)
    padded_size(1) = padded_dimension(kernel_size(1), pad_modulo)
    padded_size(2) = kernel_size(2)
 
-   do j = 1, kernel_size(2)
-      padded_kernel(1:kernel_size(1), j) = k(kernel_size(1):1:-1, kernel_size(2) - j + 1)
-   end do
+   padded_kernel(1:kernel_size(1), :) = k(:,:)
    if (padded_size(1) > kernel_size(1)) padded_kernel(kernel_size(1) + 1 :, :) = 0
 
 end function
-
-
 
  !> Compute convolution for kernel which is padded with zeros.
  !> This is good for performance reasons, as such kernels can
@@ -307,7 +314,7 @@ pure subroutine conv2d_pad(x, k, size_k_1, keep_shape, y)
    !> Whether to keep the same output dimensions as input.
    logical, intent(in) :: keep_shape
    !> Output.
-   real(real_k), intent(inout), contiguous :: y(:,:)
+   real(real_k), intent(inout) :: y(:,:)
 
    real(real_k), allocatable :: buf(:)
    integer(size_k) :: expected_output_shape(2), output_shape_raw(2), output_offset(2), &
@@ -338,7 +345,61 @@ pure subroutine conv2d_pad(x, k, size_k_1, keep_shape, y)
          1 + output_offset(1) : output_shape_raw(1) + output_offset(1), &
          ix + output_offset(2)))
          do ik = 1, kernel_shape(2)
-            call conv1d_pad_core(x(:, ix + ik - 1), k(:,ik), size_k_1, buf)
+            call conv1d_pad_core(x(:, ix + ik - 1), k(:, ik), size_k_1, buf)
+            if (ik == 1) then
+               y_row(:) = buf
+            else
+               y_row(:) = y_row + buf
+            end if
+         end do
+      end associate
+   end do
+
+end subroutine
+
+ !> Compute convolution for kernel which is padded with zeros.
+ !> This is good for performance reasons, as such kernels can
+ !> be better vectorized into SIMD instructions.
+pure subroutine conv2d_nopad(x, k, keep_shape, y)
+   !> Input vector.
+   real(real_k), intent(in), contiguous :: x(:,:)
+   !> Reversed kernel padded with zeros.
+   real(real_k), intent(in), contiguous :: k(:,:)
+   !> Whether to keep the same output dimensions as input.
+   logical, intent(in) :: keep_shape
+   !> Output.
+   real(real_k), intent(inout) :: y(:,:)
+
+   real(real_k), allocatable :: buf(:)
+   integer(size_k) :: expected_output_shape(2), output_shape_raw(2), output_offset(2), &
+      input_shape(2), kernel_shape(2), ix, ik
+
+   input_shape = shape(x)
+   kernel_shape = shape(k)
+   output_shape_raw = input_shape + 1_size_k - kernel_shape
+   expected_output_shape = input_shape + merge(0_size_k, 1_size_k - kernel_shape, keep_shape)
+   output_offset = merge((kernel_shape - 1_size_k) / 2_size_k, 0_size_k, keep_shape)
+
+#   ifndef NDEBUG
+   if (any(shape(y) /= expected_output_shape)) then
+      block
+         character(len=256) :: errmsg
+         write (errmsg, '(a, a, i0, ", ", i0, a, i0, ", ", i0, a)') &
+            "incorrect shape for 2D convolution output; ", &
+            "expected [", expected_output_shape, "], but got [", shape(y), "]"
+         error stop trim(errmsg)
+      end block
+   end if
+#   endif
+
+   allocate(buf(output_shape_raw(1)))
+
+   do ix = 1, output_shape_raw(2)
+      associate(y_row => y( &
+         1 + output_offset(1) : output_shape_raw(1) + output_offset(1), &
+         ix + output_offset(2)))
+         do ik = 1, kernel_shape(2)
+            call conv1d_core(x(:, ix + ik - 1), k(:, ik), buf)
             if (ik == 1) then
                y_row(:) = buf
             else
@@ -352,7 +413,7 @@ end subroutine
 
 pure subroutine conv2d_ref(x, k, keep_shape, y)
    real(real_k), intent(in), contiguous :: x(:,:), k(:,:)
-   real(real_k), intent(inout), contiguous :: y(:,:)
+   real(real_k), intent(inout) :: y(:,:)
    logical, intent(in) :: keep_shape
 
    integer(kind=size_k) :: ix, ik, jx, jk, input_shape(2), kernel_shape(2)
@@ -382,8 +443,7 @@ pure subroutine conv2d_ref(x, k, keep_shape, y)
          total = 0
          do jk = 1, kernel_shape(2)
             do ik = 1, kernel_shape(1)
-               total = total + k(kernel_shape(1) + 1 - ik, kernel_shape(2) + 1 - jk) &
-                  * x(ix + ik - 1, jx + jk - 1)
+               total = total + k(ik, jk) * x(ix + ik - 1, jx + jk - 1)
             end do
          end do
          y(ix + output_offset(1), jx + output_offset(2)) = total

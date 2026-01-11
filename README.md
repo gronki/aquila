@@ -14,6 +14,46 @@ Currently, the package consists of following programs:
 2. ``aqlrgb`` for compositing images from many filters into one color picture
 3. ``aq2`` -- currently developed interpreter for scripting image processing pipelines
 
+## Installation
+
+### Simple methods
+
+**[Click here](https://github.com/gronki/aquila/releases) to download packages for Ubuntu/Debian.**. This is the recommended method for most users.
+
+You can also quickly build ready-to-use Aquila Docker image (~200 MB):
+
+```
+docker build -t aquila https://github.com/gronki/aquila.git
+docker run -it aquila
+```
+
+### Build from source
+
+To build the program on Ubuntu/Debian, first install the dependencies:
+
+```sh
+apt-get update && apt-get install -y --no-install-recommends cmake make gcc g++ gfortran libcfitsio-dev libpng-dev libreadline-dev pkg-config
+```
+
+Then, you can use the convenience script, which will build and install it in ``/opt/aquila``:
+
+```sh
+bash scripts/install.sh
+```
+
+Remember to add to your ``.bashrc``:
+
+```sh
+export PATH="${PATH}:/opt/aquila/bin"
+export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:/opt/aquila/lib"
+```
+
+The script ``install.sh`` executes something like:
+
+```sh
+mkdir build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Native -DOPENMP=On -DCMAKE_INSTALL_PREFIX=/opt/aquila && cmake --build . && sudo cmake --install .
+```
+
 ## Usage
 
 Use option ``-h`` or ``-help`` to get the information below.

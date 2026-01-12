@@ -208,12 +208,34 @@ static void parse_expression(LazyTokenArray &tokens, std::unique_ptr<AstNode> &n
     return;
 }
 
+static void parse_assignment(LazyTokenArray &tokens, std::unique_ptr<AstNode> &node)
+{
+    Token maybe_lhs = tokens.peek_token(0);
+    Token maybe_eq = tokens.peek_token(1);
+
+    if (maybe_lhs.type == TokenType::IDENT && maybe_eq == Token(TokenType::DELIM, '='))
+    {
+        std::unique_ptr<AstNode> rhs;
+        tokens.next_token(2);
+        parse_expression(tokens, rhs);
+        node = std::make_unique<AstAssignmentNode>(
+            maybe_lhs.value, std::move(rhs), maybe_lhs.loc);
+    }
+    else
+    {
+        parse_expression(tokens, node);
+    }
+
+    if (tokens.cur_token().type != TokenType::END)
+        throw std::runtime_error("end of line expected.");
+}
+
 /**
  * Main parsing function.
  */
 void parse(LazyTokenArray &tokens, std::unique_ptr<AstNode> &root)
 {
-    parse_expression(tokens, root);
+    parse_assignment(tokens, root);
 }
 
 } // namespace aquila::interpreter

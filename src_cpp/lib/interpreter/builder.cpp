@@ -10,7 +10,7 @@ static std::unique_ptr<OpNode> build_op_node(
     auto op_it = opdb.find(ast_op_node.opname);
     if (op_it == opdb.end())
         throw std::runtime_error(std::string("Operation not found: ") + ast_op_node.opname);
-    const OpDbEntry& op_entry = op_it->second;
+    const OpDbEntry &op_entry = op_it->second;
     auto op = op_entry.factory();
 
     if (!op)
@@ -45,6 +45,12 @@ std::unique_ptr<ExecNode> build_exec_tree(
     if (const auto *ast_op_node = dynamic_cast<const AstOpNode *>(ast.get()))
     {
         return build_op_node(*ast_op_node, ns, opdb);
+    }
+
+    if (const auto *ast_assgn_node = dynamic_cast<const AstAssignmentNode *>(ast.get()))
+    {
+        return std::make_unique<AssignmentNode>(
+            ast_assgn_node->lhs, build_exec_tree(ast_assgn_node->rhs, ns, opdb), ns);
     }
 
     if (const auto *ast_exp_node = dynamic_cast<const AstExpandNode *>(ast.get()))

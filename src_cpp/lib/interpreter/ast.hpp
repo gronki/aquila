@@ -36,7 +36,7 @@ struct AstValueNode : public AstNode
     {
     }
 
-    virtual void _print(std::ostream &os, std::int64_t indent) const
+    void _print(std::ostream &os, std::int64_t indent) const override
     {
         if (constant)
         {
@@ -66,7 +66,7 @@ struct AstExpandNode : public AstNode
     {
     }
 
-    virtual void _print(std::ostream &os, std::int64_t indent) const
+    void _print(std::ostream &os, std::int64_t indent) const override
     {
         os << (kind == Kind::EXPANSION ? EXPAND_DELIM : CONTRACT_DELIM);
         if (expandable)
@@ -89,7 +89,7 @@ struct AstRefNode : public AstNode
     {
     }
 
-    virtual void _print(std::ostream &os, std::int64_t indent) const
+    void _print(std::ostream &os, std::int64_t indent) const override
     {
         if (refname != "")
         {
@@ -99,6 +99,25 @@ struct AstRefNode : public AstNode
         {
             os << "(empty reference node)";
         }
+    }
+};
+
+struct AstAssignmentNode : public AstNode
+{
+    std::string lhs;
+    std::unique_ptr<AstNode> rhs;
+
+    AstAssignmentNode(
+        const std::string &lhs, std::unique_ptr<AstNode> rhs, const TokenLoc &loc) :
+        lhs(lhs), rhs(std::move(rhs)), AstNode(loc)
+    {
+    }
+
+    void _print(std::ostream &os, std::int64_t indent) const override
+    {
+        os << lhs << " := ";
+        rhs->_print(os, indent);
+        os << std::endl;
     }
 };
 
@@ -118,7 +137,7 @@ struct AstOpNode : public AstNode
     {
     }
 
-    virtual void _print(std::ostream &os, std::int64_t indent) const
+    void _print(std::ostream &os, std::int64_t indent) const override
     {
         std::string padding(std::size_t(indent), ' ');
         std::string padding_arg(std::size_t(indent + 4), ' ');

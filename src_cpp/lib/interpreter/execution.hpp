@@ -33,9 +33,32 @@ class RefNode : public ExecNode
     std::string refname;
 
 public:
-    RefNode(const std::string &refname, Namespace &ns) : ExecNode(ns), refname(refname) {}
+    RefNode(const std::string &refname, Namespace &ns) : ExecNode(ns), refname(refname)
+    {
+    }
 
     const Value *yield() override { return &ns.get(refname); }
+};
+
+class AssignmentNode : public ExecNode
+{
+    std::string lhs;
+    std::unique_ptr<ExecNode> rhs;
+
+public:
+    AssignmentNode(const std::string &lhs, std::unique_ptr<ExecNode> rhs, Namespace &ns) :
+        ExecNode(ns), lhs(lhs), rhs(std::move(rhs))
+    {
+    }
+
+    const Value *yield() override
+    {
+        const Value *rhs_yield = rhs->yield();
+        ns.push(lhs, rhs_yield->clone());
+        return rhs_yield;
+    }
+
+    void clean() override { rhs->clean(); }
 };
 
 class ValueNode : public ExecNode

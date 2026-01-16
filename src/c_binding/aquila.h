@@ -45,7 +45,7 @@ extern "C"
 
     struct transform_t
     {
-        char type[8];
+        char type[16];
         double scale = 1;
         int npar = 0;
         double vec[TRANSFORM_MAX_PAR]{0};

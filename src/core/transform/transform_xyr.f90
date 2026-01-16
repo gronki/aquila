@@ -26,9 +26,9 @@ contains
 
 function transform_xyr_ctor(scale) result(self)
    type(transform_xyr_t) :: self
-   real(r64_k), intent(in), optional :: scale
+   real(r64_k), intent(in) :: scale
 
-   if (present(scale)) self%scale = scale
+   self%scale = scale
 end function
 
 

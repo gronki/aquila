@@ -304,7 +304,7 @@ end function
  !> Compute convolution for kernel which is padded with zeros.
  !> This is good for performance reasons, as such kernels can
  !> be better vectorized into SIMD instructions.
-pure subroutine conv2d_pad(x, k, size_k_1, keep_shape, y)
+subroutine conv2d_pad(x, k, size_k_1, keep_shape, y, parallel)
    !> Input vector.
    real(real_k), intent(in), contiguous :: x(:,:)
    !> Reversed kernel padded with zeros.
@@ -315,10 +315,16 @@ pure subroutine conv2d_pad(x, k, size_k_1, keep_shape, y)
    logical, intent(in) :: keep_shape
    !> Output.
    real(real_k), intent(inout) :: y(:,:)
+   !> Run multicore?
+   logical, intent(in), optional :: parallel
+   logical :: parallel_
 
    real(real_k), allocatable :: buf(:)
    integer(size_k) :: expected_output_shape(2), output_shape_raw(2), output_offset(2), &
       input_shape(2), kernel_shape(2), ix, ik
+
+   parallel_ = .false.
+   if (present(parallel)) parallel_ = parallel
 
    input_shape = shape(x)
    kernel_shape = [size_k_1, size(k, 2, size_k)]
@@ -340,6 +346,7 @@ pure subroutine conv2d_pad(x, k, size_k_1, keep_shape, y)
 
    allocate(buf(output_shape_raw(1)))
 
+   !$omp parallel do private(ik, buf) if(parallel_)
    do ix = 1, output_shape_raw(2)
       associate(y_row => y( &
          1 + output_offset(1) : output_shape_raw(1) + output_offset(1), &
@@ -360,7 +367,7 @@ end subroutine
  !> Compute convolution for kernel which is padded with zeros.
  !> This is good for performance reasons, as such kernels can
  !> be better vectorized into SIMD instructions.
-pure subroutine conv2d_nopad(x, k, keep_shape, y)
+subroutine conv2d_nopad(x, k, keep_shape, y, parallel)
    !> Input vector.
    real(real_k), intent(in), contiguous :: x(:,:)
    !> Reversed kernel padded with zeros.
@@ -369,11 +376,17 @@ pure subroutine conv2d_nopad(x, k, keep_shape, y)
    logical, intent(in) :: keep_shape
    !> Output.
    real(real_k), intent(inout) :: y(:,:)
+   !> Run multicore?
+   logical, intent(in), optional :: parallel
+   logical :: parallel_
 
    real(real_k), allocatable :: buf(:)
    integer(size_k) :: expected_output_shape(2), output_shape_raw(2), output_offset(2), &
       input_shape(2), kernel_shape(2), ix, ik
 
+   parallel_ = .false.
+   if (present(parallel)) parallel_ = parallel
+   
    input_shape = shape(x)
    kernel_shape = shape(k)
    output_shape_raw = input_shape + 1_size_k - kernel_shape
@@ -394,6 +407,7 @@ pure subroutine conv2d_nopad(x, k, keep_shape, y)
 
    allocate(buf(output_shape_raw(1)))
 
+   !$omp parallel do private(ik, buf) if(parallel_)
    do ix = 1, output_shape_raw(2)
       associate(y_row => y( &
          1 + output_offset(1) : output_shape_raw(1) + output_offset(1), &
@@ -411,7 +425,7 @@ pure subroutine conv2d_nopad(x, k, keep_shape, y)
 
 end subroutine
 
-pure subroutine conv2d_ref(x, k, keep_shape, y)
+subroutine conv2d_ref(x, k, keep_shape, y)
    real(real_k), intent(in), contiguous :: x(:,:), k(:,:)
    real(real_k), intent(inout) :: y(:,:)
    logical, intent(in) :: keep_shape

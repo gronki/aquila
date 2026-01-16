@@ -105,10 +105,11 @@ pure subroutine expand_image(x, shape_k, method, y)
 
 end subroutine
 
-pure subroutine conv2d_fix(x,k,method,y)
+subroutine conv2d_fix(x,k,method,y,parallel)
    real(buf_k), dimension(:,:), intent(in), contiguous :: x, k
    real(buf_k), dimension(:,:), intent(inout), contiguous :: y
    character(*), intent(in) :: method
+   logical, intent(in), optional :: parallel
 
    real(buf_k), allocatable :: padded_kernel(:,:), temp_input(:,:)
    integer(size_k) :: offset(2), input_shape(2)
@@ -125,7 +126,7 @@ pure subroutine conv2d_fix(x,k,method,y)
 
    call conv2d_pad(x, padded_kernel, size(k, 1, size_k), .false., &
       y(1 + offset(1) : input_shape(1) - offset(1), &
-   & 1 + offset(2) : input_shape(2) - offset(2)))
+      & 1 + offset(2) : input_shape(2) - offset(2)), parallel)
 
 
    if (offset(2) > 0) then
@@ -187,13 +188,14 @@ implicit none
 
 contains
 
-subroutine deconvol_lr(im1, psf, strength, maxiter, im2)
+subroutine deconvol_lr(im1, psf, strength, maxiter, im2, parallel)
    use ieee_arithmetic, only: ieee_is_normal
 
    real(buf_k), dimension(:,:), intent(in), contiguous :: im1, psf
    real(buf_k), dimension(:,:), intent(out), contiguous :: im2
    real(buf_k), intent(in) :: strength
    integer, intent(in) :: maxiter
+   logical, intent(in), optional :: parallel
    real(buf_k), dimension(:,:), allocatable :: buf1, buf2, psf_inv
    real(buf_k) :: err1, err2, err01, err02
    integer(size_k) :: i
@@ -217,9 +219,9 @@ subroutine deconvol_lr(im1, psf, strength, maxiter, im2)
 
    deconv_loop: do i = 1, maxiter
       ! actual deconvolution
-      call conv2d_fix(im2, psf, 'e', buf1)
+      call conv2d_fix(im2, psf, 'e', buf1, parallel)
       where (buf1 /= 0) buf1 = im1 / buf1
-      call conv2d_fix(buf1, psf_inv, 'e', buf2)
+      call conv2d_fix(buf1, psf_inv, 'e', buf2, parallel)
       im2(:,:) = im2 * buf2 * strength + im1 * (1 - strength)
 
 #     ifndef NDEBUG

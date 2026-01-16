@@ -303,15 +303,15 @@ program aqlrgb
         select case (sharpen)
         case ('wavelet')
           krn = mexhakrn_alloc(sharpen_fwhm)
-          call conv2d_fix(frame_l % data, krn, 'r', lum2)
+          call conv2d_fix(frame_l % data, krn, 'r', lum2, .true.)
           frame_l % data(:,:) = sharpen_strngth * lum2 + (1 - sharpen_strngth) * (frame_l % data)
         case ('deconv')
           krn = gausskrn_alloc(sharpen_fwhm)
-          call deconvol_lr(frame_l % data, krn, sharpen_strngth, 99, lum2)
+          call deconvol_lr(frame_l % data, krn, sharpen_strngth, 99, lum2, .true.)
           frame_l % data(:,:) = lum2
         case ('unsharp')
           krn = gausskrn_alloc(sharpen_fwhm)
-          call conv2d_fix(frame_l % data, krn, 'r', lum2)
+          call conv2d_fix(frame_l % data, krn, 'r', lum2, .true.)
           lum2(:,:) = frame_L % data - lum2 / sum(krn)
           frame_l % data(:,:) = sharpen_strngth * lum2 + (1 - sharpen_strngth) * (frame_l % data)
         case default
@@ -430,21 +430,18 @@ contains
     L = (wr * R + wg * G + wb * B) / (wr + wg + wb)
   end function
 
-  elemental subroutine apply_curve(tt, x, a, b, y)
+  subroutine apply_curve(tt, x, a, b, y)
     character(len = *), intent(in) :: tt
-    real(buf_k), intent(in) :: x, a, b
-    real(buf_k), intent(out) :: y
-    real(buf_k) :: x1
-
-    x1 = merge(x, b, x >= b)
+    real(buf_k), intent(in) :: x(:,:), a, b
+    real(buf_k), intent(out) :: y(:,:)
 
     select case (tt)
     case ('sqrt')
-      y = sqrt(1 + 2 * (x1 - b) / a) - 1
+      y = sqrt(1 + 2 * (max(x,b) - b) / a) - 1
     case ('asinh')
-      y = asinh((x1 - b) / a)
+      y = asinh((max(x,b) - b) / a)
     case ('log')
-      y = log(1 + (x1 - b) / a)
+      y = log(1 + (max(x,b) - b) / a)
     case default
       error stop 'curve?'
     end select

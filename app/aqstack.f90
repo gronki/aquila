@@ -380,7 +380,7 @@ program aqstack
           print '(a,a)', 'writing output file: ', trim(output_fn)
           call frames(1) % write_fits(output_fn)
         else
-          if (output_suff == "") output_suff = "_r"
+          if (output_suff == "") output_suff = "_pp"
           print '(a,i0,a,a)', 'writing ', nframes, ' processed files with suffix: ', trim(output_suff)
           do i = 1, nframes
             call frames(i) % hdr % add('AQLVER', version)
@@ -659,7 +659,7 @@ contains
     print fmthlp,  '-norm[alize]', 'normalize to average before stacking'
     print fmthlp,  '-no-stack', 'process but do not stack images'
     print fmthlp,  '-suffix/-S SUFFIX', 'suffix that will be added to file names', &
-    &     'when using -nostack {def.: _r}'
+    &     'when using -nostack {def.: _pp}'
     print fmthlp,  '-temp/-T TEMP [DT=0.5]', 'stack only frames with given CCD temperature', &
     &     'DT gives allowed deviation in temperature', 'in Celsius'
     print fmthlp,  '-bias FILENAME', 'subtract this master bias'

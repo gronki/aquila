@@ -16,7 +16,7 @@ program aqstack
   implicit none
 
   ! allowed values: average, median, sigclip
-  character(len = 32) :: method = "average", strategy = "", align_method = "gravity"
+  character(len = 32) :: method = "average", strategy = "", align_method = "affine"
   character(len = 256) :: output_fn = "", ref_fn = "", &
         bias_fn = "", dark_fn = "", flat_fn = ""
   character(len = 64) :: output_suff = ""
@@ -283,12 +283,14 @@ program aqstack
         use new_align
         use polygon_matching, only: find_transform_polygons
         type(source_t), dimension(:), allocatable :: lst0, lst
-        integer :: i, istart, errno, npar
-        type(transform_xyr_t) :: tx
+        type(align_params_t) :: align_params
+        integer :: i, istart, errno
+        class(transform_t), allocatable :: tx
         real(r64_k) :: r0
 
         ! r0 is roughly half of frame's dimension
         r0 = sqrt(real(nx, kind=r64_k)**2 + real(ny, kind=r64_k)**2) / sqrt(8.0_r64_k)
+        align_params % scale = r0
 
         if (cfg_resampling) then
           print '("WARNING ", a)', 'resampling may require a lot of memory'
@@ -311,8 +313,6 @@ program aqstack
           findstar_initial: block
             type(transform_xyr_t) :: ity
 
-            ity % scale = r0
-
             call register_stars(frames(1) % data, lst0)
 
             if (cfg_resampling) then
@@ -325,24 +325,19 @@ program aqstack
           end block findstar_initial
         end if
 
-        npar = tx%npar()
-
         call cpu_time(t1)
         !$omp parallel do private(i, lst, tx) shared(buffers_to_stack)
         do i = istart, nframes
-          tx%vec(:) = 0
-          tx%scale = r0
-
           ! register the stars
           call register_stars(frames(i) % data, lst)
-          call classic_align(lst0, lst, align_method, r0, tx, errno)
+          call classic_align(lst0, lst, align_method, align_params, tx, errno, cfg_verbose)
           if (errno /= 0) error stop "align error"
           
           !$omp critical
           margin = max(margin, check_corners(tx, nx, ny) + 2)
           
           print '("ALIGN ",a," frame(",i2,") found ",i4," stars")', trim(align_method), i, size(lst)
-          print '(" solution(",i2,") =", *(f8.2))', i, tx % vec(:npar)
+          print '(" solution(",i2,") =", *(f8.2))', i, tx % vec(:tx%npar())
           print '("margin = ", i0)', margin
           !$omp end critical
           
@@ -351,6 +346,8 @@ program aqstack
           else
             call project_bilinear(tx, frames(i) % data, buffers_to_stack(:,:,i))
           end if
+
+          deallocate(tx)
 
         end do
         !$omp end parallel do
@@ -490,7 +487,7 @@ contains
         cfg_align_frames = .true.
 
         call get_command_argument(i+1, buf)
-        if (buf == 'polygon' .or. buf == 'gravity' .or. buf == 'gravity_only') then
+        if (buf == 'polygon' .or. buf == 'gravity' .or. buf == 'gravity_only' .or. buf == 'affine') then
           align_method = buf
           skip = 1
         end if
@@ -651,9 +648,11 @@ contains
     print fmthlp,  '-average', 'stack by average value'
     print fmthlp,  '-median', 'stack by median'
     print fmthlp,  '-sigclip', 'stack by 3-sigma clipped average'
-    print fmthlp,  '-align [METHOD]', 'align frames (isometric). METHOD can be:', &
-    &     'polygon: quadrangle matching {def.}', 'gravity_only: use gravity align method', &
-    &     'gravity: use polygon matching and fine-tune', 'using gravity'
+    print fmthlp,  '-align [METHOD]', 'align frames. METHOD can be:', &
+    &     'polygon: quadrangle matching -- only rot&transl', &
+    &     'gravity_only: rot&transl only with gravity', &
+    &     'gravity: determine rot&transl with poly and fine-tune with gravity', &
+    &     'affine {def.} use poly, then gravity to find affine (linear stretch)'
     print fmthlp,  '-ref FILENAME', 'align to this frame rather than first frame'
     print fmthlp,  '-resample [FACTOR=1.5]', 'resample before stacking (only with -align)', &
     &     'FACTOR is scale to be applied'

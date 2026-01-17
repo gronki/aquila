@@ -16,6 +16,7 @@ ValuePtr AlignOp::run(const values::SourceListValue &lst0,
         lst.sources.data(),
         lst.sources.size(),
         method.c_str(),
+        {.scale = (double(lst0.nx) + double(lst0.ny)) / 3},
         trans,
         err);
     if (err)

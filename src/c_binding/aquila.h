@@ -8,7 +8,7 @@ extern "C"
 #    include <stdlib.h>
 #endif
 
-    #define AQUILA_VERSION "260109"
+#define AQUILA_VERSION "260109"
 
     typedef float real_buf_t;
 
@@ -51,6 +51,14 @@ extern "C"
         double vec[TRANSFORM_MAX_PAR]{0};
     };
 
+    struct align_params_t
+    {
+        double scale = 1;
+        double gravity_precision = 2;
+        int poly_stars = 32;
+        int poly_matches = 16;
+    };
+
     struct buffer_descriptor_t
     {
         real_buf_t *data;
@@ -81,6 +89,7 @@ extern "C"
         const source_t *lst,
         size_t n,
         const char *align_method,
+        const align_params_t&,
         transform_t &,
         int &);
 

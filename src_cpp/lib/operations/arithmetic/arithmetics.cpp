@@ -36,7 +36,7 @@ std::unique_ptr<Value> MixOp::call(const std::vector<const Value *> &args) const
             std::string("Mix requires even number of arguments but got: ")
             + std::to_string(args.size()));
     ValuePtr result = std::make_unique<RealValue>(0);
-    for (std::int64_t iarg = 0; iarg < args.size(); iarg += 2)
+    for (std::size_t iarg = 0; iarg < args.size(); iarg += 2)
     {
         result = apply_tertiary(*result,
             *args[iarg],
@@ -55,14 +55,14 @@ std::unique_ptr<Value> LrgbOp::call(const std::vector<const Value *> &args) cons
     if (args.size() == 1)
         return std::make_unique<interpreter::SequenceValue>();
     ValuePtr chroma_sum = std::make_unique<RealValue>(0);
-    for (std::int64_t iarg = 1; iarg < args.size(); iarg++)
+    for (std::size_t iarg = 1; iarg < args.size(); iarg++)
     {
         chroma_sum =
             apply_binary(*chroma_sum, *args[iarg], [](auto a, auto b) { return a + b; });
     }
     std::vector<ValuePtr> scaled_components;
     scaled_components.reserve(args.size() - 1);
-    for (std::int64_t iarg = 1; iarg < args.size(); iarg++)
+    for (std::size_t iarg = 1; iarg < args.size(); iarg++)
     {
         scaled_components.push_back(apply_tertiary(*args[0],
             *args[iarg],

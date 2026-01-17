@@ -132,7 +132,7 @@ Token LazyTokenArray::peek_token(std::int64_t offset)
     if (offset + pos < 0)
         throw std::runtime_error("may not rewind before the first token");
 
-    while (tokens.size() < offset + pos + 1)
+    while (std::int64_t(tokens.size()) < offset + pos + 1)
     {
         tokens.push_back(tokenizer.next_token());
     }

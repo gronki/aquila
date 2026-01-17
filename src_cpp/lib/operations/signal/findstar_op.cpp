@@ -27,7 +27,8 @@ ValuePtr FindstarOp::run(const values::BufferValue &frame,
     std::int64_t nstar;
     register_stars(c_const_buf(frame.buffer), sources.data(), limit, params, nstar);
     sources.resize(nstar);
-    return std::make_unique<values::SourceListValue>(std::move(sources));
+    return std::make_unique<values::SourceListValue>(
+        std::move(sources), frame.buffer.cols(), frame.buffer.rows());
 }
 
 } // namespace aquila::ops

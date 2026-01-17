@@ -8,6 +8,7 @@ module globals
   integer, parameter :: r32_k = c_float
   integer, parameter :: r64_k = c_double
   integer, parameter :: i64_k = c_int64_t
+  integer, parameter :: i32_k = c_int
   integer, parameter :: sz_k = c_size_t
   integer, parameter :: buf_k = r32_k
 

@@ -28,7 +28,7 @@ const std::vector<const char *> &get_opnames()
 
 char *command_generator(const char *text, int state)
 {
-    static int list_index;
+    static std::size_t list_index;
 
     /* If this is a new word to complete, initialize now.  This includes
        saving the length of TEXT for efficiency, and initializing the index
@@ -71,7 +71,7 @@ void display_completions(char **matches, int num_matches, int max_length)
     new_matches[num_matches] = nullptr;
     int new_max_len = 0;
     const auto &db = global_op_db();
-    for (size_t imatch = 0; imatch < num_matches; imatch++)
+    for (int imatch = 0; imatch < num_matches; imatch++)
     {
         auto it = db.find(std::string(matches[imatch]));
         int len;

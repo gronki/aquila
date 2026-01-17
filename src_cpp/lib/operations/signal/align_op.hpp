@@ -20,8 +20,8 @@ struct AlignOp : public Operation
             ArgSpec{.name = "list0"},
             ArgSpec{.name = "list"},
             ArgSpec{.name = "method",
-                .default_str = "gravity",
-                .help = "options: gravity, gravity_only, polygon"},
+                .default_str = "affine",
+                .help = "options: gravity, gravity_only, polygon, affine"},
         };
     }
 

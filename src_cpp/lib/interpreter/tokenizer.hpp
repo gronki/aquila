@@ -30,7 +30,7 @@ public:
     {
     }
 
-    inline bool is_end() const { return pos >= buffer.size(); }
+    inline bool is_end() const { return pos >= std::ptrdiff_t(buffer.size()); }
     Token next_token();
 };
 

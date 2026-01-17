@@ -90,18 +90,19 @@ subroutine c_f_string(c_str, f_str)
 end subroutine
 
 
-subroutine classic_align_c(lst0, n0, lst, n, align_method, txc, errno) &
+subroutine classic_align_c(lst0, n0, lst, n, align_method, params, txc, errno) &
    bind(C, name="classic_align")
 
    integer(c_size_t), value :: n0, n
    type(source_t), intent(in) :: lst0(n0), lst(n)
    character(kind=c_char, len=1), intent(in) :: align_method(*)
+   type(align_params_t), intent(in) :: params
    character(kind=c_char, len=16) :: align_method_f
    type(transform_c_t), intent(out) :: txc
    integer(c_int), intent(out) :: errno
 
    real(c_double) :: scale
-   type(transform_xyr_t) :: tx
+   class(transform_t), allocatable :: tx
 
    errno = 0
 
@@ -111,7 +112,7 @@ subroutine classic_align_c(lst0, n0, lst, n, align_method, txc, errno) &
    tx = transform_xyr_t(scale)
 
    call c_f_string(align_method, align_method_f)
-   call classic_align(lst0, lst, align_method_f, scale, tx, errno)
+   call classic_align(lst0, lst, align_method_f, params, tx, errno)
    call f_to_c_transform(tx, txc)
 
 end subroutine

@@ -17,7 +17,7 @@ struct TransformValue : public interpreter::CompoundValue
     void write(std::ostream &os) const
     {
         os << "transform(" << std::string(transform.type, 7) << " r= " << transform.scale << " v= ";
-        for (size_t i = 0; i < std::min(transform.npar, TRANSFORM_MAX_PAR); i++)
+        for (int i = 0; i < std::min(transform.npar, TRANSFORM_MAX_PAR); i++)
         {
             if (i > 0)
                 os << ", ";

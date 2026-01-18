@@ -55,8 +55,10 @@ extern "C"
     {
         double scale = 1;
         double gravity_precision = 2;
+        double gravity_precision_pre = 10;
         int poly_stars = 32;
         int poly_matches = 16;
+        bool prealign_polygon = false;
     };
 
     struct buffer_descriptor_t

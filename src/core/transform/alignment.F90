@@ -11,8 +11,10 @@ public
 type, bind(C) :: align_params_t
    real(r64_k) :: scale = 1
    real(r64_k) :: gravity_precision = 2
+   real(r64_k) :: gravity_precision_pre = 10
    integer(i32_k) :: poly_stars = 32
    integer(i32_k) :: poly_matches = 16
+   logical(c_bool) :: prealign_polygon = .false.
 end type
 
 contains
@@ -44,19 +46,23 @@ subroutine classic_align(lst0, lst, align_method, params, tx, errno, verbose)
 
    xyr = transform_xyr_t(params%scale)
 
+   if (params % prealign_polygon) then
+      call align_polygon(lst0, lst, params%poly_stars, params%poly_matches, xyr)
+   end if
+
    errno = 0
    select case (align_method)
 
    case ('polygon')
-      call align_polygon(lst0, lst, &
-         params%poly_stars, params%poly_matches, xyr)
+      if (.not. params % prealign_polygon) &
+         call align_polygon(lst0, lst, params%poly_stars, params%poly_matches, xyr)
       call move_alloc(xyr, tx)
 
-   case ('gravity')
+   case ('xyr')
       ! find an initial estimate for a transform
-      call align_polygon(lst0, lst, &
-         params%poly_stars, params%poly_matches, xyr)
       ! fine-tune the transform between frames
+      if (.not. params % prealign_polygon) &
+         call align_gravity(lst0, lst, xyr, params%gravity_precision_pre, verbose)
       call align_gravity(lst0, lst, xyr, params%gravity_precision, verbose)
       call move_alloc(xyr, tx)
 
@@ -64,19 +70,15 @@ subroutine classic_align(lst0, lst, align_method, params, tx, errno, verbose)
       block
          type(transform_affine_t), allocatable :: aff
          ! find an initial estimate for a transform
-         call align_polygon(lst0, lst, &
-            params%poly_stars, params%poly_matches, xyr)
+         if (.not. params % prealign_polygon) &
+            call align_gravity(lst0, lst, xyr, params%gravity_precision_pre, verbose)
          ! initialize the affine transform from that
+         call align_gravity(lst0, lst, xyr, params%gravity_precision, verbose)
          aff = affine_from_xyr(xyr)
          ! fine-tune
          call align_gravity(lst0, lst, aff, params%gravity_precision, verbose)
          call move_alloc(aff, tx)
       end block
-
-   case ('gravity_only')
-
-      call align_gravity(lst0, lst, tx, params%gravity_precision * 5, verbose)
-      call align_gravity(lst0, lst, tx, params%gravity_precision, verbose)
 
    case default
       print *, 'align: unknown method: ', align_method

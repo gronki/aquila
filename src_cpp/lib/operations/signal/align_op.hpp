@@ -12,7 +12,8 @@ struct AlignOp : public Operation
     BIND_ARGS(&AlignOp::run);
     ValuePtr run(const values::SourceListValue &lst0,
         const values::SourceListValue &lst,
-        const std::string &method) const;
+        const std::string &method,
+        const std::string& prealign) const;
 
     std::optional<ArgManifest> arg_manifest() const override
     {
@@ -21,7 +22,11 @@ struct AlignOp : public Operation
             ArgSpec{.name = "list"},
             ArgSpec{.name = "method",
                 .default_str = "affine",
-                .help = "options: gravity, gravity_only, polygon, affine"},
+                .help = "options: polygon, xyr, affine"},
+            ArgSpec{.name = "prealign",
+                .default_str = "no",
+                .help = "Prealign using polygons? Useful "
+                    "for rotated photos. yes/no"},
         };
     }
 

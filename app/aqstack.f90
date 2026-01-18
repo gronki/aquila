@@ -29,8 +29,9 @@ program aqstack
   logical :: cfg_dark_is_dirty = .false.
   logical :: cfg_resampling = .false.
   logical :: cfg_temperature_filter = .false.
+  logical :: cfg_prealign_polygon = .false.
   logical :: cfg_is_cfa = .false.
-  real(r64_k) :: resample_factor = 1.5
+  real(r64_k) :: resample_factor = 2
   real(buf_k) :: cfg_temperature_point = 0, cfg_temperature_tolerance = 0.5
   real(buf_k) :: hotpixel_threshold_sigma = 5.0, darkopt_sigma = 0.0
   integer :: margin = 10
@@ -291,6 +292,7 @@ program aqstack
         ! r0 is roughly half of frame's dimension
         r0 = sqrt(real(nx, kind=r64_k)**2 + real(ny, kind=r64_k)**2) / sqrt(8.0_r64_k)
         align_params % scale = r0
+        align_params % prealign_polygon = cfg_prealign_polygon
 
         if (cfg_resampling) then
           print '("WARNING ", a)', 'resampling may require a lot of memory'
@@ -362,6 +364,20 @@ program aqstack
       end do
     end if
 
+    fix_nans: block
+      integer :: i, j, k
+      do k = 1, size(buffers_to_stack, 3)
+        do j = 1, size(buffers_to_stack, 2)
+          do i = 1, size(buffers_to_stack, 1)
+            if (ieee_is_normal(buffers_to_stack(i,j,k))) cycle
+            print *, "warning: nan found in buffer ", k, &
+              "pixel (", j, ", ", i, ")"
+            buffers_to_stack(i,j,k) = 0
+          end do
+        end do
+      end do
+    end block fix_nans
+
     if (cfg_normalize) then
       call cpu_time(t1)
       call normalize_offset_gain(buffers_to_stack(:, :, 1:nframes), &
@@ -374,8 +390,10 @@ program aqstack
 
     if (cfg_process_only) then
       save_processed: block
-      integer :: i
-
+        integer :: i
+        do i = 1, nframes
+          frames(i) % data = buffers_to_stack(:,:,i) 
+        end do
         if (nframes == 1 .and. output_fn /= "") then
           print '(a,a)', 'writing output file: ', trim(output_fn)
           call frames(1) % write_fits(output_fn)
@@ -487,10 +505,13 @@ contains
         cfg_align_frames = .true.
 
         call get_command_argument(i+1, buf)
-        if (buf == 'polygon' .or. buf == 'gravity' .or. buf == 'gravity_only' .or. buf == 'affine') then
+        if (buf == 'polygon' .or. buf == 'xyr' .or. buf == 'affine') then
           align_method = buf
           skip = 1
         end if
+
+      case ("-prealign-polygon")
+        cfg_prealign_polygon = .true.
 
       case ("-norm", "-normalize")
         cfg_normalize = .true.
@@ -650,11 +671,12 @@ contains
     print fmthlp,  '-sigclip', 'stack by 3-sigma clipped average'
     print fmthlp,  '-align [METHOD]', 'align frames. METHOD can be:', &
     &     'polygon: quadrangle matching -- only rot&transl', &
-    &     'gravity_only: rot&transl only with gravity', &
-    &     'gravity: determine rot&transl with poly and fine-tune with gravity', &
+    &     'xyr: rotation and translation', &
     &     'affine {def.} use poly, then gravity to find affine (linear stretch)'
+    print fmthlp,  '-prealign-polygon', 'prealignment step using polygon matching.', &
+    &     'Use when frames are strongly rotated (meridian flip.)'
     print fmthlp,  '-ref FILENAME', 'align to this frame rather than first frame'
-    print fmthlp,  '-resample [FACTOR=1.5]', 'resample before stacking (only with -align)', &
+    print fmthlp,  '-resample [FACTOR=2]', 'resample before stacking (only with -align)', &
     &     'FACTOR is scale to be applied'
     print fmthlp,  '-norm[alize]', 'normalize to average before stacking'
     print fmthlp,  '-no-stack', 'process but do not stack images'

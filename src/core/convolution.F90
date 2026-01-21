@@ -2,6 +2,8 @@ module convolutions
 
 use globals
 use fastconv
+use aquila_c_binding
+
 implicit none
 
 contains
@@ -22,20 +24,25 @@ end subroutine
 
  !----------------------------------------------------------------------------!
 
-pure subroutine build_image_expansion(x, lo_bound, hi_bound, method, y)
+pure subroutine build_image_expansion(x, lo_bound, hi_bound, method, y, errno)
    real(buf_k), dimension(:,:), intent(in), contiguous :: x
    real(buf_k), dimension(:,:), intent(inout), contiguous :: y
    character(len=*), intent(in) :: method
    integer(size_k), intent(in) :: lo_bound(2), hi_bound(2)
+   integer(c_int), intent(out), optional :: errno
    integer(size_k) ::  in_shape(2), &
       out_shape(2), expected_out_shape(2), i ,j, yi, yj
    real(buf_k) :: fillval
+   integer :: ioerr
+
+   if (present(errno)) errno = 0
 
    in_shape = shape(x)
    expected_out_shape = 1 + hi_bound - lo_bound
    out_shape = shape(y)
-   if (any(out_shape /= expected_out_shape)) &
-      error stop "wrong dimension"
+
+   call pure_forbid(any(out_shape /= expected_out_shape), errno, 1, "wrong dimension")
+   if (failed(errno)) return
 
    select case (method)
    case ('e')
@@ -51,7 +58,10 @@ pure subroutine build_image_expansion(x, lo_bound, hi_bound, method, y)
          y(yi,yj) = x(ixrefl(i, in_shape(1)), ixrefl(j, in_shape(2)))
       end do
    case default
-      read(method, *) fillval
+      read(method, *, iostat=ioerr) fillval
+      call pure_forbid(ioerr /= 0, errno, 2,  "incorrect method of convolution image expansion")
+      if (failed(errno)) return
+
       do concurrent (i = lo_bound(1):hi_bound(1), j = lo_bound(2):hi_bound(2))
          yi = i - lo_bound(1) + 1
          yj = j - lo_bound(2) + 1
@@ -90,10 +100,11 @@ contains
    end function
 end subroutine
 
-pure subroutine expand_image(x, shape_k, method, y)
+pure subroutine expand_image(x, shape_k, method, y, errno)
    real(buf_k), dimension(:,:), intent(in), contiguous :: x
    real(buf_k), dimension(:,:), intent(inout), contiguous :: y
    character(*), intent(in) :: method
+   integer(c_int), intent(out), optional :: errno
    integer(size_k), intent(in) :: shape_k(2)
    integer(size_k) ::  in_shape(2), offset(2)
 
@@ -101,32 +112,53 @@ pure subroutine expand_image(x, shape_k, method, y)
    offset = (shape_k - 1) / 2
    call build_image_expansion(x, &
       1 - offset, in_shape + offset, &
-      method, y)
+      method, y, errno)
 
 end subroutine
 
-subroutine conv2d_fix(x,k,method,y,parallel)
+subroutine conv2d_bind_c(x, k, method, y, parallel, errno) bind(C, name="conv2d_smallkernel")
+   type(buffer_descriptor_t), intent(in), value :: x, k
+   type(buffer_descriptor_t), intent(in), value :: y
+   character(kind=c_char, len=1), intent(in) :: method(*)
+   logical(kind=c_bool), intent(in), value :: parallel
+   integer(c_int) :: errno
+
+   real(buf_k), contiguous, pointer :: x_buf(:,:), k_buf(:,:), y_buf(:,:)
+   character(kind=c_char, len=32) :: method_f
+
+   x_buf => from_descriptor(x)
+   k_buf => from_descriptor(k)
+   y_buf => from_descriptor(y)
+
+   call c_f_string(method, method_f)
+   call conv2d_fix(x_buf, k_buf, method_f, y_buf, logical(parallel), errno)
+
+end subroutine
+
+subroutine conv2d_fix(x,k,method,y,parallel, errno)
    real(buf_k), dimension(:,:), intent(in), contiguous :: x, k
    real(buf_k), dimension(:,:), intent(inout), contiguous :: y
+   integer(c_int), intent(out), optional :: errno
    character(*), intent(in) :: method
    logical, intent(in), optional :: parallel
 
    real(buf_k), allocatable :: padded_kernel(:,:), temp_input(:,:)
    integer(size_k) :: offset(2), input_shape(2)
 
-   if (any(mod(shape(k), 2) == 0))     &
-      error stop "kernel must have uneven dimensions"
+   if (forbidden(any(mod(shape(k), 2) == 0), errno, &
+      3, "conv2d: kernel must have uneven dimensions")) return
 
    input_shape = shape(x, size_k)
-   if (any(input_shape /= shape(y))) &
-      error stop "input and output shapes must match"
+
+   if (forbidden(any(input_shape /= shape(y)), errno, &
+      4, "conv2d: input and output shapes must match")) return
 
    offset = (shape(k, size_k) - 1) / 2
    padded_kernel = padded_2d_kernel(k, 8_size_k)
 
    call conv2d_pad(x, padded_kernel, size(k, 1, size_k), .false., &
       y(1 + offset(1) : input_shape(1) - offset(1), &
-      & 1 + offset(2) : input_shape(2) - offset(2)), parallel)
+   & 1 + offset(2) : input_shape(2) - offset(2)), parallel)
 
 
    if (offset(2) > 0) then
@@ -134,7 +166,8 @@ subroutine conv2d_fix(x,k,method,y,parallel)
 
       ! left strip
       call build_image_expansion(x, 1 - offset, &
-         [input_shape(1) + offset(1), 2 * offset(2)], method, temp_input)
+         [input_shape(1) + offset(1), 2 * offset(2)], method, temp_input, errno)
+      if (failed(errno)) return
       call conv2d_pad(temp_input, padded_kernel, size(k, 1, size_k), .false., &
          y(:, :offset(2)))
 
@@ -142,7 +175,8 @@ subroutine conv2d_fix(x,k,method,y,parallel)
       call build_image_expansion(x, &
          [1 - offset(1), input_shape(2) - 2 * offset(2) + 1], &
          input_shape + offset, &
-         method, temp_input)
+         method, temp_input, errno)
+      if (failed(errno)) return
       call conv2d_pad(temp_input, padded_kernel, size(k, 1, size_k), .false., &
          y(:, input_shape(2) - offset(2) + 1:))
       deallocate(temp_input)
@@ -155,7 +189,8 @@ subroutine conv2d_fix(x,k,method,y,parallel)
       call build_image_expansion(x, &
          [1 - offset(1), 1_size_k], &
          [2 * offset(1), input_shape(2)], &
-         method, temp_input)
+         method, temp_input, errno)
+      if (failed(errno)) return
       call conv2d_nopad(temp_input, k, .false., &
          y(:offset(1), 1 + offset(2) : input_shape(2) - offset(2)))
 
@@ -163,7 +198,8 @@ subroutine conv2d_fix(x,k,method,y,parallel)
       call build_image_expansion(x, &
          [input_shape(1) - 2 * offset(1) + 1, 1_size_k], &
          [input_shape(1) + offset(1), input_shape(2)], &
-         method, temp_input)
+         method, temp_input, errno)
+      if (failed(errno)) return
       call conv2d_nopad(temp_input, k, .false., &
          y(input_shape(1) - offset(1) + 1:, 1 + offset(2) : input_shape(2) - offset(2)))
 

@@ -100,6 +100,11 @@ jobs:
           ln -s ../testdata
           ../scripts/test_routine.sh
 
+      - name: Make sure C header builds
+        run: |
+          cd build
+          gcc -c -Wall ../src/c_binding/aquila.h
+
   oneapi:
     runs-on: ubuntu-24.04
     strategy:

@@ -22,4 +22,21 @@ function from_descriptor(descr)
    call c_f_pointer(descr%data, from_descriptor, arrshape)
 end function
 
+subroutine c_f_string(c_str, f_str)
+   character(kind=c_char, len=1), intent(in) :: c_str(*)
+   character(kind=c_char, len=*), intent(out) :: f_str
+   integer :: i, str_len
+
+   str_len = len(f_str)
+
+   i = 1
+   do while (ichar(c_str(i)) /= 0 .and. i <= str_len)
+      i = i + 1
+   end do
+
+   f_str = transfer(c_str(1:i-1), f_str)
+   if (i <= str_len) f_str(i:str_len) = ""
+
+end subroutine
+
 end module

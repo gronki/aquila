@@ -80,7 +80,7 @@ void aquila::write_fits(const std::string &filename, const View<real_buf_t> &img
     throw_for_error(status);
 
     long naxes[2] = {nx, ny};
-    fits_write_imghdr(fptr, -64, 2, naxes, &status);
+    fits_write_imghdr(fptr, -32, 2, naxes, &status);
     throw_for_error(status);
 
     fits_write_img_flt(fptr, 1, 1, nx * ny, data.data(), &status);

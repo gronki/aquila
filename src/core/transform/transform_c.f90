@@ -6,6 +6,7 @@ use transform_xyr_m
 use transform_affine_m
 use alignment_m
 use iso_c_binding
+use aquila_c_binding
 
 implicit none
 
@@ -71,24 +72,6 @@ subroutine f_to_c_transform(f_tran, c_tran)
    c_tran%vec = f_tran%vec
 
 end subroutine
-
-subroutine c_f_string(c_str, f_str)
-   character(kind=c_char, len=1), intent(in) :: c_str(*)
-   character(kind=c_char, len=*), intent(out) :: f_str
-   integer :: i, str_len
-
-   str_len = len(f_str)
-
-   i = 1
-   do while (ichar(c_str(i)) /= 0 .and. i <= str_len)
-      i = i + 1
-   end do
-
-   f_str = transfer(c_str(1:i-1), f_str)
-   if (i <= str_len) f_str(i:str_len) = ""
-
-end subroutine
-
 
 subroutine classic_align_c(lst0, n0, lst, n, align_method, params, txc, errno) &
    bind(C, name="classic_align")

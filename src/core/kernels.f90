@@ -169,7 +169,7 @@ contains
     use aquila_c_binding
 
     real(r64_k), intent(in), value :: fwhm
-    type(buffer_descriptor_t), intent(in) :: kd
+    type(buffer_descriptor_t), intent(in), value :: kd
 
     real(buf_k), pointer, contiguous :: k(:,:)
 
@@ -183,7 +183,7 @@ contains
     use aquila_c_binding
 
     real(r64_k), intent(in), value :: fwhm
-    type(buffer_descriptor_t), intent(in) :: kd
+    type(buffer_descriptor_t), intent(in), value :: kd
 
     real(buf_k), pointer, contiguous :: k(:,:)
 

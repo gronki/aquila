@@ -37,7 +37,7 @@ int main(int argc, char **argv)
         const std::int64_t max_stars = 256;
         source_t src[max_stars];
         findstar_param_t param;
-        register_stars(c_const_buf(buf), src, max_stars, param, nstar);
+        register_stars(c_const_buf(buf), src, max_stars, &param, &nstar);
         cout << nstar << endl;
         for (std::int64_t i = 0; i < nstar; i++)
         {

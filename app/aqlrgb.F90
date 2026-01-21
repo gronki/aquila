@@ -273,17 +273,12 @@ program aqlrgb
         end if
 
         krn = gausskrn_alloc(smooth_fwhm)
-        !$omp parallel sections private(buf)
-        !$omp section
         buf = frame_r % data
-        call conv2d_fix(buf, krn, 'e', frame_r % data)
-        !$omp section
+        call conv2d_fix(buf, krn, 'e', frame_r % data, parallel=.true.)
         buf = frame_g % data
-        call conv2d_fix(buf, krn, 'e', frame_g % data)
-        !$omp section
+        call conv2d_fix(buf, krn, 'e', frame_g % data, parallel=.true.)
         buf = frame_b % data
-        call conv2d_fix(buf, krn, 'e', frame_b % data)
-        !$omp end parallel sections
+        call conv2d_fix(buf, krn, 'e', frame_b % data, parallel=.true.)
       end block perform_color_smooth
     end if
 

@@ -15,7 +15,7 @@ ValuePtr FindstarOp::run(const values::BufferValue &frame,
     const std::int64_t &rslice,
     const double &thresh_sd) const
 {
-    findstar_param_t params;
+    findstar_param_t params = default_findstar_param();
     params.blur_radius = blur_radius;
     params.margin = margin;
     params.max_rms = max_rms;
@@ -25,7 +25,7 @@ ValuePtr FindstarOp::run(const values::BufferValue &frame,
     params.thresh_sd = thresh_sd;
     std::vector<source_t> sources(limit);
     std::int64_t nstar;
-    register_stars(c_const_buf(frame.buffer), sources.data(), limit, params, nstar);
+    register_stars(c_const_buf(frame.buffer), sources.data(), limit, &params, &nstar);
     sources.resize(nstar);
     return std::make_unique<values::SourceListValue>(
         std::move(sources), frame.buffer.cols(), frame.buffer.rows());

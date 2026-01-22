@@ -6,6 +6,7 @@ extern "C"
 {
 #else
 #    include <stdlib.h>
+#    include <stdbool.h>
 #endif
 
 #define AQUILA_VERSION "260116"
@@ -55,7 +56,7 @@ extern "C"
         return param;
     }
 
-    constexpr int TRANSFORM_MAX_PAR = 16;
+    const int TRANSFORM_MAX_PAR = 16;
 
     typedef struct
     {

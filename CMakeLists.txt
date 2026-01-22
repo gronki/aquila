@@ -2,15 +2,12 @@ cmake_minimum_required(VERSION 3.16)
 
 project(aquila LANGUAGES Fortran C CXX)
 
-
 set(CMAKE_CXX_STANDARD 20)       # request C++20
 set(CMAKE_CXX_STANDARD_REQUIRED ON)  # fail if compiler does not support it
 set(CMAKE_CXX_EXTENSIONS OFF)    # turn off compiler-specific extensions like gnu++20
 
 enable_testing()
 include(GNUInstallDirs)
-
-find_package(PkgConfig REQUIRED)
 
 set(CMAKE_C_FLAGS_DEBUG   "-g -Og -Wall -Wextra -Wpedantic -Werror=return-type -Werror=uninitialized -Werror=sign-compare -Werror=maybe-uninitialized -Wno-unused-parameter")
 set(CMAKE_C_FLAGS_RELEASE "-g1 -O3 -ffast-math -DNDEBUG")
@@ -23,16 +20,13 @@ set(CMAKE_Fortran_FLAGS_RELEASE "-g1 -O3 -funsafe-math-optimizations -DNDEBUG")
 set(CMAKE_Fortran_FLAGS_NATIVE "-g -O3 -funsafe-math-optimizations -DNDEBUG -march=native -mtune=native")
 
 option(OPENMP "use OpenMP in build" OFF)
-if (OPENMP)
-add_compile_options(-fopenmp)
-add_link_options(-fopenmp)
-endif ()
 
-if(CMAKE_Fortran_COMPILER_ID STREQUAL "Flang" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-    link_libraries(stdc++ m pthread)
-endif()
+# if(CMAKE_Fortran_COMPILER_ID STREQUAL "Flang" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+#     link_libraries(stdc++ m pthread)
+# endif()
 
-
+find_package(PkgConfig REQUIRED)
+find_package(OpenMP)
 find_package(PNG REQUIRED)
 pkg_check_modules(CFITSIO REQUIRED cfitsio)
 pkg_check_modules(READLINE REQUIRED readline)
@@ -67,6 +61,9 @@ file(GLOB_RECURSE AQUILA_SOURCES CONFIGURE_DEPENDS
 
 add_library(aquila SHARED ${AQUILA_SOURCES})
 target_include_directories(aquila PUBLIC src/c_binding)
+if (OPENMP)
+    target_link_libraries(aquila PRIVATE OpenMP::OpenMP_Fortran OpenMP::OpenMP_C)
+endif ()
 install(TARGETS aquila LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
 install(FILES src/c_binding/aquila.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
@@ -83,26 +80,36 @@ endforeach()
 add_executable(aqstack app/aqstack.f90)
 add_executable(aqlrgb app/aqlrgb.F90)
 
+if (OPENMP)
+    target_link_libraries(aqstack PRIVATE OpenMP::OpenMP_Fortran)
+    target_link_libraries(aqlrgb PRIVATE OpenMP::OpenMP_Fortran)
+endif ()
+
 install(TARGETS aqstack aqlrgb RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
-file(GLOB_RECURSE AQNEW_SOURCES CONFIGURE_DEPENDS
+file(GLOB_RECURSE aqscript_SOURCES CONFIGURE_DEPENDS
     src_cpp/lib/*.f90
     src_cpp/lib/*.F90
     src_cpp/lib/*.cpp
     src_cpp/lib/*.hpp
 )
-add_library(aqnew SHARED ${AQNEW_SOURCES})
-target_include_directories(aqnew PUBLIC 
+
+add_library(aqscript SHARED ${aqscript_SOURCES})
+target_include_directories(aqscript PUBLIC 
     src_cpp/lib/buffer src_cpp/lib/io src_cpp/lib/interpreter 
     src_cpp/lib/operations src_cpp/lib/values src_cpp/lib/utils)
-install(TARGETS aqnew LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
+if (OPENMP)
+    target_link_libraries(aqscript PRIVATE OpenMP::OpenMP_CXX)
+endif ()
+install(TARGETS aqscript LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
-link_libraries(aqnew)
+link_libraries(aqscript)
 
 add_executable(aqfindstar src_cpp/app/aqfindstar.cpp)
 add_executable(aq2 src_cpp/app/aq2cpp.cpp)
-install(TARGETS aqfindstar aq2 RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 target_link_libraries(aq2 PRIVATE ${READLINE_LIBRARIES})
+
+install(TARGETS aqfindstar aq2 RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 file(GLOB TEST_SOURCES CONFIGURE_DEPENDS test/*.cpp)
 

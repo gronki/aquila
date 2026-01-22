@@ -22,6 +22,11 @@ jobs:
     container:
       image: ${{ matrix.image.name }}
     name: Build on ${{ matrix.image.name }}
+    env:
+      CC: "gcc"
+      CXX: "g++"
+      FC: "gfortran"
+      VERBOSE: "1"
     steps:
       - name: Install build dependencies
         run: ${{ matrix.image.install }} wget git curl && gcc --version
@@ -103,7 +108,8 @@ jobs:
       - name: Make sure C header builds
         run: |
           cd build
-          gcc -c -Wall ../src/c_binding/aquila.h
+          echo '# include "../src/c_binding/aquila.h"' > testhdr.c
+          ${CC} -c -Wall testhdr.c
 
   oneapi:
     runs-on: ubuntu-24.04
@@ -112,6 +118,11 @@ jobs:
       matrix:
         oneapi-ver: ["2025.3", "2025.2", "2025.1"]
     name: oneapi ${{ matrix.oneapi-ver }}
+    env:
+      CC: "icx"
+      CXX: "icpx"
+      FC: "ifx"
+      VERBOSE: "1"
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -140,12 +151,9 @@ jobs:
       - name: Build and install the app
         run: |
           source /opt/intel/oneapi/setvars.sh
-          export CC=icx
-          export CXX=icpx
-          export FC=ifx
-          export CFLAGS="-O0 -g3"
-          export CXXFLAGS="-O0 -g3"
-          export FFLAGS="-O0 -g3 -check all -heap-arrays"
+          export CFLAGS="-O0 -g"
+          export CXXFLAGS="-O0 -g"
+          export FFLAGS="-O0 -g -check all -heap-arrays"
           
           mkdir -p build
           rm -rf build/*
@@ -172,11 +180,8 @@ jobs:
       - name: Build and install the app (release, no OpenMP)
         run: |
           source /opt/intel/oneapi/setvars.sh
-          export CC=icx
-          export CXX=icpx
-          export FC=ifx
-          export CFLAGS="-O3 -fp-model=fast -g1  -DNDEBUG"
-          export CXXFLAGS="-O3 -fp-model=fast -g1  -DNDEBUG"
+          export CFLAGS="-O3 -fp-model=fast -g1 -DNDEBUG"
+          export CXXFLAGS="-O3 -fp-model=fast -g1 -DNDEBUG"
           export FFLAGS="-O3 -fp-model=fast -g1 -traceback -heap-arrays -DNDEBUG"
           
           mkdir -p build
@@ -204,17 +209,14 @@ jobs:
       - name: Build and install the app (release, OpenMP)
         run: |
           source /opt/intel/oneapi/setvars.sh
-          export CC=icx
-          export CXX=icpx
-          export FC=ifx
-          export CFLAGS="-O3 -fp-model=fast -g1 -qopenmp  -DNDEBUG"
-          export CXXFLAGS="-O3 -fp-model=fast -g1 -qopenmp  -DNDEBUG"
-          export FFLAGS="-O3 -fp-model=fast -g1 -traceback -heap-arrays -qopenmp  -DNDEBUG"
+          export CFLAGS="-O3 -fp-model=fast -g1 -DNDEBUG"
+          export CXXFLAGS="-O3 -fp-model=fast -g1 -DNDEBUG"
+          export FFLAGS="-O3 -fp-model=fast -g1 -traceback -heap-arrays -DNDEBUG"
           
           mkdir -p build
           rm -rf build/*
           cd build
-          cmake -DCMAKE_INSTALL_PREFIX=/usr ..
+          cmake -DCMAKE_INSTALL_PREFIX=/usr -DOPENMP=On ..
           cmake --build .
           sudo cmake --install .
     
@@ -233,6 +235,12 @@ jobs:
           ln -s ../testdata
           ../scripts/test_routine.sh
 
+      - name: Make sure C header builds
+        run: |
+          cd build
+          echo '# include "../src/c_binding/aquila.h"' > testhdr.c
+          ${CC} -c -Wall testhdr.c
+
   flang:
     runs-on: ubuntu-24.04
     strategy:
@@ -241,6 +249,12 @@ jobs:
         llvm-ver: [20]
 
     name: flang ${{ matrix.llvm-ver }}
+    vars:
+      CC: clang-${{ matrix.llvm-ver }}
+      CXX: clang-${{ matrix.llvm-ver }}
+      FC: flang-new-${{ matrix.llvm-ver }}
+      LDFLAGS: "-lstdc++ -lm -lpthread"
+      VERBOSE: "1"
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -273,12 +287,9 @@ jobs:
 
       - name: Build and install the app
         run: |
-          export CC=clang-${{ matrix.llvm-ver }}
-          export CXX=clang-${{ matrix.llvm-ver }}
-          export FC=flang-new-${{ matrix.llvm-ver }}
-          export CFLAGS="-O0 -g3"
-          export CXXFLAGS="-O0 -g3"
-          export FFLAGS="-O0 -g3"
+          export CFLAGS="-O0 -g"
+          export CXXFLAGS="-O0 -g"
+          export FFLAGS="-O0 -g"
           
           mkdir -p build
           rm -rf build/*
@@ -302,9 +313,6 @@ jobs:
 
       - name: Build and install the app (release, no OpenMP)
         run: |
-          export CC=clang-${{ matrix.llvm-ver }}
-          export CXX=clang-${{ matrix.llvm-ver }}
-          export FC=flang-new-${{ matrix.llvm-ver }}
           export CFLAGS="-O3 -ffast-math -g1 -DNDEBUG"
           export CXXFLAGS="-O3 -ffast-math -g1 -DNDEBUG"
           export FFLAGS="-O3 -ffast-math -g1 -DNDEBUG"
@@ -331,17 +339,14 @@ jobs:
 
       - name: Build and install the app (release, OpenMP)
         run: |
-          export CC=clang-${{ matrix.llvm-ver }}
-          export CXX=clang-${{ matrix.llvm-ver }}
-          export FC=flang-new-${{ matrix.llvm-ver }}
-          export CFLAGS="-O3 -ffast-math -g1 -fopenmp -DNDEBUG"
-          export CXXFLAGS="-O3 -ffast-math -g1 -fopenmp -DNDEBUG"
-          export FFLAGS="-O3 -ffast-math -g1 -fopenmp -DNDEBUG"
+          export CFLAGS="-O3 -ffast-math -g1 -DNDEBUG"
+          export CXXFLAGS="-O3 -ffast-math -g1 -DNDEBUG"
+          export FFLAGS="-O3 -ffast-math -g1 -DNDEBUG"
           
           mkdir -p build
           rm -rf build/*
           cd build
-          cmake -DCMAKE_INSTALL_PREFIX=/usr ..
+          cmake -DCMAKE_INSTALL_PREFIX=/usr -DOPENMP=On ..
           cmake --build .
           sudo cmake --install .
 
@@ -357,3 +362,9 @@ jobs:
           ln -s ../examples
           ln -s ../testdata
           ../scripts/test_routine.sh
+
+      - name: Make sure C header builds
+        run: |
+          cd build
+          echo '# include "../src/c_binding/aquila.h"' > testhdr.c
+          ${CC} -c -Wall testhdr.c

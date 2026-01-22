@@ -22,7 +22,7 @@ test -f dark.fits
 
 aqstack final -bias bias.fits -dark dark.fits -hot-only -flat flat_L.fits \
     -ref testdata/m94/Light/L/m94_Light_L_600_secs_001.fits \
-    -align gravity -o stack_L.fits \
+    -align affine -o stack_L.fits \
     testdata/m94/Light/L/m94_Light_L_600_secs_0{01..02}.fits
 
 test -f stack_L.fits

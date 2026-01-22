@@ -249,7 +249,7 @@ jobs:
         llvm-ver: [20]
 
     name: flang ${{ matrix.llvm-ver }}
-    vars:
+    env:
       CC: clang-${{ matrix.llvm-ver }}
       CXX: clang-${{ matrix.llvm-ver }}
       FC: flang-new-${{ matrix.llvm-ver }}

@@ -13,8 +13,6 @@ extern "C"
 
     typedef float real_buf_t;
 
-    const size_t N_SOURCE_MOMENTS = 3;
-
     typedef struct
     {
         double x, y;
@@ -56,7 +54,7 @@ extern "C"
         return param;
     }
 
-    const int TRANSFORM_MAX_PAR = 16;
+    #define TRANSFORM_MAX_PAR 16
 
     typedef struct
     {

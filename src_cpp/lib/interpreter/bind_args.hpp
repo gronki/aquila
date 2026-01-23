@@ -1,8 +1,8 @@
 #pragma once
 
+#include <cstdint>
 #include <memory>
 #include <vector>
-#include <cstdint>
 
 #include "value.hpp"
 
@@ -28,32 +28,34 @@ struct __args_binder<>
 };
 
 template <typename T>
-inline const T &cast_value(const Value &v)
+inline const T *cast_value(const Value *v)
 {
-    return dynamic_cast<const T &>(v);
+    return dynamic_cast<const T *>(v);
 }
 
 template <typename T>
-inline const T &cast_simple_value(const Value &v)
+inline const T *cast_simple_value(const Value *v)
 {
-    const SimpleValue<T> &sv = dynamic_cast<const SimpleValue<T> &>(v);
-    return sv.value;
+    const SimpleValue<T> *sv = dynamic_cast<const SimpleValue<T> *>(v);
+    if (!sv)
+        return nullptr;
+    return &sv->value;
 }
 
 template <>
-inline const double &cast_value<double>(const Value &v)
+inline const double *cast_value<double>(const Value *v)
 {
     return cast_simple_value<double>(v);
 }
 
 template <>
-inline const std::int64_t &cast_value<std::int64_t>(const Value &v)
+inline const std::int64_t *cast_value<std::int64_t>(const Value *v)
 {
     return cast_simple_value<std::int64_t>(v);
 }
 
 template <>
-inline const std::string &cast_value<std::string>(const Value &v)
+inline const std::string *cast_value<std::string>(const Value *v)
 {
     return cast_simple_value<std::string>(v);
 }
@@ -70,22 +72,34 @@ struct __args_binder<T, TT...>
         std::size_t idx,
         const CallArgsT &...callargs)
     {
-        try
+        if (!args[idx])
         {
-            if (!args[idx])
+            throw std::runtime_error(
+                std::string("Nul input argument ") + std::to_string(idx + 1));
+        }
+        const T *tptr = cast_value<T>(args[idx]);
+        // cast worked
+        if (tptr)
+        {
+            next::run(obj, exec_fun, args, result, idx + 1, callargs..., *tptr);
+            return;
+        }
+        // could be due to string being given for readable -- try reading
+        if constexpr (std::is_base_of<IFromFile<T>, T>::value)
+        {
+            const auto *perhaps_fn = dynamic_cast<const StrValue *>(args[idx]);
+            if (perhaps_fn)
             {
-                throw std::runtime_error(
-                    std::string("Nul input argument ") + std::to_string(idx + 1));
+                // input is string -- attempt to read it and pass as argumenet
+                T input = T::value_from_file(perhaps_fn->value);
+                next::run(obj, exec_fun, args, result, idx + 1, callargs..., input);
+                return;
             }
-            const T &tref = cast_value<T>(*args[idx]);
-            next::run(obj, exec_fun, args, result, idx + 1, callargs..., tref);
         }
-        catch (const std::bad_cast &)
-        {
-            throw std::runtime_error(std::string("Error trying to interpret "
-                                                 "argument ")
-                + std::to_string(idx + 1));
-        }
+        // wrong cast
+        throw std::runtime_error(std::string("Error trying to interpret "
+                                             "argument ")
+            + std::to_string(idx + 1));
     }
 };
 

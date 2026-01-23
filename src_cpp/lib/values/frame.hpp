@@ -2,11 +2,13 @@
 
 #include "../buffer/buffer.hpp"
 #include "../interpreter/value.hpp"
+#include "../io/fits.hpp"
 
 namespace aquila::values
 {
 
-struct BufferValue : public interpreter::CompoundValue
+struct BufferValue : public interpreter::CompoundValue,
+                     public interpreter::IFromFile<BufferValue>
 {
     Buffer<real_buf_t> buffer;
     BufferValue(Buffer<real_buf_t> v) : buffer(std::move(v)) {}
@@ -18,6 +20,7 @@ struct BufferValue : public interpreter::CompoundValue
     {
         os << "(frame " << buffer.cols() << "x" << buffer.rows() << ")";
     }
+    static BufferValue from_file(const std::string &fn) { return {read_fits(fn)}; }
 };
 
 }; // namespace aquila::values

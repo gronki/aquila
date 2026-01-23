@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <iostream>
 #include <memory>
 #include <ostream>
@@ -7,9 +8,6 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
-#include <cstdint>
-
-
 
 namespace aquila::interpreter
 {
@@ -119,6 +117,14 @@ struct CompoundValue : public Value
 
 using ValuePtr = std::unique_ptr<Value>;
 using ValuePtrVector = std::vector<ValuePtr>;
+
+template <typename DerivedValue>
+struct IFromFile
+{
+    static auto value_from_file(const std::string& fn) {
+        return DerivedValue::from_file(fn);
+    }
+};
 
 struct SequenceValue : public Value
 {

@@ -15,7 +15,7 @@ ValuePtr FindstarOp::run(const values::BufferValue &frame,
     const std::int64_t &rslice,
     const double &thresh_sd) const
 {
-    findstar_param_t params = default_findstar_param();
+    findstar_params_t params = default_findstar_params();
     params.blur_radius = blur_radius;
     params.margin = margin;
     params.max_rms = max_rms;

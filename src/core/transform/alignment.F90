@@ -21,6 +21,12 @@ contains
 
  !------------------------------------------------------------------------------------!
 
+function default_align_params() bind(C)
+   type(align_params_t) :: default_align_params
+end function
+
+ !------------------------------------------------------------------------------------!
+
 subroutine align_polygon(xy1, xy2, nstars, nmatches, t)
    use polygon_matching, only: find_transform_polygons
    class(transform_xyr_t), intent(inout) :: t
@@ -31,6 +37,8 @@ subroutine align_polygon(xy1, xy2, nstars, nmatches, t)
    call find_transform_polygons(xy1, xy2, nstars, nmatches, init_dx, init_dy, init_r)
    t%vec(:3) = [init_dx, init_dy, init_r * t%scale]
 end subroutine
+
+ !------------------------------------------------------------------------------------!
 
 subroutine classic_align(lst0, lst, align_method, params, tx, errno, verbose)
 

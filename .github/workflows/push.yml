@@ -8,7 +8,7 @@ on:
 
 env:
   VERBOSE: 1
-  
+
 jobs:
   build-multi-distro:
     runs-on: ubuntu-24.04
@@ -111,6 +111,7 @@ jobs:
         run: |
           cd build
           echo '# include "../src/c_binding/aquila.h"' > testhdr.c
+          echo 'void foo() {}' >> testhdr.c
           ${CC} -c -Wall testhdr.c
 
   oneapi:
@@ -238,8 +239,10 @@ jobs:
 
       - name: Make sure C header builds
         run: |
+          source /opt/intel/oneapi/setvars.sh
           cd build
           echo '# include "../src/c_binding/aquila.h"' > testhdr.c
+          echo 'void foo() {}' >> testhdr.c
           ${CC} -c -Wall testhdr.c
 
   flang:
@@ -367,4 +370,5 @@ jobs:
         run: |
           cd build
           echo '# include "../src/c_binding/aquila.h"' > testhdr.c
+          echo 'void foo() {}' >> testhdr.c
           ${CC} -c -Wall testhdr.c

@@ -5,8 +5,8 @@
 extern "C"
 {
 #else
-#    include <stdlib.h>
 #    include <stdbool.h>
+#    include <stdlib.h>
 #endif
 
 #define AQUILA_VERSION "260116"
@@ -38,23 +38,11 @@ extern "C"
         double thresh_sd;
         int rejection;
         double max_rms;
-    } findstar_param_t;
+    } findstar_params_t;
 
-    inline findstar_param_t default_findstar_param()
-    {
-        findstar_param_t param = {
-            .rslice = 16,
-            .margin = 32,
-            .min_star_pixels = 8,
-            .blur_radius = 2.3,
-            .thresh_sd = 2.,
-            .rejection = FINDSTAR_REJECTION_ABSOLUTE,
-            .max_rms = 12.,
-        };
-        return param;
-    }
+    findstar_params_t default_findstar_params();
 
-    #define TRANSFORM_MAX_PAR 16
+#define TRANSFORM_MAX_PAR 16
 
     typedef struct
     {
@@ -74,18 +62,7 @@ extern "C"
         bool prealign_polygon;
     } align_params_t;
 
-    inline align_params_t default_align_params()
-    {
-        align_params_t param = {
-            .scale = 1,
-            .gravity_precision = 2,
-            .gravity_precision_pre = 10,
-            .poly_stars = 32,
-            .poly_matches = 16,
-            .prealign_polygon = false,
-        };
-        return param;
-    }
+    align_params_t default_align_params();
 
     typedef struct
     {
@@ -104,7 +81,7 @@ extern "C"
     void register_stars(const_buffer_descriptor_t,
         source_t *list,
         int64_t limit,
-        const findstar_param_t *param,
+        const findstar_params_t *param,
         int64_t *nstar);
 
     void mexhakrn(double fwhm, buffer_descriptor_t);

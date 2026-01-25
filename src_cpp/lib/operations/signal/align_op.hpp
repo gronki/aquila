@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../interpreter/interpreter.hpp"
+#include "../../../interpreter/interpreter.hpp"
 #include "../../values/sourcelist.hpp"
 #include "../../values/transform_value.hpp"
 
@@ -15,7 +15,7 @@ struct AlignOp : public Operation
         const std::string &method,
         const std::string& prealign) const;
 
-    std::optional<ArgManifest> arg_manifest() const override;
+    ArgManifest arg_manifest() const override;
 
     std::string name() const override { return "align"; }
     std::string description() const override

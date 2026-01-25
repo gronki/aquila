@@ -30,7 +30,7 @@ ValuePtr KernelOp::run(const double &fwhm, const std::string &type) const
     return std::make_unique<values::BufferValue>(std::move(krn));
 }
 
-std::optional<ArgManifest> KernelOp::arg_manifest() const
+ArgManifest KernelOp::arg_manifest() const
 {
     return ArgManifest{
         ArgSpec{.name = "fwhm"},

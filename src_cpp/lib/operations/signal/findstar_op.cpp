@@ -31,7 +31,7 @@ ValuePtr FindstarOp::run(const values::BufferValue &frame,
         std::move(sources), frame.buffer.cols(), frame.buffer.rows());
 }
 
-std::optional<ArgManifest> FindstarOp::arg_manifest() const
+ArgManifest FindstarOp::arg_manifest() const
 {
     return ArgManifest{
         ArgSpec{.name = "frame",

@@ -17,6 +17,25 @@ std::unique_ptr<Value> AddOp::call(const std::vector<const Value *> &args) const
     return result;
 }
 
+REGISTER(SubOp);
+std::unique_ptr<Value> SubOp::call(const std::vector<const Value *> &args) const
+{
+    ValuePtr result = args[0]->clone();
+    for (const Value *arg : args)
+    {
+        result = apply_binary(*result, *arg, [](auto a, auto b) { return a - b; });
+    }
+    return result;
+}
+
+ArgManifest SubOp::arg_manifest() const
+{
+    return ArgManifest{
+        ArgSpec{.name = "x"},
+        ArgSpec{.name = "..."},
+    };
+}
+
 REGISTER(MulOp);
 std::unique_ptr<Value> MulOp::call(const std::vector<const Value *> &args) const
 {
@@ -72,16 +91,37 @@ std::unique_ptr<Value> LrgbOp::call(const std::vector<const Value *> &args) cons
     return std::make_unique<interpreter::SequenceValue>(std::move(scaled_components));
 }
 
+ArgManifest LrgbOp::arg_manifest() const
+{
+    return ArgManifest{
+        ArgSpec{.name = "L", .help = "luminance"},
+        ArgSpec{.name = "...", .help = "color channels"},
+    };
+}
+
 REGISTER(PowOp);
 ValuePtr PowOp::run(const Value &a, const Value &b) const
 {
     return apply_binary(a, b, [](auto a, auto b) { return std::pow(a, b); });
 }
 
+ArgManifest PowOp::arg_manifest() const
+{
+    return ArgManifest{
+        ArgSpec{.name = "base"},
+        ArgSpec{.name = "exponent"},
+    };
+}
+
 REGISTER(SqrtOp);
 ValuePtr SqrtOp::run(const Value &x) const
 {
     return apply_unitary(x, [](auto a) { return std::sqrt(a); });
+}
+
+ArgManifest SqrtOp::arg_manifest() const
+{
+    return ArgManifest{ArgSpec{.name = "x"}};
 }
 
 } // namespace aquila::ops

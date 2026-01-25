@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../lib/buffer/buffer.hpp"
+#include "../buffer/buffer.hpp"
 
 namespace aquila
 {

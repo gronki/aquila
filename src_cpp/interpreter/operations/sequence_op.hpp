@@ -1,7 +1,6 @@
 #pragma once
 
-#include "../operation.hpp"
-#include "../value.hpp"
+#include "../interpreter.hpp"
 
 namespace aquila::interpreter::ops
 {

@@ -3,9 +3,9 @@
 #include <string>
 #include <tuple>
 
-#include "../src_cpp/lib/interpreter/bind_args.hpp"
-#include "../src_cpp/lib/interpreter/operation.hpp"
-#include "../src_cpp/lib/interpreter/value.hpp"
+#include "../src_cpp/interpreter/bind_args.hpp"
+#include "../src_cpp/interpreter/operation.hpp"
+#include "../src_cpp/interpreter/value.hpp"
 
 #include "testmacros.hpp"
 

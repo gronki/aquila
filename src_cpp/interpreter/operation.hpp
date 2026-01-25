@@ -44,14 +44,18 @@ struct ArgSpec
     // CheckFunction check = default_check;
 
     std::string help = "";
-    SanitizerFactory convert;
+    SanitizerFactory convert = nullptr;
 };
 
 using ArgManifest = std::vector<ArgSpec>;
+static const std::string ARG_ELLIPSIS = "...";
 
 struct Operation
 {
-    virtual std::optional<ArgManifest> arg_manifest() const { return std::nullopt; }
+    virtual ArgManifest arg_manifest() const
+    {
+        return ArgManifest{ArgSpec{.name = ARG_ELLIPSIS}};
+    }
     virtual std::unique_ptr<Value> call(const std::vector<const Value *> &) const = 0;
     virtual std::string name() const = 0;
     virtual std::string description() const { return ""; }
@@ -70,6 +74,7 @@ struct ArgMatch
     bool matched = false;
     size_t pos;
     std::unique_ptr<Value> deftgt = nullptr;
+    SanitizerFactory sanitizer_factory = nullptr;
 };
 
 std::vector<ArgMatch> match_arguments(

@@ -21,7 +21,7 @@ ValuePtr ConvolOp::run(const values::BufferValue &buf,
     return std::make_unique<values::BufferValue>(std::move(result));
 }
 
-std::optional<ArgManifest> ConvolOp::arg_manifest() const
+ArgManifest ConvolOp::arg_manifest() const
 {
     return ArgManifest{
         ArgSpec{.name = "buffer",

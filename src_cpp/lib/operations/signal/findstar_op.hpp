@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../interpreter/interpreter.hpp"
+#include "../../../interpreter/interpreter.hpp"
 #include "../../values/frame.hpp"
 
 namespace aquila::ops
@@ -18,7 +18,7 @@ struct FindstarOp : public Operation
         const std::int64_t &rslice,
         const double &thresh_sd) const;
 
-    std::optional<ArgManifest> arg_manifest() const override;
+    ArgManifest arg_manifest() const override;
     std::string name() const override { return "findstar"; }
     std::string description() const override { return "Find stars in the image."; }
 };

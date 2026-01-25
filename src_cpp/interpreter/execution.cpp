@@ -59,7 +59,7 @@ static ValuePtr op_call_with_debug(
 static std::unique_ptr<Value> op_call_with_sequencing(const Operation &op,
     std::vector<const Value *> args,
     const std::vector<ExecNode::Modifier> &modifiers,
-    const std::vector<SanitizerFactory> &sanitizers)
+    const std::vector<ArgMatch> &match)
 {
 
     if (args.size() == 0)
@@ -100,9 +100,9 @@ static std::unique_ptr<Value> op_call_with_sequencing(const Operation &op,
     // sanitize non-sequence args
     for (size_t iarg = 0; iarg < args.size(); iarg++)
     {
-        if (sequence_args[iarg] || !sanitizers[iarg])
+        if (sequence_args[iarg] || !match[iarg].sanitizer_factory)
             continue;
-        sanitizers_single[iarg] = sanitizers[iarg]();
+        sanitizers_single[iarg] = match[iarg].sanitizer_factory();
         args[iarg] = sanitizers_single[iarg]->conv(args[iarg]);
     }
 
@@ -119,9 +119,9 @@ static std::unique_ptr<Value> op_call_with_sequencing(const Operation &op,
         std::vector<Sanitizer> sanitizers_seq(args.size());
         for (size_t iarg = 0; iarg < args.size(); iarg++)
         {
-            if (!sequence_args[iarg] || !sanitizers[iarg])
+            if (!sequence_args[iarg] || !match[iarg].sanitizer_factory)
                 continue;
-            sanitizers_seq[iarg] = sanitizers[iarg]();
+            sanitizers_seq[iarg] = match[iarg].sanitizer_factory();
         }
         result[iseq] = op_call_with_debug(
             op, make_ith_argument(sequence_args, args, sanitizers_seq, iseq));
@@ -193,18 +193,10 @@ const Value *OpNode::yield()
 
     try
     {
-        if (use_match)
-        {
-            value = op_call_with_sequencing(*op,
-                build_ptrs_from_match(arg_results, match),
-                build_from_match(modifiers, match, ExecNode::Modifier::NONE),
-                sanitizers);
-        }
-        else
-        {
-            std::vector<SanitizerFactory> dummy(arg_results.size());
-            value = op_call_with_sequencing(*op, arg_results, modifiers, dummy);
-        }
+        value = op_call_with_sequencing(*op,
+            build_ptrs_from_match(arg_results, match),
+            build_from_match(modifiers, match, ExecNode::Modifier::NONE),
+            match);
     }
     catch (const std::runtime_error &e)
     {

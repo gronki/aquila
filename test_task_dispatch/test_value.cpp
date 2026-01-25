@@ -1,4 +1,4 @@
-#include "../src_cpp/lib/interpreter/value.hpp"
+#include "../src_cpp/interpreter/value.hpp"
 #include "testmacros.hpp"
 
 using namespace aquila;

@@ -2,8 +2,8 @@
 
 #include <cmath>
 
-#include "../src_cpp/lib/interpreter/operation.hpp"
-#include "../src_cpp/lib/interpreter/value.hpp"
+#include "../src_cpp/interpreter/operation.hpp"
+#include "../src_cpp/interpreter/value.hpp"
 
 namespace aquila::interpreter::ops
 {
@@ -17,7 +17,7 @@ struct AddOp : Operation
         return std::make_unique<RealValue>(a + b);
     }
 
-    std::optional<ArgManifest> arg_manifest() const override
+    ArgManifest arg_manifest() const override
     {
         return ArgManifest{
             {.name = "a", .help = "first number to add"},
@@ -39,7 +39,7 @@ struct MulOp : Operation
         return std::make_unique<RealValue>(a * b);
     }
 
-    std::optional<ArgManifest> arg_manifest() const override
+    ArgManifest arg_manifest() const override
     {
         return ArgManifest{
             {.name = "a", .help = "first number to multiply"},
@@ -60,7 +60,7 @@ struct PowOp : Operation
         return std::make_unique<RealValue>(std::pow(a, p));
     }
 
-    std::optional<ArgManifest> arg_manifest() const override
+    ArgManifest arg_manifest() const override
     {
         return ArgManifest{
             {.name = "a", .help = "number"},

@@ -1,5 +1,5 @@
-#include "../src_cpp/lib/interpreter/token.hpp"
-#include "../src_cpp/lib/interpreter/tokenizer.hpp"
+#include "../src_cpp/interpreter/token.hpp"
+#include "../src_cpp/interpreter/tokenizer.hpp"
 #include "testmacros.hpp"
 
 using namespace aquila::interpreter;

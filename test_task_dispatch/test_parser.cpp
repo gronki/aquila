@@ -1,7 +1,7 @@
-#include "../src_cpp/lib/interpreter/ast.hpp"
-#include "../src_cpp/lib/interpreter/characters.hpp"
-#include "../src_cpp/lib/interpreter/parser.hpp"
-#include "../src_cpp/lib/interpreter/tokenizer.hpp"
+#include "../src_cpp/interpreter/ast.hpp"
+#include "../src_cpp/interpreter/characters.hpp"
+#include "../src_cpp/interpreter/parser.hpp"
+#include "../src_cpp/interpreter/tokenizer.hpp"
 #include "testmacros.hpp"
 
 using namespace aquila;

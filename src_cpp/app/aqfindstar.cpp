@@ -48,7 +48,7 @@ int main(int argc, char **argv)
                       << star.asymmetry << std::endl;
         }
     }
-    catch (std::runtime_error e)
+    catch (const std::runtime_error& e)
     {
         cerr << "error: " << e.what() << endl;
         exit(1);

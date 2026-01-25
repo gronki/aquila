@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../interpreter/interpreter.hpp"
+#include "../../../interpreter/interpreter.hpp"
 #include "../../values/frame.hpp"
 
 namespace aquila::ops
@@ -14,7 +14,7 @@ struct ConvolOp : public Operation
         const values::BufferValue &krn,
         const std::string &edges) const;
 
-    std::optional<ArgManifest> arg_manifest() const override;
+    ArgManifest arg_manifest() const override;
 
     std::string name() const override { return "conv"; }
     std::string description() const override { return "Convolution"; }

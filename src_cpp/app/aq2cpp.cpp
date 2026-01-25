@@ -6,7 +6,7 @@
 #include <unistd.h>
 
 #include "../../src/c_binding/aquila.h"
-#include "../lib/interpreter/interpreter.hpp"
+#include "../interpreter/interpreter.hpp"
 
 using namespace aquila;
 using namespace aquila::interpreter;

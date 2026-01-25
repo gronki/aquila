@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../interpreter/interpreter.hpp"
+#include "../../../interpreter/interpreter.hpp"
 #include "../../values/frame.hpp"
 
 namespace aquila::ops
@@ -11,7 +11,7 @@ struct ReadFrame : public Operation
     BIND_ARGS(&ReadFrame::run);
     ValuePtr run(const std::string &fn) const;
 
-    std::optional<ArgManifest> arg_manifest() const override
+    ArgManifest arg_manifest() const override
     {
         return ArgManifest{ArgSpec{.name = "filename"}};
     }
@@ -24,7 +24,7 @@ struct WriteFrame : public Operation
     BIND_ARGS(&WriteFrame::run);
     ValuePtr run(const values::BufferValue &frame, const std::string &fn) const;
 
-    std::optional<ArgManifest> arg_manifest() const override
+    ArgManifest arg_manifest() const override
     {
         return ArgManifest{
             ArgSpec{.name = "frame"},

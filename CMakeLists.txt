@@ -9,13 +9,13 @@ set(CMAKE_CXX_EXTENSIONS OFF)    # turn off compiler-specific extensions like gn
 enable_testing()
 include(GNUInstallDirs)
 
-set(CMAKE_C_FLAGS_DEBUG   "-g -Og -Wall -Wextra -Wpedantic -Werror=return-type -Werror=uninitialized -Werror=sign-compare -Werror=maybe-uninitialized -Wno-unused-parameter")
+set(CMAKE_C_FLAGS_DEBUG   "-g -O0 -Wall -Wextra -Wpedantic -Werror=return-type -Werror=uninitialized -Werror=sign-compare -Werror=maybe-uninitialized -Wno-unused-parameter")
 set(CMAKE_C_FLAGS_RELEASE "-g1 -O3 -ffast-math -DNDEBUG")
 set(CMAKE_C_FLAGS_NATIVE "-g -O3 -ffast-math -DNDEBUG -march=native -mtune=native")
-set(CMAKE_CXX_FLAGS_DEBUG   "-g -Og -Wall -Wextra -Wpedantic -Werror=return-type -Werror=uninitialized -Werror=sign-compare -Werror=maybe-uninitialized -Werror=delete-incomplete -Wnon-virtual-dtor -Wno-unused-parameter")
+set(CMAKE_CXX_FLAGS_DEBUG   "-g -O0 -Wall -Wextra -Wpedantic -Werror=return-type -Werror=uninitialized -Werror=sign-compare -Werror=maybe-uninitialized -Werror=delete-incomplete -Wnon-virtual-dtor -Wno-unused-parameter")
 set(CMAKE_CXX_FLAGS_RELEASE "-g1 -O3 -ffast-math -DNDEBUG")
 set(CMAKE_CXX_FLAGS_NATIVE "-g -O3 -ffast-math -DNDEBUG -march=native -mtune=native")
-set(CMAKE_Fortran_FLAGS_DEBUG   "-g -Og -fcheck=all -Wall -Wextra -Wno-unused-dummy-argument")
+set(CMAKE_Fortran_FLAGS_DEBUG   "-g -O0 -fcheck=all -Wall -Wextra -Wno-unused-dummy-argument")
 set(CMAKE_Fortran_FLAGS_RELEASE "-g1 -O3 -funsafe-math-optimizations -DNDEBUG")
 set(CMAKE_Fortran_FLAGS_NATIVE "-g -O3 -funsafe-math-optimizations -DNDEBUG -march=native -mtune=native")
 
@@ -88,33 +88,43 @@ endif ()
 install(TARGETS aqstack aqlrgb RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 file(GLOB_RECURSE aqscript_SOURCES CONFIGURE_DEPENDS
+    src_cpp/interpreter/*.cpp
+    src_cpp/interpreter/*.hpp
+)
+add_library(aqtask_dispatch SHARED ${aqscript_SOURCES})
+target_include_directories(aqtask_dispatch PUBLIC src_cpp/interpreter)
+
+install(TARGETS aqtask_dispatch LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
+
+link_libraries(aqtask_dispatch)
+
+file(GLOB TEST_TASK_DISPATCH_SOURCES CONFIGURE_DEPENDS test_task_dispatch/*.cpp)
+foreach(test_src ${TEST_TASK_DISPATCH_SOURCES})
+    get_filename_component(test_name ${test_src} NAME_WE)
+    add_executable(${test_name} ${test_src})
+    add_test(NAME ${test_name} COMMAND ${test_name})
+endforeach()
+
+file(GLOB_RECURSE libaq2_SOURCES CONFIGURE_DEPENDS
     src_cpp/lib/*.f90
     src_cpp/lib/*.F90
     src_cpp/lib/*.cpp
     src_cpp/lib/*.hpp
 )
-
-add_library(aqscript SHARED ${aqscript_SOURCES})
-target_include_directories(aqscript PUBLIC 
-    src_cpp/lib/buffer src_cpp/lib/io src_cpp/lib/interpreter 
+add_library(aquila2 SHARED ${libaq2_SOURCES})
+target_include_directories(aquila2 PUBLIC 
+    src_cpp/lib/buffer src_cpp/lib/io
     src_cpp/lib/operations src_cpp/lib/values src_cpp/lib/utils)
 if (OPENMP)
-    target_link_libraries(aqscript PRIVATE OpenMP::OpenMP_CXX)
+    target_link_libraries(aquila2 PRIVATE OpenMP::OpenMP_CXX)
 endif ()
-install(TARGETS aqscript LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
-link_libraries(aqscript)
+install(TARGETS aquila2 LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
+
+link_libraries(aquila2)
 
 add_executable(aqfindstar src_cpp/app/aqfindstar.cpp)
 add_executable(aq2 src_cpp/app/aq2cpp.cpp)
 target_link_libraries(aq2 PRIVATE ${READLINE_LIBRARIES})
 
 install(TARGETS aqfindstar aq2 RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
-
-file(GLOB TEST_SOURCES CONFIGURE_DEPENDS test/*.cpp)
-
-foreach(test_src ${TEST_SOURCES})
-    get_filename_component(test_name ${test_src} NAME_WE)
-    add_executable(${test_name} ${test_src})
-    add_test(NAME ${test_name} COMMAND ${test_name})
-endforeach()

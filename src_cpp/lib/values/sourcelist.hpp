@@ -2,7 +2,7 @@
 
 #include "../../../src/c_binding/aquila.h"
 #include "../buffer/buffer.hpp"
-#include "../interpreter/value.hpp"
+#include "../../interpreter/value.hpp"
 
 namespace aquila::values
 {

@@ -32,7 +32,7 @@ ValuePtr AlignOp::run(const values::SourceListValue &lst0,
     return std::make_unique<values::TransformValue>(trans);
 }
 
-std::optional<ArgManifest> AlignOp::arg_manifest() const
+ArgManifest AlignOp::arg_manifest() const
 {
     return ArgManifest{
         ArgSpec{.name = "list0"},

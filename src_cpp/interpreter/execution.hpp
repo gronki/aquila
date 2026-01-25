@@ -98,8 +98,6 @@ class OpNode : public ExecNode
     std::unique_ptr<Value> value;
     std::vector<std::unique_ptr<ExecNode>> args;
     std::vector<ArgMatch> match;
-    std::vector<SanitizerFactory> sanitizers;
-    bool use_match = false;
 
 public:
     OpNode(std::unique_ptr<Operation> op,
@@ -107,13 +105,6 @@ public:
         const std::vector<std::string> &keys,
         Namespace &ns) : ExecNode(ns), op(std::move(op)), args(std::move(args))
     {
-        std::optional<ArgManifest> maybe_manifest = this->op->arg_manifest();
-        use_match = maybe_manifest.has_value();
-        std::cout << "building op " << this->op->name() << " manifest? " << use_match
-                  << " args " << this->args.size() << std::endl;
-        if (!use_match)
-            return;
-        auto &manifest = maybe_manifest.value();
         for (const auto &arg : this->args)
         {
             if (arg->modifier() == ExecNode::Modifier::EXPANSION)
@@ -121,12 +112,8 @@ public:
                     std::string("Expansion (*) may not be used on operation ")
                     + this->op->name());
         }
-        match = match_arguments(manifest, keys);
-        sanitizers.reserve(manifest.size());
-        for (auto &argspec : manifest)
-        {
-            sanitizers.push_back(argspec.convert);
-        }
+
+        match = match_arguments(this->op->arg_manifest(), keys);
     }
 
     const Value *yield() override;

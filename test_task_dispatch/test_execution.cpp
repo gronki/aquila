@@ -1,7 +1,7 @@
 #include <iostream>
 
-#include "../src_cpp/lib/interpreter/interpreter.hpp"
-#include "../src_cpp/lib/interpreter/characters.hpp"
+#include "../src_cpp/interpreter/interpreter.hpp"
+#include "../src_cpp/interpreter/characters.hpp"
 
 #include "test_operations.hpp"
 #include "testmacros.hpp"

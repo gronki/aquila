@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../buffer/buffer.hpp"
-#include "../interpreter/value.hpp"
+#include "../../interpreter/value.hpp"
 #include "../io/fits.hpp"
 
 namespace aquila::values

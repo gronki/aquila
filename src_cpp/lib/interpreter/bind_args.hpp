@@ -9,24 +9,6 @@
 namespace aquila::interpreter
 {
 
-template <typename... ArgsT>
-struct __args_binder;
-
-template <>
-struct __args_binder<>
-{
-    template <typename OpT, typename... ArgsT, typename... CallArgsT>
-    static void run(const OpT *obj,
-        std::unique_ptr<Value> (OpT::*exec_fun)(const ArgsT &...) const,
-        const std::vector<const Value *> &args,
-        std::unique_ptr<Value> &result,
-        std::size_t idx,
-        const CallArgsT &...callargs)
-    {
-        result = (obj->*exec_fun)(callargs...);
-    }
-};
-
 template <typename T>
 inline const T *cast_value(const Value *v)
 {
@@ -60,6 +42,24 @@ inline const std::string *cast_value<std::string>(const Value *v)
     return cast_simple_value<std::string>(v);
 }
 
+template <typename... ArgsT>
+struct __args_binder;
+
+template <>
+struct __args_binder<>
+{
+    template <typename OpT, typename... ArgsT, typename... CallArgsT>
+    static void run(const OpT *obj,
+        std::unique_ptr<Value> (OpT::*exec_fun)(const ArgsT &...) const,
+        const std::vector<const Value *> &args,
+        std::unique_ptr<Value> &result,
+        std::size_t idx,
+        const CallArgsT &...callargs)
+    {
+        result = (obj->*exec_fun)(callargs...);
+    }
+};
+
 template <typename T, typename... TT>
 struct __args_binder<T, TT...>
 {
@@ -83,18 +83,6 @@ struct __args_binder<T, TT...>
         {
             next::run(obj, exec_fun, args, result, idx + 1, callargs..., *tptr);
             return;
-        }
-        // could be due to string being given for readable -- try reading
-        if constexpr (std::is_base_of<IFromFile<T>, T>::value)
-        {
-            const auto *perhaps_fn = dynamic_cast<const StrValue *>(args[idx]);
-            if (perhaps_fn)
-            {
-                // input is string -- attempt to read it and pass as argumenet
-                T input = T::value_from_file(perhaps_fn->value);
-                next::run(obj, exec_fun, args, result, idx + 1, callargs..., input);
-                return;
-            }
         }
         // wrong cast
         throw std::runtime_error(std::string("Error trying to interpret "

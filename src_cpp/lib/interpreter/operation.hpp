@@ -1,14 +1,15 @@
 #pragma once
 
+#include <cstdint>
 #include <functional>
 #include <map>
 #include <memory>
 #include <optional>
 #include <stdexcept>
 #include <string>
-#include <cstdint>
 
 #include "bind_args.hpp"
+#include "type_converter.hpp"
 #include "value.hpp"
 
 namespace aquila::interpreter
@@ -30,19 +31,20 @@ using CheckFunction = bool (*)(const Value &);
 struct ArgSpec
 {
     std::string name;
-    
+
     // this might not be the prettiest way, but makes it easy
     // to build manifests with initializer lists and ensures
     // that user does not give anything crazy as defaults.
     std::optional<std::int64_t> default_int = std::nullopt;
     std::optional<double> default_real = std::nullopt;
     std::optional<std::string> default_str = std::nullopt;
-    
+
     bool has_default() const;
     std::unique_ptr<Value> build_default() const;
     // CheckFunction check = default_check;
 
     std::string help = "";
+    SanitizerFactory convert;
 };
 
 using ArgManifest = std::vector<ArgSpec>;

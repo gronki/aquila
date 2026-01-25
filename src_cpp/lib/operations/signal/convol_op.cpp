@@ -21,4 +21,15 @@ ValuePtr ConvolOp::run(const values::BufferValue &buf,
     return std::make_unique<values::BufferValue>(std::move(result));
 }
 
+std::optional<ArgManifest> ConvolOp::arg_manifest() const
+{
+    return ArgManifest{
+        ArgSpec{.name = "buffer",
+            .convert = guard<values::BufferValue, StrValue>(convert::loadFrame)},
+        ArgSpec{.name = "kernel",
+            .convert = guard<values::BufferValue, StrValue>(convert::loadFrame)},
+        ArgSpec{.name = "edges", .default_str = "e", .help = "How to fix edges?"},
+    };
+}
+
 } // namespace aquila::ops

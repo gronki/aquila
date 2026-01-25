@@ -15,20 +15,7 @@ struct AlignOp : public Operation
         const std::string &method,
         const std::string& prealign) const;
 
-    std::optional<ArgManifest> arg_manifest() const override
-    {
-        return ArgManifest{
-            ArgSpec{.name = "list0"},
-            ArgSpec{.name = "list"},
-            ArgSpec{.name = "method",
-                .default_str = "affine",
-                .help = "options: polygon, xyr, affine"},
-            ArgSpec{.name = "prealign",
-                .default_str = "no",
-                .help = "Prealign using polygons? Useful "
-                    "for rotated photos. yes/no"},
-        };
-    }
+    std::optional<ArgManifest> arg_manifest() const override;
 
     std::string name() const override { return "align"; }
     std::string description() const override

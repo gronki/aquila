@@ -32,4 +32,19 @@ ValuePtr AlignOp::run(const values::SourceListValue &lst0,
     return std::make_unique<values::TransformValue>(trans);
 }
 
+std::optional<ArgManifest> AlignOp::arg_manifest() const
+{
+    return ArgManifest{
+        ArgSpec{.name = "list0"},
+        ArgSpec{.name = "list"},
+        ArgSpec{.name = "method",
+            .default_str = "affine",
+            .help = "options: polygon, xyr, affine"},
+        ArgSpec{.name = "prealign",
+            .default_str = "no",
+            .help = "Prealign using polygons? Useful "
+                    "for rotated photos. yes/no"},
+    };
+}
+
 } // namespace aquila::ops

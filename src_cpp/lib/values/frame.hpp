@@ -7,8 +7,7 @@
 namespace aquila::values
 {
 
-struct BufferValue : public interpreter::CompoundValue,
-                     public interpreter::IFromFile<BufferValue>
+struct BufferValue : public interpreter::CompoundValue
 {
     Buffer<real_buf_t> buffer;
     BufferValue(Buffer<real_buf_t> v) : buffer(std::move(v)) {}
@@ -20,10 +19,19 @@ struct BufferValue : public interpreter::CompoundValue,
     {
         os << "(frame " << buffer.cols() << "x" << buffer.rows() << ")";
     }
-    static BufferValue from_file(const std::string &fn) { return {read_fits(fn)}; }
 };
 
 }; // namespace aquila::values
+
+namespace aquila::convert
+{
+
+inline auto loadFrame(const StrValue &s)
+{
+    return std::make_unique<values::BufferValue>(read_fits(s.value));
+}
+
+} // namespace aquila::convert
 
 namespace aquila
 {

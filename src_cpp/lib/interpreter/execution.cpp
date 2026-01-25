@@ -6,17 +6,21 @@ namespace aquila::interpreter
 {
 
 static std::vector<const Value *> make_ith_argument(
-    const std::vector<const SequenceValue *> &sequences,
+    const std::vector<const SequenceValue *> &sequence_args,
     const std::vector<const Value *> &args,
+    std::vector<Sanitizer> &sanitizers,
     std::int64_t iseq)
 {
-    std::vector<const Value *> argvec(sequences.size());
+    std::vector<const Value *> argvec(sequence_args.size());
 
-    for (size_t iarg = 0; iarg < sequences.size(); iarg++)
+    for (size_t iarg = 0; iarg < sequence_args.size(); iarg++)
     {
-        if (sequences[iarg])
+        if (sequence_args[iarg])
         {
-            argvec[iarg] = sequences[iarg]->items[iseq].get();
+            const Value *ptr = sequence_args[iarg]->items[iseq].get();
+            if (sanitizers[iarg])
+                ptr = sanitizers[iarg]->conv(ptr);
+            argvec[iarg] = ptr;
         }
         else
         {
@@ -53,16 +57,16 @@ static ValuePtr op_call_with_debug(
 }
 
 static std::unique_ptr<Value> op_call_with_sequencing(const Operation &op,
-    const std::vector<const Value *> &args,
-    const std::vector<ExecNode::Modifier> &modifiers)
+    std::vector<const Value *> args,
+    const std::vector<ExecNode::Modifier> &modifiers,
+    const std::vector<SanitizerFactory> &sanitizers)
 {
 
     if (args.size() == 0)
         return op_call_with_debug(op, args);
 
-    std::vector<const SequenceValue *> sequences;
+    std::vector<const SequenceValue *> sequence_args(args.size(), nullptr);
 
-    sequences.reserve(args.size());
     constexpr std::int64_t SEQUENCE_NOT_FOUND = -1;
     std::int64_t sequence_len = SEQUENCE_NOT_FOUND;
 
@@ -74,9 +78,12 @@ static std::unique_ptr<Value> op_call_with_sequencing(const Operation &op,
         auto seq_arg = modifier != ExecNode::Modifier::CONTRACTION
             ? dynamic_cast<const SequenceValue *>(arg)
             : nullptr;
-        sequences.push_back(seq_arg);
+
+        sequence_args[iarg] = seq_arg;
+
         if (!seq_arg)
             continue;
+
         if (sequence_len == SEQUENCE_NOT_FOUND)
         {
             sequence_len = seq_arg->size();
@@ -89,14 +96,35 @@ static std::unique_ptr<Value> op_call_with_sequencing(const Operation &op,
         }
     }
 
+    std::vector<Sanitizer> sanitizers_single(args.size());
+    // sanitize non-sequence args
+    for (size_t iarg = 0; iarg < args.size(); iarg++)
+    {
+        if (sequence_args[iarg] || !sanitizers[iarg])
+            continue;
+        sanitizers_single[iarg] = sanitizers[iarg]();
+        args[iarg] = sanitizers_single[iarg]->conv(args[iarg]);
+    }
+
     if (sequence_len == SEQUENCE_NOT_FOUND)
+    {
         return op_call_with_debug(op, args);
+    }
 
     std::vector<std::unique_ptr<Value>> result(sequence_len);
 
     for (std::int64_t iseq = 0; iseq < sequence_len; iseq++)
     {
-        result[iseq] = op_call_with_debug(op, make_ith_argument(sequences, args, iseq));
+        // warning: this may own memory needed in op_call
+        std::vector<Sanitizer> sanitizers_seq(args.size());
+        for (size_t iarg = 0; iarg < args.size(); iarg++)
+        {
+            if (!sequence_args[iarg] || !sanitizers[iarg])
+                continue;
+            sanitizers_seq[iarg] = sanitizers[iarg]();
+        }
+        result[iseq] = op_call_with_debug(
+            op, make_ith_argument(sequence_args, args, sanitizers_seq, iseq));
     }
 
     return std::make_unique<SequenceValue>(std::move(result));
@@ -132,6 +160,7 @@ const Value *OpNode::yield()
 
     std::vector<const Value *> arg_results;
     std::vector<ExecNode::Modifier> modifiers;
+
     arg_results.reserve(args.size());
     modifiers.reserve(args.size());
 
@@ -148,11 +177,13 @@ const Value *OpNode::yield()
         if (!result)
             throw std::runtime_error(
                 std::string("Operator * may not be used on null value."));
+
         auto result_seq = dynamic_cast<const SequenceValue *>(result);
         if (!result_seq)
             throw std::runtime_error(
                 std::string("Operator * must be used to expand a sequence, not: ")
                 + result->str());
+
         for (const auto &item : result_seq->items)
         {
             modifiers.push_back(ExecNode::Modifier::NONE);
@@ -166,11 +197,13 @@ const Value *OpNode::yield()
         {
             value = op_call_with_sequencing(*op,
                 build_ptrs_from_match(arg_results, match),
-                build_from_match(modifiers, match, ExecNode::Modifier::NONE));
+                build_from_match(modifiers, match, ExecNode::Modifier::NONE),
+                sanitizers);
         }
         else
         {
-            value = op_call_with_sequencing(*op, arg_results, modifiers);
+            std::vector<SanitizerFactory> dummy(arg_results.size());
+            value = op_call_with_sequencing(*op, arg_results, modifiers, dummy);
         }
     }
     catch (const std::runtime_error &e)

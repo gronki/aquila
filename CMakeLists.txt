@@ -8,13 +8,16 @@ set(CMAKE_CXX_EXTENSIONS OFF)    # turn off compiler-specific extensions like gn
 
 enable_testing()
 include(GNUInstallDirs)
-set(CMAKE_INSTALL_PREFIX "/opt/aquila")
 set(CMAKE_INSTALL_LIBDIR ${CMAKE_INSTALL_LIBDIR}/aquila)
 set(CMAKE_INSTALL_RPATH "$ORIGIN/../${CMAKE_INSTALL_LIBDIR}:$ORIGIN")
 
-set(CMAKE_C_FLAGS_NATIVE "-g -O3 -ffast-math -DNDEBUG -march=native -mtune=native -fopenmp-simd")
-set(CMAKE_CXX_FLAGS_NATIVE "-g -O3 -ffast-math -DNDEBUG -march=native -mtune=native -fopenmp-simd")
-set(CMAKE_Fortran_FLAGS_NATIVE "-g -O3 -funsafe-math-optimizations -DNDEBUG -march=native -mtune=native -fopenmp-simd")
+set(CMAKE_C_FLAGS_RELEASE       "-g1 -O2")
+set(CMAKE_CXX_FLAGS_RELEASE     "-g1 -O2")
+set(CMAKE_Fortran_FLAGS_RELEASE "-g1 -O2")
+
+set(CMAKE_C_FLAGS_NATIVE       "-g1 -O2")
+set(CMAKE_CXX_FLAGS_NATIVE     "-g1 -O2")
+set(CMAKE_Fortran_FLAGS_NATIVE "-g1 -O2")
 
 # set(FETCHCONTENT_BASE_DIR ${CMAKE_SOURCE_DIR}/deps)
 include(FetchContent)
@@ -38,6 +41,10 @@ set(CMAKE_Fortran_FLAGS_DEBUG   "-g -Og -fcheck=all -Wall -Wextra -Wno-unused-du
 set(CMAKE_C_FLAGS_RELEASE "-g1 -O3 -ffast-math -DNDEBUG -fopenmp-simd")
 set(CMAKE_CXX_FLAGS_RELEASE "-g1 -O3 -ffast-math -DNDEBUG -fopenmp-simd")
 set(CMAKE_Fortran_FLAGS_RELEASE "-g1 -O3 -funsafe-math-optimizations -DNDEBUG -fopenmp-simd")
+
+set(CMAKE_C_FLAGS_NATIVE "-g -O3 -ffast-math -DNDEBUG -march=native -mtune=native -fopenmp-simd")
+set(CMAKE_CXX_FLAGS_NATIVE "-g -O3 -ffast-math -DNDEBUG -march=native -mtune=native -fopenmp-simd")
+set(CMAKE_Fortran_FLAGS_NATIVE "-g -O3 -funsafe-math-optimizations -DNDEBUG -march=native -mtune=native -fopenmp-simd")
 
 option(OPENMP "use OpenMP in build" OFF)
 

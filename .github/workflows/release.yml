@@ -56,6 +56,8 @@ jobs:
             -DCMAKE_BUILD_TYPE=Release -DOPENMP=On 
           cmake --build .
           cmake --install .
+          cpack .
+          mv aquila-${{ github.ref_name }}-Linux.tar.gz ${PACKAGE_NAME}.tar.gz 
 
       - name: Create deb package
         run: |
@@ -70,8 +72,14 @@ jobs:
       - name: Upload .deb artifact
         uses: actions/upload-artifact@v4
         with:
-          name: "aquila-${{ github.ref_name }}-${{ matrix.os }}-${{ matrix.osver }}-amd64"
+          name: "aquila-${{ github.ref_name }}-${{ matrix.os }}-${{ matrix.osver }}-amd64-deb"
           path: build/deb-package/aquila-${{ github.ref_name }}-${{ matrix.os }}-${{ matrix.osver }}-amd64.deb
+   
+      - name: Upload .tar.gz artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: "aquila-${{ github.ref_name }}-${{ matrix.os }}-${{ matrix.osver }}-amd64-tgz"
+          path: build/aquila-${{ github.ref_name }}-${{ matrix.os }}-${{ matrix.osver }}-amd64.tar.gz
 
   test-deb:
     name: Test .deb package
@@ -104,13 +112,67 @@ jobs:
       - name: Download .deb artifact
         uses: actions/download-artifact@v4
         with:
-          name: "aquila-${{ github.ref_name }}-${{ matrix.os }}-${{ matrix.osver }}-amd64"
+          name: "aquila-${{ github.ref_name }}-${{ matrix.os }}-${{ matrix.osver }}-amd64-deb"
 
       - name: Install the package
         run: |
           apt update
           apt-get install -y ./aquila-${{ github.ref_name }}-${{ matrix.os }}-${{ matrix.osver }}-amd64.deb
           echo "PATH=$PATH:/opt/aquila/bin" >> "$GITHUB_ENV"
+  
+      - name: Download test data
+        run: scripts/get_test_data.sh
+
+      - name: Run integration test on example data
+        run: |
+          mkdir testrun
+          cd testrun
+          ln -s ../examples
+          ln -s ../testdata
+          ../scripts/test_routine.sh
+
+  test-tgz:
+    name: Test .tar.gz package
+    needs: build-deb
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    strategy:
+      matrix:
+        include:
+          - {os: "ubuntu", osver: "24.04"}
+          - {os: "ubuntu", osver: "22.04"}
+          - {os: "debian", osver: "bookworm"}
+          - {os: "debian", osver: "trixie"}
+    container:
+      image: ${{ matrix.os }}:${{ matrix.osver }}
+
+    steps:
+      - name: Install tools
+        run: |
+          apt-get update
+          apt-get install -y wget git curl gzip tar
+          
+      - name: Checkout (with submodules)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install deps
+        run: |
+          . packaging/${{ matrix.os }}/${{ matrix.osver }}/vars.sh
+          apt-get install -y $(echo $DEPS | sed 's/,/ /g')
+
+      - name: Download .tgz artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: "aquila-${{ github.ref_name }}-${{ matrix.os }}-${{ matrix.osver }}-amd64-tgz"
+
+      - name: Install the package
+        run: |
+          tar xzfv aquila-${{ github.ref_name }}-${{ matrix.os }}-${{ matrix.osver }}-amd64.tar.gz
+          echo "PATH=$PATH:$PWD/aquila-${{ github.ref_name }}-Linux/bin" >> "$GITHUB_ENV"
   
       - name: Download test data
         run: scripts/get_test_data.sh
@@ -134,7 +196,9 @@ jobs:
           - {os: "ubuntu", osver: "22.04"}
           - {os: "debian", osver: "bookworm"}
           - {os: "debian", osver: "trixie"}
-    needs: test-deb
+    needs: 
+      - test-deb
+      - test-tgz
     env:
       GH_TOKEN: ${{ github.token }}
     steps:
@@ -146,7 +210,11 @@ jobs:
 
       - uses: actions/download-artifact@v4
         with:
-          name: "aquila-${{ github.ref_name }}-${{ matrix.os }}-${{ matrix.osver }}-amd64"
+          name: "aquila-${{ github.ref_name }}-${{ matrix.os }}-${{ matrix.osver }}-amd64-deb"
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: "aquila-${{ github.ref_name }}-${{ matrix.os }}-${{ matrix.osver }}-amd64-tgz"
 
       - name: Ensure release exists
         run: |
@@ -162,4 +230,7 @@ jobs:
         run: |
           gh release upload ${{ github.ref_name }} \
             "aquila-${{ github.ref_name }}-${{ matrix.os }}-${{ matrix.osver }}-amd64.deb" \
+            --clobber
+          gh release upload ${{ github.ref_name }} \
+            "aquila-${{ github.ref_name }}-${{ matrix.os }}-${{ matrix.osver }}-amd64.tar.gz" \
             --clobber

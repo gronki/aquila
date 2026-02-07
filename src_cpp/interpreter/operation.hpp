@@ -43,6 +43,8 @@ struct ArgSpec
     std::unique_ptr<Value> build_default() const;
     // CheckFunction check = default_check;
 
+    bool sequence = false;
+
     std::string help = "";
     SanitizerFactory convert = nullptr;
 };
@@ -75,6 +77,7 @@ struct ArgMatch
     size_t pos;
     std::unique_ptr<Value> deftgt = nullptr;
     SanitizerFactory sanitizer_factory = nullptr;
+    bool sequence = false;
 };
 
 std::vector<ArgMatch> match_arguments(

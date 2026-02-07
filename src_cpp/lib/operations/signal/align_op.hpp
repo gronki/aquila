@@ -17,7 +17,7 @@ struct AlignOp : public Operation
 
     ArgManifest arg_manifest() const override;
 
-    std::string name() const override { return "align"; }
+    std::string name() const override { return "register"; }
     std::string description() const override
     {
         return "Finds a transformation between two lists of sources (stars).";

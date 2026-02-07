@@ -16,15 +16,15 @@ protected:
 
 public:
     ExecNode(Namespace &ns) : ns(ns) {}
-    enum class Modifier
-    {
-        NONE,
-        EXPANSION,
-        CONTRACTION
-    };
+    // enum class Modifier
+    // {
+    //     NONE,
+    //     EXPANSION,
+    //     CONTRACTION
+    // };
     virtual const Value *yield() = 0;
     virtual void clean() {};
-    virtual Modifier modifier() const { return Modifier::NONE; }
+    // virtual Modifier modifier() const { return Modifier::NONE; }
     virtual ~ExecNode() = default;
 };
 
@@ -74,23 +74,23 @@ public:
     const Value *yield() override { return value.get(); }
 };
 
-class WrapperNode : public ExecNode
-{
-public:
-private:
-    std::unique_ptr<ExecNode> wrapped;
-    ExecNode::Modifier kind;
+// class WrapperNode : public ExecNode
+// {
+// public:
+// private:
+//     std::unique_ptr<ExecNode> wrapped;
+//     ExecNode::Modifier kind;
 
-public:
-    WrapperNode(std::unique_ptr<ExecNode> wrapped, ExecNode::Modifier kind, Namespace &ns) :
-        ExecNode(ns), wrapped(std::move(wrapped)), kind(kind)
-    {
-    }
+// public:
+//     WrapperNode(std::unique_ptr<ExecNode> wrapped, ExecNode::Modifier kind, Namespace &ns) :
+//         ExecNode(ns), wrapped(std::move(wrapped)), kind(kind)
+//     {
+//     }
 
-    const Value *yield() override { return wrapped->yield(); }
-    void clean() override { wrapped->clean(); }
-    Modifier modifier() const override { return kind; }
-};
+//     const Value *yield() override { return wrapped->yield(); }
+//     void clean() override { wrapped->clean(); }
+//     Modifier modifier() const override { return kind; }
+// };
 
 class OpNode : public ExecNode
 {
@@ -105,13 +105,13 @@ public:
         const std::vector<std::string> &keys,
         Namespace &ns) : ExecNode(ns), op(std::move(op)), args(std::move(args))
     {
-        for (const auto &arg : this->args)
-        {
-            if (arg->modifier() == ExecNode::Modifier::EXPANSION)
-                throw std::runtime_error(
-                    std::string("Expansion (*) may not be used on operation ")
-                    + this->op->name());
-        }
+        // for (const auto &arg : this->args)
+        // {
+        //     if (arg->modifier() == ExecNode::Modifier::EXPANSION)
+        //         throw std::runtime_error(
+        //             std::string("Expansion (*) may not be used on operation ")
+        //             + this->op->name());
+        // }
 
         match = match_arguments(this->op->arg_manifest(), keys);
     }

@@ -15,4 +15,11 @@ std::unique_ptr<Value> SequenceOp::call(const std::vector<const Value *> &args) 
     return std::make_unique<SequenceValue>(std::move(items));
 }
 
+ArgManifest SequenceOp::arg_manifest() const
+{
+    return ArgManifest{
+        ArgSpec{.name = "...", .sequence = true},
+    };
+}
+
 } // namespace aquila::interpreter::ops

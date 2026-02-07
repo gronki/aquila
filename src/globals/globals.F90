@@ -15,7 +15,7 @@ integer, parameter :: buf_k = r32_k
 character(len = *), parameter :: hlp_fmt = '(a25, 2x, a)', hlp_fmtc = '(27x, a)'
 character(len = *), parameter :: fmthlp = '(a25, 2x, a, :/, *(27x, a, :/))'
 
-character(len = *), parameter :: version = "260116"
+character(len = *), parameter :: version = "260207"
 
 character(len = *), parameter :: perf_fmt = '("PERF", a10, 1x, "=", f7.3)'
 

@@ -15,7 +15,14 @@ ValuePtr ExampleOp::run(const std::string &param) const
 
 ArgManifest ExampleOp::arg_manifest() const
 {
-    return ArgManifest{ArgSpec{.name = "param"}};
+    return ArgManifest{
+        ArgSpec{.name = "param"},
+    };
+}
+
+std::string ExampleOp::description() const
+{
+    return "";
 }
 
 } // namespace aquila::ops

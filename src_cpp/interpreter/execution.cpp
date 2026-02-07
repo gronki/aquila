@@ -58,7 +58,7 @@ static ValuePtr op_call_with_debug(
 
 static std::unique_ptr<Value> op_call_with_sequencing(const Operation &op,
     std::vector<const Value *> args,
-    const std::vector<ExecNode::Modifier> &modifiers,
+    // const std::vector<ExecNode::Modifier> &modifiers,
     const std::vector<ArgMatch> &match)
 {
 
@@ -73,11 +73,12 @@ static std::unique_ptr<Value> op_call_with_sequencing(const Operation &op,
     for (size_t iarg = 0; iarg < args.size(); iarg++)
     {
         const Value *arg = args[iarg];
-        auto modifier = modifiers[iarg];
+        // auto modifier = modifiers[iarg];
 
-        auto seq_arg = modifier != ExecNode::Modifier::CONTRACTION
-            ? dynamic_cast<const SequenceValue *>(arg)
-            : nullptr;
+        // confusing, but if an argument is expected to be a sequence,
+        // we consider it as a single value instead of expanding it
+        auto seq_arg = match[iarg].sequence ? nullptr
+                                            : dynamic_cast<const SequenceValue *>(arg);
 
         sequence_args[iarg] = seq_arg;
 
@@ -159,43 +160,43 @@ const Value *OpNode::yield()
         return value.get();
 
     std::vector<const Value *> arg_results;
-    std::vector<ExecNode::Modifier> modifiers;
+    // std::vector<ExecNode::Modifier> modifiers;
 
     arg_results.reserve(args.size());
-    modifiers.reserve(args.size());
+    // modifiers.reserve(args.size());
 
     for (auto &arg : args)
     {
         auto result = arg->yield();
-        if (arg->modifier() != ExecNode::Modifier::EXPANSION)
-        {
-            modifiers.push_back(arg->modifier());
-            arg_results.push_back(result);
-            continue;
-        }
-        // arg expansion
-        if (!result)
-            throw std::runtime_error(
-                std::string("Operator * may not be used on null value."));
+        // if (arg->modifier() != ExecNode::Modifier::EXPANSION)
+        // {
+        //     modifiers.push_back(arg->modifier());
+        arg_results.push_back(result);
+        //     continue;
+        // }
+        // // arg expansion
+        // if (!result)
+        //     throw std::runtime_error(
+        //         std::string("Operator * may not be used on null value."));
 
-        auto result_seq = dynamic_cast<const SequenceValue *>(result);
-        if (!result_seq)
-            throw std::runtime_error(
-                std::string("Operator * must be used to expand a sequence, not: ")
-                + result->str());
+        // auto result_seq = dynamic_cast<const SequenceValue *>(result);
+        // if (!result_seq)
+        //     throw std::runtime_error(
+        //         std::string("Operator * must be used to expand a sequence, not: ")
+        //         + result->str());
 
-        for (const auto &item : result_seq->items)
-        {
-            modifiers.push_back(ExecNode::Modifier::NONE);
-            arg_results.push_back(item.get());
-        }
+        // for (const auto &item : result_seq->items)
+        // {
+        //     // modifiers.push_back(ExecNode::Modifier::NONE);
+        //     arg_results.push_back(item.get());
+        // }
     }
 
     try
     {
         value = op_call_with_sequencing(*op,
             build_ptrs_from_match(arg_results, match),
-            build_from_match(modifiers, match, ExecNode::Modifier::NONE),
+            // build_from_match(modifiers, match, ExecNode::Modifier::NONE),
             match);
     }
     catch (const std::runtime_error &e)

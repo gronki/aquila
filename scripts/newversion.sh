@@ -24,6 +24,7 @@ fi
 
 sed -Ei "s/define AQUILA_VERSION .*$/define AQUILA_VERSION \"${VERSION_STR}\"/" src/c_binding/aquila.h
 sed -Ei "s/version = .*$/version = \"${VERSION_STR}\"/" src/globals/globals.F90
+sed -Ei "s/aquila VERSION \".*\"/aquila VERSION \"${VERSION_STR}\"/" CMakeLists.txt
 
 # if [ -z "$(git status --porcelain)" ]; then
 #     echo "git does not see any changes; probably version $VERSION_STR already exists:"

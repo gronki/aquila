@@ -16,9 +16,14 @@ function from_descriptor(descr)
    real(buf_k), pointer, contiguous :: from_descriptor(:,:)
    integer(i64_k) :: arrshape(2)
 
+   if (.not. c_associated(descr%data)) then
+      nullify(from_descriptor)
+      return
+   end if
+   
    arrshape(1) = descr%rows
    arrshape(2) = descr%cols
-
+   
    call c_f_pointer(descr%data, from_descriptor, arrshape)
 end function
 

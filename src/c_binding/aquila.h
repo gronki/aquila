@@ -9,7 +9,7 @@ extern "C"
 #    include <stdlib.h>
 #endif
 
-#define AQUILA_VERSION "260116"
+#define AQUILA_VERSION "260207"
 
     typedef float real_buf_t;
 
@@ -104,6 +104,11 @@ extern "C"
         buffer_descriptor_t y,
         bool parallel,
         int *err);
+
+    void stack_frames(const const_buffer_descriptor_t *frames,
+        int n_frames,
+        const char *method,
+        buffer_descriptor_t frame_out);
 
 #ifdef __cplusplus
 } /* extern "C" */

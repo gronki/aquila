@@ -1,4 +1,4 @@
-# aquila astrophotography package
+# Aquila: LRGB astrophotography processor with Fortran heart
 
 **[Click here](https://github.com/gronki/aquila/releases) to download packages for Ubuntu/Debian.**
 

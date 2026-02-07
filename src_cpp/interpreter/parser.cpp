@@ -7,10 +7,10 @@ namespace aquila::interpreter
 /**
  * Definitions of static procedures in this file.
  */
-static void parse_basic_expression(LazyTokenArray &tokens, std::unique_ptr<AstNode> &node);
+static void parse_basic_expression(LazyTokenArray &, std::unique_ptr<AstNode> &);
 static void parse_function_argument_list(
-    LazyTokenArray &tokens, std::vector<AstOpNode::OpArg> &node_args);
-static void parse_expression(LazyTokenArray &tokens, std::unique_ptr<AstNode> &node);
+    LazyTokenArray &, char, std::vector<AstOpNode::OpArg> &);
+static void parse_expression(LazyTokenArray &, std::unique_ptr<AstNode> &);
 
 /**
  * Parse an expression (literal, reference, function call) but not including chaining.
@@ -38,6 +38,15 @@ static void parse_basic_expression(LazyTokenArray &tokens, std::unique_ptr<AstNo
         return;
     }
 
+    if (token == Token(TokenType::DELIM, '['))
+    {
+        tokens.next_token();
+        std::vector<AstOpNode::OpArg> args;
+        parse_function_argument_list(tokens, ']', args);
+        node = std::make_unique<AstOpNode>("array", std::move(args), token.loc);
+        return;
+    }
+
     if (token.type != TokenType::IDENT)
     {
         throw std::runtime_error(std::string("unexpected token: ") + token.str());
@@ -59,7 +68,7 @@ static void parse_basic_expression(LazyTokenArray &tokens, std::unique_ptr<AstNo
     auto opname = token.value;
     auto loc = token.loc;
     std::vector<AstOpNode::OpArg> args;
-    parse_function_argument_list(tokens, args);
+    parse_function_argument_list(tokens, ')', args);
     node = std::make_unique<AstOpNode>(opname, std::move(args), loc);
 }
 
@@ -67,14 +76,14 @@ static void parse_basic_expression(LazyTokenArray &tokens, std::unique_ptr<AstNo
  * Parse function argument list (starting from the first token after the opening brace).
  */
 static void parse_function_argument_list(
-    LazyTokenArray &tokens, std::vector<AstOpNode::OpArg> &node_args)
+    LazyTokenArray &tokens, char closing_brace, std::vector<AstOpNode::OpArg> &node_args)
 {
 
     while (true)
     {
         Token cur_token = tokens.cur_token();
 
-        if (cur_token == Token(TokenType::DELIM, ")"))
+        if (cur_token == Token(TokenType::DELIM, closing_brace))
         {
             tokens.next_token();
             return;
@@ -123,7 +132,7 @@ static void parse_function_argument_list(
         {
             tokens.next_token();
         }
-        else if (cur_token == Token(TokenType::DELIM, ")"))
+        else if (cur_token == Token(TokenType::DELIM, closing_brace))
         {
             // in principle we would not need to repeat that check twice,
             // but we do so to throw a clearer error message
@@ -137,12 +146,13 @@ static void parse_function_argument_list(
         }
         else
         {
-            throw std::runtime_error(
-                std::string("expected , or ), but got: ") + cur_token.value);
+            throw std::runtime_error(std::string("expected , or ")
+                + std::string(1, closing_brace) + std::string(", but got: ")
+                + cur_token.value);
         }
     }
 
-    return; // unreachable
+    throw std::logic_error("unreachable");
 }
 
 /**

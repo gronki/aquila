@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(aquila LANGUAGES Fortran C CXX)
+project(aquila VERSION "260207" LANGUAGES Fortran C CXX)
 
 set(CMAKE_CXX_STANDARD 20)       # request C++20
 set(CMAKE_CXX_STANDARD_REQUIRED ON)  # fail if compiler does not support it
@@ -8,30 +8,45 @@ set(CMAKE_CXX_EXTENSIONS OFF)    # turn off compiler-specific extensions like gn
 
 enable_testing()
 include(GNUInstallDirs)
+set(CMAKE_INSTALL_PREFIX "/opt/aquila")
+set(CMAKE_INSTALL_LIBDIR ${CMAKE_INSTALL_LIBDIR}/aquila)
+set(CMAKE_INSTALL_RPATH "$ORIGIN/../${CMAKE_INSTALL_LIBDIR}")
 
-set(CMAKE_C_FLAGS_DEBUG   "-g -O0 -Wall -Wextra -Wpedantic -Werror=return-type -Werror=uninitialized -Werror=sign-compare -Werror=maybe-uninitialized -Wno-unused-parameter")
-set(CMAKE_C_FLAGS_RELEASE "-g1 -O3 -ffast-math -DNDEBUG")
 set(CMAKE_C_FLAGS_NATIVE "-g -O3 -ffast-math -DNDEBUG -march=native -mtune=native")
-set(CMAKE_CXX_FLAGS_DEBUG   "-g -O0 -Wall -Wextra -Wpedantic -Werror=return-type -Werror=uninitialized -Werror=sign-compare -Werror=maybe-uninitialized -Werror=delete-incomplete -Wnon-virtual-dtor -Wno-unused-parameter")
-set(CMAKE_CXX_FLAGS_RELEASE "-g1 -O3 -ffast-math -DNDEBUG")
 set(CMAKE_CXX_FLAGS_NATIVE "-g -O3 -ffast-math -DNDEBUG -march=native -mtune=native")
-set(CMAKE_Fortran_FLAGS_DEBUG   "-g -O0 -fcheck=all -Wall -Wextra -Wno-unused-dummy-argument")
-set(CMAKE_Fortran_FLAGS_RELEASE "-g1 -O3 -funsafe-math-optimizations -DNDEBUG")
 set(CMAKE_Fortran_FLAGS_NATIVE "-g -O3 -funsafe-math-optimizations -DNDEBUG -march=native -mtune=native")
 
-option(OPENMP "use OpenMP in build" OFF)
+# set(FETCHCONTENT_BASE_DIR ${CMAKE_SOURCE_DIR}/deps)
+include(FetchContent)
+FetchContent_Declare(
+    cfitsio
+    GIT_REPOSITORY https://github.com/HEASARC/cfitsio.git
+    GIT_TAG "cfitsio-4.6.3"
+    GIT_SHALLOW TRUE        # shallow clone (depth=1)
+    GIT_PROGRESS TRUE       # show progress
+)
+set(USE_CURL OFF CACHE BOOL "Disable CURL in CFITSIO")
+set(USE_PTHREADS ON CACHE BOOL "Enable pthreads in CFITSIO")
+set(TESTS OFF CACHE BOOL "Disable CFITSIO tests")
+set(UTILS OFF CACHE BOOL "Disable CFITSIO utils")
+FetchContent_MakeAvailable(cfitsio)
 
-# if(CMAKE_Fortran_COMPILER_ID STREQUAL "Flang" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-#     link_libraries(stdc++ m pthread)
-# endif()
+set(CMAKE_C_FLAGS_DEBUG   "-g -Og -Wall -Wextra -Wpedantic -Werror=return-type -Werror=uninitialized -Werror=sign-compare -Werror=maybe-uninitialized -Wno-unused-parameter")
+set(CMAKE_CXX_FLAGS_DEBUG   "-g -Og -Wall -Wextra -Wpedantic -Werror=return-type -Werror=uninitialized -Werror=sign-compare -Werror=maybe-uninitialized -Werror=delete-incomplete -Wnon-virtual-dtor -Wno-unused-parameter")
+set(CMAKE_Fortran_FLAGS_DEBUG   "-g -Og -fcheck=all -Wall -Wextra -Wno-unused-dummy-argument")
+
+set(CMAKE_C_FLAGS_RELEASE "-g1 -O3 -ffast-math -DNDEBUG")
+set(CMAKE_CXX_FLAGS_RELEASE "-g1 -O3 -ffast-math -DNDEBUG")
+set(CMAKE_Fortran_FLAGS_RELEASE "-g1 -O3 -funsafe-math-optimizations -DNDEBUG")
+
+option(OPENMP "use OpenMP in build" OFF)
 
 find_package(PkgConfig REQUIRED)
 find_package(OpenMP)
 find_package(PNG REQUIRED)
-pkg_check_modules(CFITSIO REQUIRED cfitsio)
 pkg_check_modules(READLINE REQUIRED readline)
 
-link_libraries(${CFITSIO_LIBRARIES})
+link_libraries(cfitsio)
 include_directories(${CFITSIO_INCLUDE_DIRS})
 add_compile_options(${CFITSIO_CFLAGS_OTHER})
 link_libraries(PNG::PNG)
@@ -128,3 +143,9 @@ add_executable(aq2 src_cpp/app/aq2cpp.cpp)
 target_link_libraries(aq2 PRIVATE ${READLINE_LIBRARIES})
 
 install(TARGETS aqfindstar aq2 RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+# CPack config
+set(CPACK_GENERATOR "TGZ")
+set(CPACK_PACKAGE_NAME "aquila")
+set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
+include(CPack)

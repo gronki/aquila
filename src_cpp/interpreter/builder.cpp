@@ -55,12 +55,13 @@ std::unique_ptr<ExecNode> build_exec_tree(
 
     if (const auto *ast_exp_node = dynamic_cast<const AstExpandNode *>(ast.get()))
     {
-        return std::make_unique<WrapperNode>(
-            build_exec_tree(ast_exp_node->expandable, ns, opdb),
-            ast_exp_node->kind == AstExpandNode::Kind::CONTRACTION
-                ? ExecNode::Modifier::CONTRACTION
-                : ExecNode::Modifier::EXPANSION,
-            ns);
+        throw std::logic_error("not implemented");
+        // return std::make_unique<WrapperNode>(
+        //     build_exec_tree(ast_exp_node->expandable, ns, opdb),
+        //     ast_exp_node->kind == AstExpandNode::Kind::CONTRACTION
+        //         ? ExecNode::Modifier::CONTRACTION
+        //         : ExecNode::Modifier::EXPANSION,
+        //     ns);
     }
 
     throw std::logic_error("Unreachable");

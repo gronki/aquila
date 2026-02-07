@@ -12,6 +12,8 @@
 namespace aquila::interpreter
 {
 
+#define VALUE_NAME(a)
+
 struct Value
 {
     Value() {}
@@ -162,6 +164,26 @@ struct SequenceValue : public Value
     }
 
     std::unique_ptr<Value> clone() const override { return as_ptr(*this); }
+
+    template <typename U>
+    std::vector<const U *> items_as() const
+    {
+        std::vector<const U *> casted(items.size());
+        for (size_t iarg = 0; iarg < items.size(); iarg++)
+        {
+            auto &casted_item = casted[iarg];
+            if (!items[iarg])
+            {
+                casted_item = nullptr;
+                continue;
+            }
+            casted_item = dynamic_cast<const U *>(items[iarg].get());
+            if (!casted_item)
+                throw std::runtime_error(std::string("Cast failed for item ")
+                    + std::to_string(iarg + 1) + " of the list.");
+        }
+        return casted;
+    }
 };
 
 } // namespace aquila::interpreter

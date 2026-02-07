@@ -1,6 +1,0 @@
-[submodule "deps/fastconv"]
-	path = deps/fastconv
-	url = https://github.com/gronki/fastconv.git
-[submodule "deps/task-dispatch"]
-	path = deps/task-dispatch
-	url = https://github.com/gronki/task-dispatch.git

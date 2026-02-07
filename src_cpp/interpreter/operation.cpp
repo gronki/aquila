@@ -132,11 +132,11 @@ std::vector<ArgMatch> match_arguments(
     bool expect_ellipsis = false;
     check_argspec_integrity(manifest, num_positionals, expect_ellipsis);
 
-    std::cout << "snum_positionals =" << num_positionals << std::endl;
+    std::cout << "num_positionals =" << num_positionals << std::endl;
 
     const size_t n_given = given_keys.size();
-    const size_t n_args = expect_ellipsis ? manifest.size() - 1 : manifest.size();
-    std::vector<ArgMatch> match(n_args);
+    const size_t n_spec = expect_ellipsis ? manifest.size() - 1 : manifest.size();
+    std::vector<ArgMatch> match(n_spec);
 
     std::map<std::string, size_t> argspec_key_positions;
 
@@ -175,7 +175,7 @@ std::vector<ArgMatch> match_arguments(
 
     for (size_t iarg = 0; iarg < given_keys.size(); iarg++)
     {
-        if (!expect_ellipsis && iarg >= n_args)
+        if (!expect_ellipsis && iarg >= n_spec)
         {
             throw std::runtime_error("argument list too long.");
         }
@@ -193,16 +193,16 @@ std::vector<ArgMatch> match_arguments(
 
         // positional arguments
 
-        while (iarg + iarg_skip < num_positionals && match[iarg + iarg_skip].matched)
+        while (iarg + iarg_skip < n_spec && match[iarg + iarg_skip].matched)
             iarg_skip++;
 
-        const size_t ipositional = iarg + iarg_skip;
+        const size_t iarg_dest = iarg + iarg_skip;
 
-        if (ipositional < num_positionals)
+        if (iarg_dest < n_spec)
         {
             // named
-            match[ipositional].matched = true;
-            match[ipositional].pos = iarg;
+            match[iarg_dest].matched = true;
+            match[iarg_dest].pos = iarg;
         }
         else if (expect_ellipsis)
         {
@@ -228,6 +228,8 @@ std::vector<ArgMatch> match_arguments(
     {
         match[imatch].sanitizer_factory =
             manifest[std::min(imatch, manifest.size() - 1)].convert;
+        match[imatch].sequence =
+            manifest[std::min(imatch, manifest.size() - 1)].sequence;
 
         if (match[imatch].matched)
             continue;
@@ -285,7 +287,11 @@ std::string Operation::signature_str() const
         {
             ss << ", ";
         }
-        ss << argspec.name;
+        if (argspec.sequence) {
+            ss << "[" << argspec.name << ", ...]";
+        } else {
+            ss << argspec.name;
+        }
         if (argspec.has_default())
         {
             auto def = argspec.build_default();

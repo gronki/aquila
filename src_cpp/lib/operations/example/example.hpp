@@ -13,9 +13,10 @@ struct ExampleOp : public Operation
     BIND_ARGS(&ExampleOp::run);
     ValuePtr run(const std::string &param) const;
 
-    ArgManifest arg_manifest() const override;
     std::string name() const override { return "example"; }
-    std::string description() const override { return ""; }
+
+    ArgManifest arg_manifest() const override;
+    std::string description() const override;
 };
 
 } // namespace aquila::ops

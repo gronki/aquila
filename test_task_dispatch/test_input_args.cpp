@@ -35,6 +35,26 @@ TEST(match1)
     REQUIRE(match[2].deftgt == nullptr);
 }
 
+TEST(match1a)
+{
+    std::vector<ArgSpec> manifest{
+        ArgSpec{.name = "a"},
+        ArgSpec{.name = "b", .default_int = 3},
+    };
+    auto match = match_arguments(manifest, {"", ""});
+
+    REQUIRE_EQ(match.size(), 2);
+
+    REQUIRE(match[0].matched);
+    REQUIRE_EQ(match[0].pos, 0);
+    REQUIRE(match[0].deftgt == nullptr);
+
+    REQUIRE(match[1].matched);
+    REQUIRE_EQ(match[1].pos, 1);
+    REQUIRE(match[1].deftgt == nullptr);
+
+}
+
 TEST(match2)
 {
     std::vector<ArgSpec> manifest{
@@ -134,18 +154,15 @@ TEST(match_ellip_1b)
     };
     auto match = match_arguments(manifest, {"", ""});
 
-    REQUIRE_EQ(match.size(), 3);
+    REQUIRE_EQ(match.size(), 2);
 
-    REQUIRE(!match[0].matched);
-    REQUIRE(match[0].deftgt != nullptr);
+    REQUIRE(match[0].matched);
+    REQUIRE_EQ(match[0].pos, 0);
+    REQUIRE(match[0].deftgt == nullptr);
 
     REQUIRE(match[1].matched);
-    REQUIRE_EQ(match[1].pos, 0);
+    REQUIRE_EQ(match[1].pos, 1);
     REQUIRE(match[1].deftgt == nullptr);
-
-    REQUIRE(match[2].matched);
-    REQUIRE_EQ(match[2].pos, 1);
-    REQUIRE(match[2].deftgt == nullptr);
 }
 
 TEST(match_ellip_3)
@@ -196,16 +213,6 @@ TEST(match_e2)
     };
 
     EXPECT_ERROR("follow", [&]() { match_arguments(manifest, {"a", ""}); });
-}
-TEST(match_e3)
-{
-    std::vector<ArgSpec> manifest{
-        ArgSpec{.name = "a"},
-        ArgSpec{.name = "b", .default_int = 3},
-        ArgSpec{.name = "c", .default_real = 6},
-    };
-
-    EXPECT_ERROR("many positional", [&]() { match_arguments(manifest, {"", "", "a"}); });
 }
 
 int main()

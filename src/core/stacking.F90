@@ -1,7 +1,9 @@
 module stacking
 
   use globals
-  use iso_c_binding
+  use aquila_c_binding
+  use, intrinsic :: iso_c_binding
+  use, intrinsic :: ieee_arithmetic, only: ieee_is_normal
   implicit none (type, external)
 
 contains
@@ -80,14 +82,15 @@ contains
     end do
 
     ! create mask which excludes edges and the brigtenst pixels
-    allocate(mask(sz(1), sz(2)))
-    mask(:,:) = .true.
+    allocate(mask(sz(1), sz(2)), source=.true.)
     call mask_margins(mask, margin)
     ! call outliers_2d_mask(imref, mask, 3.0_buf_k, 10, av, sd)
     mask(:,:) = mask .and. imref < (minval(imref, mask=mask) + maxval(imref, mask=mask)) / 2
+    mask(:,:) = mask .and. ieee_is_normal(imref)
 
     ! pack it into 1-d array
     np = count(mask)
+    if (np == 0) error stop "zero points for image normalization"
     allocate(xx(np), yy(np))
     xx(:) = pack(imref, mask)
     deallocate(imref)
@@ -129,6 +132,7 @@ contains
 
       call propagate_average_value_real(frames(1:nstack), 'EXPTIME', frame_out, .false.)
       call propagate_average_value_real(frames(1:nstack), 'CCD-TEMP', frame_out, .true.)
+
       frame_out%exptime = sum(frames(1:nstack)%exptime)
 
     end block write_extra_info_hdr
@@ -150,6 +154,38 @@ contains
   end subroutine stack_frames
 
   !----------------------------------------------------------------------------!
+  
+  subroutine stack_frames_c(frames, n_frames, method_, frame_out) &
+      bind(C, name="stack_frames")
+    use framehandling, only: image_frame_t
+
+    character(kind=c_char, len = 1), intent(in) :: method_(*)
+    character(len=32) :: method
+    real(buf_k), allocatable :: buffer(:,:,:)
+    integer(c_int), value :: n_frames
+    type(buffer_descriptor_t), intent(in) :: frames(n_frames)
+    type(buffer_descriptor_t), value :: frame_out
+    real(buf_k), pointer, contiguous :: buf_out(:,:)
+    real(real64) :: t1, t2
+    integer :: nstack
+
+    call c_f_string(method_, method)
+    call collect_dframes_into_buffer(frames, buffer)
+
+    if (frame_out%rows /= size(buffer, 1) .or. frame_out%cols /= size(buffer, 2)) &
+      error stop "incorrect size for output frame"
+
+    buf_out => from_descriptor(frame_out)
+
+    call cpu_time(t1)
+    call stack_buffer(method, buffer, buf_out)
+    call cpu_time(t2)
+
+    print perf_fmt, 'stack', t2 - t1
+
+  end subroutine stack_frames_c
+
+  !----------------------------------------------------------------------------!
 
   subroutine collect_frames_into_buffer(frames, buffer)
     use framehandling, only: image_frame_t
@@ -168,6 +204,35 @@ contains
           allocate(buffer(ni, nj, n_frames))
       end if
       buffer(:,:,i) = frames(i) % data
+    end do
+  end subroutine
+
+  !----------------------------------------------------------------------------!
+
+  subroutine collect_dframes_into_buffer(frames, buffer)
+    use framehandling, only: image_frame_t
+    use aquila_c_binding
+
+    type(buffer_descriptor_t), intent(in) :: frames(:)
+    real(buf_k), pointer, contiguous :: buf(:,:)
+    real(kind=buf_k), allocatable :: buffer(:,:,:)
+    integer :: n_frames, i, ni, nj
+
+    n_frames = size(frames)
+    do i = 1, n_frames
+      buf => from_descriptor(frames(i))
+      if (.not. associated(buf)) &
+        error stop "attempting to collect frames into buffer but one of them is empty"
+      if (i == 1) then
+          ni = size(buf, 1)
+          nj = size(buf, 2)
+          allocate(buffer(ni, nj, n_frames))
+      else
+        if (ni /= size(buf, 1) .or. nj /= size(buf, 2)) then
+          error stop "wrong size of a buffer"
+        end if
+      end if
+      buffer(:,:,i) = buf
     end do
   end subroutine
 

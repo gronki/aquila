@@ -16,12 +16,12 @@ jobs:
       fail-fast: false
       matrix:
         image:
-          - { name: "ubuntu:22.04", install: "apt-get update && apt-get install -y cmake g++ gfortran  libpng-dev libreadline-dev pkg-config" }
-          - { name: "ubuntu:24.04", install: "apt-get update && apt-get install -y cmake g++ gfortran  libpng-dev libreadline-dev pkg-config" }
-          - { name: "debian:trixie", install: "apt-get update && apt-get install -y cmake g++ gfortran  libpng-dev libreadline-dev pkg-config" }
-          - { name: "debian:bookworm", install: "apt-get update && apt-get install -y cmake g++ gfortran  libpng-dev libreadline-dev pkg-config" }
-          - { name: "fedora:42", install: "dnf install -y dnf install cmake g++ gfortran libpng-devel readline-devel pkg-config which" }
-          - { name: "fedora:43", install: "dnf install -y dnf install cmake g++ gfortran libpng-devel readline-devel pkg-config which" }
+          - { name: "ubuntu:22.04", install: "apt-get update && apt-get install -y cmake g++ gfortran  libpng-dev libreadline-dev pkg-config binutils" }
+          - { name: "ubuntu:24.04", install: "apt-get update && apt-get install -y cmake g++ gfortran  libpng-dev libreadline-dev pkg-config binutils" }
+          - { name: "debian:trixie", install: "apt-get update && apt-get install -y cmake g++ gfortran  libpng-dev libreadline-dev pkg-config binutils" }
+          - { name: "debian:bookworm", install: "apt-get update && apt-get install -y cmake g++ gfortran  libpng-dev libreadline-dev pkg-config binutils" }
+          - { name: "fedora:42", install: "dnf install -y dnf install cmake g++ gfortran libpng-devel readline-devel pkg-config which binutils" }
+          - { name: "fedora:43", install: "dnf install -y dnf install cmake g++ gfortran libpng-devel readline-devel pkg-config which binutils" }
     container:
       image: ${{ matrix.image.name }}
     name: Build on ${{ matrix.image.name }}
@@ -39,14 +39,16 @@ jobs:
           submodules: recursive
   
       - name: Download test data
-        run: scripts/get_test_data.sh
+        run: |
+          scripts/get_test_data.sh
+          echo "PATH=$PATH:/opt/aquila/bin" >> "$GITHUB_ENV"
 
       - name: Build and install the app
         run: |
           mkdir -p build
           rm -rf build/*
           cd build
-          cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Debug -DOPENMP=Off ..
+          cmake -DCMAKE_BUILD_TYPE=Debug -DOPENMP=Off ..
           cmake --build .
           cmake --install .
 
@@ -54,6 +56,14 @@ jobs:
         run: |
           cd build
           ctest . --output-on-failure
+
+      - name: Debug gh actions
+        run: |
+          ls -l /opt/aquila/bin/aq2
+          ldd /opt/aquila/bin/aq2
+          readelf -d /opt/aquila/bin/aq2 | grep -E 'RPATH|RUNPATH'
+          ldd /opt/aquila/lib*/aquila/libaquila.so
+          readelf -d /opt/aquila/lib*/aquila/libaquila.so | grep -E 'RPATH|RUNPATH'
 
       - name: Run integration test on example data
         run: |
@@ -68,7 +78,7 @@ jobs:
           mkdir -p build
           rm -rf build/*
           cd build
-          cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release -DOPENMP=Off ..
+          cmake -DCMAKE_BUILD_TYPE=Release -DOPENMP=Off ..
           cmake --build .
           cmake --install .
 
@@ -90,7 +100,7 @@ jobs:
           mkdir -p build
           rm -rf build/*
           cd build
-          cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release -DOPENMP=On ..
+          cmake -DCMAKE_BUILD_TYPE=Release -DOPENMP=On ..
           cmake --build .
           cmake --install .
 
@@ -148,7 +158,9 @@ jobs:
         run: sudo apt-get install -y  libpng-dev libgnutls30 libreadline-dev
 
       - name: Download test data
-        run: scripts/get_test_data.sh
+        run: |
+          scripts/get_test_data.sh
+          echo "PATH=$PATH:/opt/aquila/bin" >> "$GITHUB_ENV"
 
       - name: Build and install the app
         run: |
@@ -160,7 +172,7 @@ jobs:
           mkdir -p build
           rm -rf build/*
           cd build
-          cmake -DCMAKE_INSTALL_PREFIX=/usr ..
+          cmake ..
           cmake --build .
           sudo cmake --install .
   
@@ -189,7 +201,7 @@ jobs:
           mkdir -p build
           rm -rf build/*
           cd build
-          cmake -DCMAKE_INSTALL_PREFIX=/usr ..
+          cmake ..
           cmake --build .
           sudo cmake --install .
     
@@ -218,7 +230,7 @@ jobs:
           mkdir -p build
           rm -rf build/*
           cd build
-          cmake -DCMAKE_INSTALL_PREFIX=/usr -DOPENMP=On ..
+          cmake -DOPENMP=On ..
           cmake --build .
           sudo cmake --install .
     
@@ -286,7 +298,9 @@ jobs:
         run: sudo apt-get install -y  libpng-dev libgnutls30 libreadline-dev
 
       - name: Download test data
-        run: scripts/get_test_data.sh
+        run: |
+          scripts/get_test_data.sh
+          echo "PATH=$PATH:/opt/aquila/bin" >> "$GITHUB_ENV"
 
       - name: Build and install the app
         run: |
@@ -297,7 +311,7 @@ jobs:
           mkdir -p build
           rm -rf build/*
           cd build
-          cmake -DCMAKE_INSTALL_PREFIX=/usr ..
+          cmake ..
           cmake --build .
           sudo cmake --install .
 
@@ -323,7 +337,7 @@ jobs:
           mkdir -p build
           rm -rf build/*
           cd build
-          cmake -DCMAKE_INSTALL_PREFIX=/usr ..
+          cmake ..
           cmake --build .
           sudo cmake --install .
   
@@ -349,7 +363,7 @@ jobs:
           mkdir -p build
           rm -rf build/*
           cd build
-          cmake -DCMAKE_INSTALL_PREFIX=/usr -DOPENMP=On ..
+          cmake -DOPENMP=On ..
           cmake --build .
           sudo cmake --install .
 

@@ -10,7 +10,7 @@ enable_testing()
 include(GNUInstallDirs)
 set(CMAKE_INSTALL_PREFIX "/opt/aquila")
 set(CMAKE_INSTALL_LIBDIR ${CMAKE_INSTALL_LIBDIR}/aquila)
-set(CMAKE_INSTALL_RPATH "$ORIGIN/../${CMAKE_INSTALL_LIBDIR}")
+set(CMAKE_INSTALL_RPATH "$ORIGIN/../${CMAKE_INSTALL_LIBDIR}:$ORIGIN")
 
 set(CMAKE_C_FLAGS_NATIVE "-g -O3 -ffast-math -DNDEBUG -march=native -mtune=native")
 set(CMAKE_CXX_FLAGS_NATIVE "-g -O3 -ffast-math -DNDEBUG -march=native -mtune=native")

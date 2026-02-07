@@ -43,6 +43,7 @@ jobs:
       - name: Setup
         run: |
           echo "PACKAGE_NAME=aquila-${{ github.ref_name }}-${{ matrix.os }}-${{ matrix.osver }}-amd64" >> "$GITHUB_ENV"
+          echo "PATH=$PATH:/opt/aquila/bin" >> "$GITHUB_ENV"
           bash packaging/${{ matrix.os }}/setup.sh
 
       - name: Build and install the app
@@ -109,6 +110,7 @@ jobs:
         run: |
           apt update
           apt-get install -y ./aquila-${{ github.ref_name }}-${{ matrix.os }}-${{ matrix.osver }}-amd64.deb
+          echo "PATH=$PATH:/opt/aquila/bin" >> "$GITHUB_ENV"
   
       - name: Download test data
         run: scripts/get_test_data.sh

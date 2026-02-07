@@ -57,13 +57,13 @@ jobs:
           cd build
           ctest . --output-on-failure
 
-      - name: Debug gh actions
-        run: |
-          ls -l /opt/aquila/bin/aq2
-          ldd /opt/aquila/bin/aq2
-          readelf -d /opt/aquila/bin/aq2 | grep -E 'RPATH|RUNPATH'
-          ldd /opt/aquila/lib*/aquila/libaquila.so
-          readelf -d /opt/aquila/lib*/aquila/libaquila.so | grep -E 'RPATH|RUNPATH'
+      # - name: Debug gh actions
+      #   run: |
+      #     ls -l /opt/aquila/bin/aq2
+      #     ldd /opt/aquila/bin/aq2
+      #     readelf -d /opt/aquila/bin/aq2 | grep -E 'RPATH|RUNPATH'
+      #     ldd /opt/aquila/lib*/aquila/libaquila.so
+      #     readelf -d /opt/aquila/lib*/aquila/libaquila.so | grep -E 'RPATH|RUNPATH'
 
       - name: Run integration test on example data
         run: |

@@ -32,7 +32,7 @@ docker run -it aquila
 To build the program on Ubuntu/Debian, first install the dependencies:
 
 ```sh
-apt-get update && apt-get install -y --no-install-recommends cmake make gcc g++ gfortran libcfitsio-dev libpng-dev libreadline-dev pkg-config
+apt-get update && apt-get install -y --no-install-recommends cmake make gcc g++ gfortran libpng-dev libreadline-dev pkg-config
 ```
 
 Then, you can use the convenience script, which will build and install it in ``/opt/aquila``:

@@ -2,7 +2,7 @@ FROM debian:trixie AS builder
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-cmake make gcc g++ gfortran libcfitsio-dev libpng-dev libreadline-dev pkg-config
+cmake make gcc g++ gfortran libpng-dev libreadline-dev pkg-config
 
 WORKDIR /tmp/aquila
 COPY . .
@@ -14,7 +14,7 @@ FROM debian:trixie
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libcfitsio10t64 libpng16-16t64 libreadline8t64 libgomp1 libgfortran5
+    libpng16-16t64 libreadline8t64 libgomp1 libgfortran5
 
 COPY --from=builder /opt/aquila/ /opt/aquila/
 ENV PATH="${PATH}:/opt/aquila/bin"

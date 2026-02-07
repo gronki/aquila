@@ -16,12 +16,12 @@ jobs:
       fail-fast: false
       matrix:
         image:
-          - { name: "ubuntu:22.04", install: "apt-get update && apt-get install -y cmake g++ gfortran libcfitsio-dev libpng-dev libreadline-dev pkg-config" }
-          - { name: "ubuntu:24.04", install: "apt-get update && apt-get install -y cmake g++ gfortran libcfitsio-dev libpng-dev libreadline-dev pkg-config" }
-          - { name: "debian:trixie", install: "apt-get update && apt-get install -y cmake g++ gfortran libcfitsio-dev libpng-dev libreadline-dev pkg-config" }
-          - { name: "debian:bookworm", install: "apt-get update && apt-get install -y cmake g++ gfortran libcfitsio-dev libpng-dev libreadline-dev pkg-config" }
-          - { name: "fedora:42", install: "dnf install -y dnf install cmake g++ gfortran cfitsio-devel libpng-devel readline-devel pkg-config which" }
-          - { name: "fedora:43", install: "dnf install -y dnf install cmake g++ gfortran cfitsio-devel libpng-devel readline-devel pkg-config which" }
+          - { name: "ubuntu:22.04", install: "apt-get update && apt-get install -y cmake g++ gfortran  libpng-dev libreadline-dev pkg-config" }
+          - { name: "ubuntu:24.04", install: "apt-get update && apt-get install -y cmake g++ gfortran  libpng-dev libreadline-dev pkg-config" }
+          - { name: "debian:trixie", install: "apt-get update && apt-get install -y cmake g++ gfortran  libpng-dev libreadline-dev pkg-config" }
+          - { name: "debian:bookworm", install: "apt-get update && apt-get install -y cmake g++ gfortran  libpng-dev libreadline-dev pkg-config" }
+          - { name: "fedora:42", install: "dnf install -y dnf install cmake g++ gfortran libpng-devel readline-devel pkg-config which" }
+          - { name: "fedora:43", install: "dnf install -y dnf install cmake g++ gfortran libpng-devel readline-devel pkg-config which" }
     container:
       image: ${{ matrix.image.name }}
     name: Build on ${{ matrix.image.name }}
@@ -145,7 +145,7 @@ jobs:
             intel-oneapi-compiler-dpcpp-cpp-${{ matrix.oneapi-ver }} 
 
       - name: Install build dependencies
-        run: sudo apt-get install -y libcfitsio-dev libpng-dev libgnutls30 libreadline-dev
+        run: sudo apt-get install -y  libpng-dev libgnutls30 libreadline-dev
 
       - name: Download test data
         run: scripts/get_test_data.sh
@@ -283,7 +283,7 @@ jobs:
             libomp-${{ matrix.llvm-ver }}-dev
 
       - name: Install build dependencies
-        run: sudo apt-get install -y libcfitsio-dev libpng-dev libgnutls30 libreadline-dev
+        run: sudo apt-get install -y  libpng-dev libgnutls30 libreadline-dev
 
       - name: Download test data
         run: scripts/get_test_data.sh

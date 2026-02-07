@@ -1,1 +1,1 @@
-export DEPS="libcfitsio9, libpng16-16, libreadline8, libgomp1, libgfortran5"
+export DEPS="libpng16-16, libreadline8, libgomp1, libgfortran5"

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.20)
 
 project(aquila VERSION "260207" LANGUAGES Fortran C CXX)
 
@@ -57,6 +57,38 @@ link_libraries(cfitsio)
 include_directories(${CFITSIO_INCLUDE_DIRS})
 add_compile_options(${CFITSIO_CFLAGS_OTHER})
 link_libraries(PNG::PNG)
+
+
+option (BUNDLE "bundle libs" Off)
+
+function(bundle_lib libname)
+    file(COPY
+        ${SYS_LIBDIR}/${libname}
+        DESTINATION ${CMAKE_BINARY_DIR}/_bundle
+        USE_SOURCE_PERMISSIONS
+        FOLLOW_SYMLINK_CHAIN
+    )
+    set(dest "${CMAKE_BINARY_DIR}/_bundle/${libname}")
+    execute_process(
+        COMMAND patchelf --set-rpath \$ORIGIN "${dest}"
+    )
+endfunction()
+
+if (BUNDLE)
+    bundle_lib(libpng16.so.16)
+    bundle_lib(libreadline.so.8)
+    bundle_lib(libtinfo.so.6)
+    bundle_lib(libgfortran.so.5)
+    bundle_lib(libz.so.1)
+    bundle_lib(libgomp.so.1)
+    bundle_lib(libquadmath.so.0)
+
+    install(
+        DIRECTORY ${CMAKE_BINARY_DIR}/_bundle/
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        USE_SOURCE_PERMISSIONS
+    )
+endif()
 
 include_directories(src_cpp/global)
 
@@ -121,6 +153,7 @@ install(TARGETS aqtask_dispatch LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
 link_libraries(aqtask_dispatch)
 
 file(GLOB TEST_TASK_DISPATCH_SOURCES CONFIGURE_DEPENDS test_task_dispatch/*.cpp)
+
 foreach(test_src ${TEST_TASK_DISPATCH_SOURCES})
     get_filename_component(test_name ${test_src} NAME_WE)
     add_executable(${test_name} ${test_src})
@@ -137,6 +170,7 @@ add_library(aquila2 SHARED ${libaq2_SOURCES})
 target_include_directories(aquila2 PUBLIC 
     src_cpp/lib/buffer src_cpp/lib/io
     src_cpp/lib/operations src_cpp/lib/values src_cpp/lib/utils)
+target_link_options(aquila2 INTERFACE "-Wl,--no-as-needed")
 if (OPENMP)
     target_link_libraries(aquila2 PRIVATE OpenMP::OpenMP_CXX)
 endif ()

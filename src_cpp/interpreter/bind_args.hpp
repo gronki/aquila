@@ -42,54 +42,34 @@ inline const std::string *cast_value<std::string>(const Value *v)
     return cast_simple_value<std::string>(v);
 }
 
-template <typename... ArgsT>
-struct __args_binder;
-
-template <>
-struct __args_binder<>
+template <typename T>
+const T &__cast_one(const std::vector<const Value *> &args, std::size_t idx)
 {
-    template <typename OpT, typename... ArgsT, typename... CallArgsT>
-    static void run(const OpT *obj,
-        std::unique_ptr<Value> (OpT::*exec_fun)(const ArgsT &...) const,
-        const std::vector<const Value *> &args,
-        std::unique_ptr<Value> &result,
-        std::size_t idx,
-        const CallArgsT &...callargs)
+    if (!args[idx])
     {
-        result = (obj->*exec_fun)(callargs...);
+        throw std::runtime_error(
+            std::string("Nul input argument ") + std::to_string(idx + 1));
     }
-};
+    const T *tptr = cast_value<T>(args[idx]);
+    // cast worked
+    if (tptr)
+    {
+        return *tptr;
+    }
+    // wrong cast
+    throw std::runtime_error(std::string("Error trying to interpret "
+                                         "argument ")
+        + std::to_string(idx + 1));
+}
 
-template <typename T, typename... TT>
-struct __args_binder<T, TT...>
+template <typename OpT, typename... ArgsT, std::size_t... iarg>
+inline std::unique_ptr<Value> __bind_args(const OpT *obj,
+    std::unique_ptr<Value> (OpT::*exec_fun)(const ArgsT &...) const,
+    const std::vector<const Value *> &args,
+    std::index_sequence<iarg...>)
 {
-    using next = __args_binder<TT...>;
-    template <typename OpT, typename... ArgsT, typename... CallArgsT>
-    static void run(const OpT *obj,
-        std::unique_ptr<Value> (OpT::*exec_fun)(const ArgsT &...) const,
-        const std::vector<const Value *> &args,
-        std::unique_ptr<Value> &result,
-        std::size_t idx,
-        const CallArgsT &...callargs)
-    {
-        if (!args[idx])
-        {
-            throw std::runtime_error(
-                std::string("Nul input argument ") + std::to_string(idx + 1));
-        }
-        const T *tptr = cast_value<T>(args[idx]);
-        // cast worked
-        if (tptr)
-        {
-            next::run(obj, exec_fun, args, result, idx + 1, callargs..., *tptr);
-            return;
-        }
-        // wrong cast
-        throw std::runtime_error(std::string("Error trying to interpret "
-                                             "argument ")
-            + std::to_string(idx + 1));
-    }
-};
+    return (obj->*exec_fun)(__cast_one<ArgsT>(args, iarg)...);
+}
 
 template <typename OpT, typename... ArgsT>
 inline std::unique_ptr<Value> bind_args(const OpT *obj,
@@ -104,10 +84,7 @@ inline std::unique_ptr<Value> bind_args(const OpT *obj,
             + std::to_string(args.size()));
     }
 
-    __args_binder<ArgsT...> binder;
-    std::unique_ptr<Value> result = nullptr;
-    binder.run(obj, exec_fun, args, result, 0);
-    return result;
+    return __bind_args(obj, exec_fun, args, std::index_sequence_for<ArgsT...>{});
 }
 
 } // namespace aquila::interpreter

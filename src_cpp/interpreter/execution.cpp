@@ -55,7 +55,6 @@ static ValuePtr op_call_with_debug(
 
 static std::unique_ptr<Value> op_call_with_sequencing(const Operation &op,
     std::vector<const Value *> args,
-    // const std::vector<ExecNode::Modifier> &modifiers,
     const std::vector<ArgMatch> &match)
 {
 
@@ -70,7 +69,6 @@ static std::unique_ptr<Value> op_call_with_sequencing(const Operation &op,
     for (size_t iarg = 0; iarg < args.size(); iarg++)
     {
         const Value *arg = args[iarg];
-        // auto modifier = modifiers[iarg];
 
         // confusing, but if an argument is expected to be a sequence,
         // we consider it as a single value instead of expanding it

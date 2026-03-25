@@ -16,15 +16,8 @@ protected:
 
 public:
     ExecNode(Namespace &ns) : ns(ns) {}
-    // enum class Modifier
-    // {
-    //     NONE,
-    //     EXPANSION,
-    //     CONTRACTION
-    // };
     virtual const Value *yield() = 0;
     virtual void clean() {};
-    // virtual Modifier modifier() const { return Modifier::NONE; }
     virtual ~ExecNode() = default;
 };
 
@@ -73,24 +66,6 @@ public:
 
     const Value *yield() override { return value.get(); }
 };
-
-// class WrapperNode : public ExecNode
-// {
-// public:
-// private:
-//     std::unique_ptr<ExecNode> wrapped;
-//     ExecNode::Modifier kind;
-
-// public:
-//     WrapperNode(std::unique_ptr<ExecNode> wrapped, ExecNode::Modifier kind, Namespace &ns) :
-//         ExecNode(ns), wrapped(std::move(wrapped)), kind(kind)
-//     {
-//     }
-
-//     const Value *yield() override { return wrapped->yield(); }
-//     void clean() override { wrapped->clean(); }
-//     Modifier modifier() const override { return kind; }
-// };
 
 class OpNode : public ExecNode
 {

@@ -226,7 +226,7 @@ std::vector<ArgMatch> match_arguments(
 
     for (size_t imatch = 0; imatch < match.size(); imatch++)
     {
-        match[imatch].sanitizer_factory =
+        match[imatch].convert =
             manifest[std::min(imatch, manifest.size() - 1)].convert;
         match[imatch].sequence =
             manifest[std::min(imatch, manifest.size() - 1)].sequence;

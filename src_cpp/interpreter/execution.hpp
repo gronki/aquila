@@ -105,14 +105,6 @@ public:
         const std::vector<std::string> &keys,
         Namespace &ns) : ExecNode(ns), op(std::move(op)), args(std::move(args))
     {
-        // for (const auto &arg : this->args)
-        // {
-        //     if (arg->modifier() == ExecNode::Modifier::EXPANSION)
-        //         throw std::runtime_error(
-        //             std::string("Expansion (*) may not be used on operation ")
-        //             + this->op->name());
-        // }
-
         match = match_arguments(this->op->arg_manifest(), keys);
     }
 

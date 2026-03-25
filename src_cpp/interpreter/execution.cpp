@@ -8,7 +8,6 @@ namespace aquila::interpreter
 static std::vector<const Value *> make_ith_argument(
     const std::vector<const SequenceValue *> &sequence_args,
     const std::vector<const Value *> &args,
-    std::vector<Sanitizer> &sanitizers,
     std::int64_t iseq)
 {
     std::vector<const Value *> argvec(sequence_args.size());
@@ -18,8 +17,6 @@ static std::vector<const Value *> make_ith_argument(
         if (sequence_args[iarg])
         {
             const Value *ptr = sequence_args[iarg]->items[iseq].get();
-            if (sanitizers[iarg])
-                ptr = sanitizers[iarg]->conv(ptr);
             argvec[iarg] = ptr;
         }
         else
@@ -97,14 +94,15 @@ static std::unique_ptr<Value> op_call_with_sequencing(const Operation &op,
         }
     }
 
-    std::vector<Sanitizer> sanitizers_single(args.size());
+    std::vector<std::unique_ptr<Value>> sanitized(args.size());
     // sanitize non-sequence args
     for (size_t iarg = 0; iarg < args.size(); iarg++)
     {
-        if (sequence_args[iarg] || !match[iarg].sanitizer_factory)
+        if (sequence_args[iarg] || !match[iarg].convert)
             continue;
-        sanitizers_single[iarg] = match[iarg].sanitizer_factory();
-        args[iarg] = sanitizers_single[iarg]->conv(args[iarg]);
+        sanitized[iarg] = match[iarg].convert(*args[iarg]);
+        if (sanitized[iarg])
+            args[iarg] = sanitized[iarg].get();
     }
 
     if (sequence_len == SEQUENCE_NOT_FOUND)
@@ -116,16 +114,17 @@ static std::unique_ptr<Value> op_call_with_sequencing(const Operation &op,
 
     for (std::int64_t iseq = 0; iseq < sequence_len; iseq++)
     {
-        // warning: this may own memory needed in op_call
-        std::vector<Sanitizer> sanitizers_seq(args.size());
+        std::vector<std::unique_ptr<Value>> sanitized_seq(args.size());
+        auto ith_args = make_ith_argument(sequence_args, args, iseq);
         for (size_t iarg = 0; iarg < args.size(); iarg++)
         {
-            if (!sequence_args[iarg] || !match[iarg].sanitizer_factory)
+            if (!sequence_args[iarg] || !match[iarg].convert)
                 continue;
-            sanitizers_seq[iarg] = match[iarg].sanitizer_factory();
+            sanitized_seq[iarg] = match[iarg].convert(*ith_args[iarg]);
+            if (sanitized_seq[iarg])
+                ith_args[iarg] = sanitized_seq[iarg].get();
         }
-        result[iseq] = op_call_with_debug(
-            op, make_ith_argument(sequence_args, args, sanitizers_seq, iseq));
+        result[iseq] = op_call_with_debug(op, ith_args);
     }
 
     return std::make_unique<SequenceValue>(std::move(result));
@@ -160,44 +159,18 @@ const Value *OpNode::yield()
         return value.get();
 
     std::vector<const Value *> arg_results;
-    // std::vector<ExecNode::Modifier> modifiers;
-
     arg_results.reserve(args.size());
-    // modifiers.reserve(args.size());
 
     for (auto &arg : args)
     {
         auto result = arg->yield();
-        // if (arg->modifier() != ExecNode::Modifier::EXPANSION)
-        // {
-        //     modifiers.push_back(arg->modifier());
         arg_results.push_back(result);
-        //     continue;
-        // }
-        // // arg expansion
-        // if (!result)
-        //     throw std::runtime_error(
-        //         std::string("Operator * may not be used on null value."));
-
-        // auto result_seq = dynamic_cast<const SequenceValue *>(result);
-        // if (!result_seq)
-        //     throw std::runtime_error(
-        //         std::string("Operator * must be used to expand a sequence, not: ")
-        //         + result->str());
-
-        // for (const auto &item : result_seq->items)
-        // {
-        //     // modifiers.push_back(ExecNode::Modifier::NONE);
-        //     arg_results.push_back(item.get());
-        // }
     }
 
     try
     {
-        value = op_call_with_sequencing(*op,
-            build_ptrs_from_match(arg_results, match),
-            // build_from_match(modifiers, match, ExecNode::Modifier::NONE),
-            match);
+        value = op_call_with_sequencing(
+            *op, build_ptrs_from_match(arg_results, match), match);
     }
     catch (const std::runtime_error &e)
     {

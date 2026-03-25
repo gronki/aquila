@@ -46,7 +46,7 @@ struct ArgSpec
     bool sequence = false;
 
     std::string help = "";
-    SanitizerFactory convert = nullptr;
+    ConvertFun convert = nullptr;
 };
 
 using ArgManifest = std::vector<ArgSpec>;
@@ -76,7 +76,7 @@ struct ArgMatch
     bool matched = false;
     size_t pos;
     std::unique_ptr<Value> deftgt = nullptr;
-    SanitizerFactory sanitizer_factory = nullptr;
+    ConvertFun convert = nullptr;
     bool sequence = false;
 };
 

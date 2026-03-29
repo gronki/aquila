@@ -13,6 +13,7 @@ static constexpr TokenChar CHAIN_CALL_DELIM = _CHAIN_CALL_DELIM;
 static constexpr TokenChar KWARG_DELIM = ':';
 static constexpr TokenChar EXPAND_DELIM = '*';
 static constexpr TokenChar CONTRACT_DELIM = '>';
+static constexpr TokenChar COMMENT_START = '#';
 
 inline bool is_whitespace(TokenChar ch)
 {

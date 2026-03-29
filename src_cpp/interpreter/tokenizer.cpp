@@ -74,6 +74,9 @@ Token Tokenizer::next_token_()
     TokenChar ch = get_char();
     TokenLoc loc{start_line, pos};
 
+    if (ch == COMMENT_START)
+        return Token(TokenType::END, loc);
+
     if (is_ident_start(ch))
     {
         return Token(TokenType::IDENT, consume_until(is_ident), loc);

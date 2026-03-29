@@ -128,29 +128,6 @@ static std::unique_ptr<Value> op_call_with_sequencing(const Operation &op,
     return std::make_unique<SequenceValue>(std::move(result));
 }
 
-template <typename T>
-static std::vector<T> build_from_match(
-    const std::vector<T> &given, const std::vector<ArgMatch> &match, const T &defval)
-{
-    const size_t n_args = match.size();
-
-    std::vector<T> result(n_args);
-
-    for (size_t ispec = 0; ispec < n_args; ispec++)
-    {
-        if (match[ispec].matched)
-        {
-            auto iarg = match[ispec].pos;
-            result[ispec] = given[iarg];
-            continue;
-        }
-
-        result[ispec] = defval;
-    }
-
-    return result;
-}
-
 const Value *OpNode::yield()
 {
     if (value)

@@ -119,9 +119,6 @@ int main()
         std::string input(line);
         free(line);
 
-        if (input.empty())
-            continue;
-
         if (input == "quit" || input == "exit")
             break;
 
@@ -130,6 +127,8 @@ int main()
         try
         {
             auto exec = build_exectree_from_str(input, ns, global_op_db());
+            if (!exec)
+                continue;
             auto result = exec->yield();
 
             if (result)

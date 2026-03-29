@@ -10,6 +10,8 @@ std::unique_ptr<ExecNode> build_exectree_from_str(
     LazyTokenArray token_array(tokenizer);
     std::unique_ptr<AstNode> root;
     parse(token_array, root);
+    if (!root)
+        return nullptr;
     std::cout << *root << std::endl;
     return build_exec_tree(root, ns, opdb);
 }

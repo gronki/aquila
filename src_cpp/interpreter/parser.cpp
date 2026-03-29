@@ -223,6 +223,9 @@ static void parse_assignment(LazyTokenArray &tokens, std::unique_ptr<AstNode> &n
     Token maybe_lhs = tokens.peek_token(0);
     Token maybe_eq = tokens.peek_token(1);
 
+    if (maybe_lhs.type == TokenType::END)
+        return;
+
     if (maybe_lhs.type == TokenType::IDENT && maybe_eq == Token(TokenType::DELIM, '='))
     {
         std::unique_ptr<AstNode> rhs;

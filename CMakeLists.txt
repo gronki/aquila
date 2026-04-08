@@ -19,8 +19,8 @@ set(CMAKE_C_FLAGS_NATIVE       "-g1 -O2")
 set(CMAKE_CXX_FLAGS_NATIVE     "-g1 -O2")
 set(CMAKE_Fortran_FLAGS_NATIVE "-g1 -O2")
 
-# set(FETCHCONTENT_BASE_DIR ${CMAKE_SOURCE_DIR}/deps)
 include(FetchContent)
+
 FetchContent_Declare(
     cfitsio
     GIT_REPOSITORY https://github.com/HEASARC/cfitsio.git
@@ -28,11 +28,44 @@ FetchContent_Declare(
     GIT_SHALLOW TRUE        # shallow clone (depth=1)
     GIT_PROGRESS TRUE       # show progress
 )
+set(BUILD_SHARED_LIBS ON CACHE BOOL "shared CFITSIO" FORCE)
 set(USE_CURL OFF CACHE BOOL "Disable CURL in CFITSIO")
-set(USE_PTHREADS ON CACHE BOOL "Enable pthreads in CFITSIO")
+set(USE_PTHREADS ON CACHE BOOL "Enable pthreads in CFITSIO" FORCE)
 set(TESTS OFF CACHE BOOL "Disable CFITSIO tests")
 set(UTILS OFF CACHE BOOL "Disable CFITSIO utils")
 FetchContent_MakeAvailable(cfitsio)
+
+FetchContent_Declare(
+    cfitsio_static
+    GIT_REPOSITORY https://github.com/HEASARC/cfitsio.git
+    GIT_TAG "cfitsio-4.6.3"
+    GIT_SHALLOW TRUE        # shallow clone (depth=1)
+    GIT_PROGRESS TRUE       # show progress
+    PATCH_COMMAND bash ${CMAKE_SOURCE_DIR}/scripts/fix_fitsio.sh
+)
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "shared CFITSIO" FORCE)
+set(FITSIO_STATIC cfitsio_static)
+FetchContent_MakeAvailable(cfitsio_static)
+
+FetchContent_Declare(
+    libpng
+    GIT_REPOSITORY https://github.com/glennrp/libpng.git
+    GIT_TAG v1.6.56         # stable libpng release
+    GIT_SHALLOW TRUE        # shallow clone
+    GIT_PROGRESS TRUE
+)
+
+set(PNG_TESTS OFF CACHE BOOL "Disable libpng tests")
+set(PNG_SHARED ON CACHE BOOL "Build static library only" FORCE)
+set(PNG_STATIC ON CACHE BOOL "Enable static library" FORCE)
+set(PNG_TOOLS OFF CACHE BOOL "Disable building executables")
+set(PNG_INSTALL OFF CACHE BOOL "Disable install rules")
+
+FetchContent_MakeAvailable(libpng)
+
+# link_libraries(cfitsio)
+# include_directories(${CFITSIO_INCLUDE_DIRS})
+# add_compile_options(${CFITSIO_CFLAGS_OTHER})
 
 set(CMAKE_C_FLAGS_DEBUG   "-g -Og -Wall -Wextra -Wpedantic -Werror=return-type -Werror=uninitialized -Werror=sign-compare -Werror=maybe-uninitialized -Wno-unused-parameter")
 set(CMAKE_CXX_FLAGS_DEBUG   "-g -Og -Wall -Wextra -Wpedantic -Werror=return-type -Werror=uninitialized -Werror=sign-compare -Werror=maybe-uninitialized -Werror=delete-incomplete -Wnon-virtual-dtor -Wno-unused-parameter")
@@ -50,14 +83,7 @@ option(OPENMP "use OpenMP in build" OFF)
 
 find_package(PkgConfig REQUIRED)
 find_package(OpenMP)
-find_package(PNG REQUIRED)
 pkg_check_modules(READLINE REQUIRED readline)
-
-link_libraries(cfitsio)
-include_directories(${CFITSIO_INCLUDE_DIRS})
-add_compile_options(${CFITSIO_CFLAGS_OTHER})
-link_libraries(PNG::PNG)
-
 
 option (BUNDLE "bundle libs" Off)
 
@@ -115,24 +141,33 @@ file(GLOB_RECURSE AQUILA_SOURCES CONFIGURE_DEPENDS
 
 add_library(aquila SHARED ${AQUILA_SOURCES})
 target_include_directories(aquila PUBLIC src/c_binding)
+target_link_libraries(aquila PUBLIC png_shared cfitsio)
+
+add_library(aquila_static STATIC ${AQUILA_SOURCES})
+target_include_directories(aquila_static PUBLIC src/c_binding)
+target_link_libraries(aquila_static PUBLIC png_static cfitsio_static)
+
 if (OPENMP)
     target_link_libraries(aquila PRIVATE OpenMP::OpenMP_Fortran OpenMP::OpenMP_C)
+    target_link_libraries(aquila_static PRIVATE OpenMP::OpenMP_Fortran OpenMP::OpenMP_C)
 endif ()
-install(TARGETS aquila LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
-install(FILES src/c_binding/aquila.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
-link_libraries(aquila)
+install(TARGETS aquila aquila_static LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
+install(FILES src/c_binding/aquila.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
 file(GLOB TEST_CORE_SOURCES CONFIGURE_DEPENDS test_core/*.[fF]90)
 
 foreach(test_src ${TEST_CORE_SOURCES})
     get_filename_component(test_name ${test_src} NAME_WE)
     add_executable(${test_name} ${test_src})
+    target_link_libraries(${test_name} aquila_static)
     add_test(NAME ${test_name} COMMAND ${test_name})
 endforeach()
 
 add_executable(aqstack app/aqstack.f90)
+target_link_libraries(aqstack aquila_static)
 add_executable(aqlrgb app/aqlrgb.F90)
+target_link_libraries(aqlrgb aquila_static)
 
 if (OPENMP)
     target_link_libraries(aqstack PRIVATE OpenMP::OpenMP_Fortran)
@@ -145,18 +180,17 @@ file(GLOB_RECURSE aqscript_SOURCES CONFIGURE_DEPENDS
     src_cpp/interpreter/*.cpp
     src_cpp/interpreter/*.hpp
 )
-add_library(aqtask_dispatch SHARED ${aqscript_SOURCES})
+add_library(aqtask_dispatch STATIC ${aqscript_SOURCES})
 target_include_directories(aqtask_dispatch PUBLIC src_cpp/interpreter)
 
 install(TARGETS aqtask_dispatch LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
-
-link_libraries(aqtask_dispatch)
 
 file(GLOB TEST_TASK_DISPATCH_SOURCES CONFIGURE_DEPENDS test_task_dispatch/*.cpp)
 
 foreach(test_src ${TEST_TASK_DISPATCH_SOURCES})
     get_filename_component(test_name ${test_src} NAME_WE)
     add_executable(${test_name} ${test_src})
+    target_link_libraries(${test_name} PRIVATE aqtask_dispatch)
     add_test(NAME ${test_name} COMMAND ${test_name})
 endforeach()
 
@@ -166,22 +200,29 @@ file(GLOB_RECURSE libaq2_SOURCES CONFIGURE_DEPENDS
     src_cpp/lib/*.cpp
     src_cpp/lib/*.hpp
 )
-add_library(aquila2 SHARED ${libaq2_SOURCES})
+add_library(aquila2 STATIC ${libaq2_SOURCES})
 target_include_directories(aquila2 PUBLIC 
     src_cpp/lib/buffer src_cpp/lib/io
     src_cpp/lib/operations src_cpp/lib/values src_cpp/lib/utils)
-target_link_options(aquila2 INTERFACE "-Wl,--no-as-needed")
+
 if (OPENMP)
     target_link_libraries(aquila2 PRIVATE OpenMP::OpenMP_CXX)
 endif ()
 
+target_link_libraries(aquila2 PUBLIC aqtask_dispatch aquila_static)
+
+add_library(aquila2_whole INTERFACE)
+target_link_libraries(aquila2_whole INTERFACE
+    "-Wl,--whole-archive" aquila2 "-Wl,--no-whole-archive"
+)
+
 install(TARGETS aquila2 LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
-link_libraries(aquila2)
-
 add_executable(aqfindstar src_cpp/app/aqfindstar.cpp)
+target_link_libraries(aqfindstar aquila2_whole)
+
 add_executable(aq2 src_cpp/app/aq2cpp.cpp)
-target_link_libraries(aq2 PRIVATE ${READLINE_LIBRARIES})
+target_link_libraries(aq2 aquila2_whole ${READLINE_LIBRARIES})
 
 install(TARGETS aqfindstar aq2 RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 

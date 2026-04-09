@@ -28,24 +28,13 @@ FetchContent_Declare(
     GIT_SHALLOW TRUE        # shallow clone (depth=1)
     GIT_PROGRESS TRUE       # show progress
 )
-set(BUILD_SHARED_LIBS ON CACHE BOOL "shared CFITSIO" FORCE)
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "shared CFITSIO" FORCE)
 set(USE_CURL OFF CACHE BOOL "Disable CURL in CFITSIO")
 set(USE_PTHREADS ON CACHE BOOL "Enable pthreads in CFITSIO" FORCE)
 set(TESTS OFF CACHE BOOL "Disable CFITSIO tests")
 set(UTILS OFF CACHE BOOL "Disable CFITSIO utils")
 FetchContent_MakeAvailable(cfitsio)
-
-FetchContent_Declare(
-    cfitsio_static
-    GIT_REPOSITORY https://github.com/HEASARC/cfitsio.git
-    GIT_TAG "cfitsio-4.6.3"
-    GIT_SHALLOW TRUE        # shallow clone (depth=1)
-    GIT_PROGRESS TRUE       # show progress
-    PATCH_COMMAND bash ${CMAKE_SOURCE_DIR}/scripts/fix_fitsio.sh
-)
-set(BUILD_SHARED_LIBS OFF CACHE BOOL "shared CFITSIO" FORCE)
-set(FITSIO_STATIC cfitsio_static)
-FetchContent_MakeAvailable(cfitsio_static)
+target_compile_options(cfitsio PRIVATE -fPIC)
 
 FetchContent_Declare(
     libpng
@@ -56,16 +45,13 @@ FetchContent_Declare(
 )
 
 set(PNG_TESTS OFF CACHE BOOL "Disable libpng tests")
-set(PNG_SHARED ON CACHE BOOL "Build static library only" FORCE)
+set(PNG_SHARED OFF CACHE BOOL "Build static library only" FORCE)
 set(PNG_STATIC ON CACHE BOOL "Enable static library" FORCE)
 set(PNG_TOOLS OFF CACHE BOOL "Disable building executables")
 set(PNG_INSTALL OFF CACHE BOOL "Disable install rules")
 
 FetchContent_MakeAvailable(libpng)
-
-# link_libraries(cfitsio)
-# include_directories(${CFITSIO_INCLUDE_DIRS})
-# add_compile_options(${CFITSIO_CFLAGS_OTHER})
+target_compile_options(png_static PRIVATE -fPIC)
 
 set(CMAKE_C_FLAGS_DEBUG   "-g -Og -Wall -Wextra -Wpedantic -Werror=return-type -Werror=uninitialized -Werror=sign-compare -Werror=maybe-uninitialized -Wno-unused-parameter")
 set(CMAKE_CXX_FLAGS_DEBUG   "-g -Og -Wall -Wextra -Wpedantic -Werror=return-type -Werror=uninitialized -Werror=sign-compare -Werror=maybe-uninitialized -Werror=delete-incomplete -Wnon-virtual-dtor -Wno-unused-parameter")
@@ -101,7 +87,6 @@ function(bundle_lib libname)
 endfunction()
 
 if (BUNDLE)
-    bundle_lib(libpng16.so.16)
     bundle_lib(libreadline.so.8)
     bundle_lib(libtinfo.so.6)
     bundle_lib(libgfortran.so.5)
@@ -141,11 +126,11 @@ file(GLOB_RECURSE AQUILA_SOURCES CONFIGURE_DEPENDS
 
 add_library(aquila SHARED ${AQUILA_SOURCES})
 target_include_directories(aquila PUBLIC src/c_binding)
-target_link_libraries(aquila PUBLIC png_shared cfitsio)
+target_link_libraries(aquila PUBLIC png_static cfitsio)
 
 add_library(aquila_static STATIC ${AQUILA_SOURCES})
 target_include_directories(aquila_static PUBLIC src/c_binding)
-target_link_libraries(aquila_static PUBLIC png_static cfitsio_static)
+target_link_libraries(aquila_static PUBLIC png_static cfitsio)
 
 if (OPENMP)
     target_link_libraries(aquila PRIVATE OpenMP::OpenMP_Fortran OpenMP::OpenMP_C)

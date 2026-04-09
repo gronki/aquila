@@ -20,7 +20,7 @@ set(CMAKE_CXX_FLAGS_NATIVE     "-g1 -O2")
 set(CMAKE_Fortran_FLAGS_NATIVE "-g1 -O2")
 
 include(FetchContent)
-
+set(FETCHCONTENT_BASE_DIR "${CMAKE_SOURCE_DIR}/deps")
 FetchContent_Declare(
     cfitsio
     GIT_REPOSITORY https://github.com/HEASARC/cfitsio.git
@@ -150,9 +150,9 @@ foreach(test_src ${TEST_CORE_SOURCES})
 endforeach()
 
 add_executable(aqstack app/aqstack.f90)
-target_link_libraries(aqstack aquila_static)
+target_link_libraries(aqstack PRIVATE aquila_static)
 add_executable(aqlrgb app/aqlrgb.F90)
-target_link_libraries(aqlrgb aquila_static)
+target_link_libraries(aqlrgb PRIVATE aquila_static)
 
 if (OPENMP)
     target_link_libraries(aqstack PRIVATE OpenMP::OpenMP_Fortran)
@@ -194,20 +194,21 @@ if (OPENMP)
     target_link_libraries(aquila2 PRIVATE OpenMP::OpenMP_CXX)
 endif ()
 
-target_link_libraries(aquila2 PUBLIC aqtask_dispatch aquila_static)
-
-add_library(aquila2_whole INTERFACE)
-target_link_libraries(aquila2_whole INTERFACE
-    "-Wl,--whole-archive" aquila2 "-Wl,--no-whole-archive"
-)
+target_link_libraries(aquila2 PUBLIC 
+    aqtask_dispatch
+    aquila_static)
 
 install(TARGETS aquila2 LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
 add_executable(aqfindstar src_cpp/app/aqfindstar.cpp)
-target_link_libraries(aqfindstar aquila2_whole)
+target_link_libraries(aqfindstar aquila2)
 
 add_executable(aq2 src_cpp/app/aq2cpp.cpp)
-target_link_libraries(aq2 aquila2_whole ${READLINE_LIBRARIES})
+target_link_libraries(aq2 
+    "-Wl,--whole-archive" 
+    aquila2 aqtask_dispatch 
+    "-Wl,--no-whole-archive" 
+    ${READLINE_LIBRARIES})
 
 install(TARGETS aqfindstar aq2 RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 

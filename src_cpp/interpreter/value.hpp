@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstdint>
-#include <format>
 #include <iostream>
 #include <memory>
 #include <ostream>
@@ -52,7 +51,7 @@ struct value_type
             os.put(tid.tname[i]);
         }
 
-        os << std::format(" [{:x}]", tid.hsh);
+        os << tid.hsh;
         return os;
     }
     constexpr bool operator==(const value_type &other) const

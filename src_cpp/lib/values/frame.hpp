@@ -25,7 +25,7 @@ struct BufferValue : public ValueBase<BufferValue>
 namespace aquila::convert
 {
 
-inline auto loadFrame(const StrValue &s)
+inline std::unique_ptr<Value> loadFrame(const StrValue &s)
 {
     return std::make_unique<values::BufferValue>(read_fits(s.value));
 }

@@ -25,9 +25,9 @@ ArgManifest ConvolOp::arg_manifest() const
 {
     return ArgManifest{
         ArgSpec{.name = "buffer",
-            .convert = guard<values::BufferValue, StrValue>(convert::loadFrame)},
+            .convert = guard(convert::loadFrame)},
         ArgSpec{.name = "kernel",
-            .convert = guard<values::BufferValue, StrValue>(convert::loadFrame)},
+            .convert = guard(convert::loadFrame)},
         ArgSpec{.name = "edges", .default_str = "e", .help = "How to fix edges?"},
     };
 }

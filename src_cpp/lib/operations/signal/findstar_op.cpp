@@ -35,7 +35,7 @@ ArgManifest FindstarOp::arg_manifest() const
 {
     return ArgManifest{
         ArgSpec{.name = "frame",
-            .convert = guard<values::BufferValue, StrValue>(convert::loadFrame)},
+            .convert = guard(convert::loadFrame)},
         ArgSpec{.name = "limit", .default_int = 256},
         ArgSpec{.name = "blur_radius", .default_real = 2.3},
         ArgSpec{.name = "margin", .default_int = 32},

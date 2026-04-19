@@ -10,47 +10,37 @@ namespace aquila::interpreter
 {
 
 template <typename T>
-inline const T *cast_value(const Value *v)
-{
-    return value_cast<T>(v);
-}
-
+struct __handler {
+    static const T* cast(const Value* v) { return value_cast<T>(v); }
+    static const value_type& type_name() { return T::type_name; }
+};
+template <>
+struct __handler<Value> {
+    static constexpr value_type any_value{"any"};
+    static const Value* cast(const Value* v) { return v; }
+    static const value_type& type_name() { return any_value; }
+};
 template <typename T>
-inline const T *cast_simple_value(const Value *v)
-{
-    const SimpleValue<T> *sv = value_cast<SimpleValue<T>>(v);
-    if (!sv)
-        return nullptr;
-    return &sv->value;
-}
-
-template <>
-inline const double *cast_value<double>(const Value *v)
-{
-    return cast_simple_value<double>(v);
-}
-
-template <>
-inline const std::int64_t *cast_value<std::int64_t>(const Value *v)
-{
-    return cast_simple_value<std::int64_t>(v);
-}
-
-template <>
-inline const std::string *cast_value<std::string>(const Value *v)
-{
-    return cast_simple_value<std::string>(v);
-}
+struct __sv_handler {
+    static const T* cast(const Value* v) { 
+            auto sv = value_cast<SimpleValue<T>>(v); 
+            return sv ? &sv->value : nullptr; }
+    static const value_type& type_name() { return SimpleValue<T>::type_name; }
+};
+template<> struct __handler<double> : __sv_handler<double> {};
+template<> struct __handler<std::int64_t> : __sv_handler<std::int64_t> {};
+template<> struct __handler<std::string> : __sv_handler<std::string> {};
 
 template <typename T>
 const T &__cast_one(const std::vector<const Value *> &args, std::size_t idx)
 {
-    if (!args[idx])
+    const Value* arg = args[idx];
+    if (!arg)
     {
         throw std::runtime_error(
             std::string("Nul input argument ") + std::to_string(idx + 1));
     }
-    const T *tptr = cast_value<T>(args[idx]);
+    const T *tptr = __handler<T>::cast(arg);
     // cast worked
     if (tptr)
     {
@@ -59,7 +49,8 @@ const T &__cast_one(const std::vector<const Value *> &args, std::size_t idx)
     // wrong cast
     throw std::runtime_error(std::string("Error trying to interpret "
                                          "argument ")
-        + std::to_string(idx + 1));
+        + std::to_string(idx + 1) + ": expected " + __handler<T>::type_name().str()
+        + " but got " + arg->get_type().str() + " " + arg->str());
 }
 
 template <typename OpT, typename... ArgsT, std::size_t... iarg>

@@ -37,21 +37,19 @@ struct value_type
             }
         }
     }
-    friend std::ostream &operator<<(std::ostream &os, const value_type &tid)
-    {
+    std::string str() const {
         std::size_t len_trim;
         for (len_trim = TYPE_N_LEN; len_trim > 0; len_trim--)
         {
-            if (tid.tname[len_trim - 1] != ' ')
+            if (tname[len_trim - 1] != ' ')
                 break;
         }
-
-        for (std::size_t i = 0; i < len_trim; i++)
-        {
-            os.put(tid.tname[i]);
-        }
-
-        os << tid.hsh;
+        std::string trimmed(tname, tname + len_trim);
+        return trimmed;
+    }
+    friend std::ostream &operator<<(std::ostream &os, const value_type &tid)
+    {
+        os << tid.str() << " (" << std::hex <<  tid.hsh << std::dec << ")";
         return os;
     }
     constexpr bool operator==(const value_type &other) const

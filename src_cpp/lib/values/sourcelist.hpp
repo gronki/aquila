@@ -1,23 +1,25 @@
 #pragma once
 
 #include "../../../src/c_binding/aquila.h"
-#include "../buffer/buffer.hpp"
 #include "../../interpreter/value.hpp"
+#include "../buffer/buffer.hpp"
 
 namespace aquila::values
 {
 
-struct SourceListValue : public interpreter::CompoundValue
+struct SourceListValue : public ValueBase<SourceListValue>
 {
+    TYPE_NAME("starlist");
+
     std::vector<source_t> sources;
     std::int64_t nx, ny;
     SourceListValue(std::vector<source_t> sources, std::int64_t nx, std::int64_t ny) :
         sources(std::move(sources)), nx(nx), ny(ny)
     {
     }
-    std::unique_ptr<Value> clone() const
+    SourceListValue(const SourceListValue &other) :
+        sources(other.sources), nx(other.nx), ny(other.ny)
     {
-        return std::make_unique<SourceListValue>(sources, nx, ny);
     }
     void write(std::ostream &os) const
     {

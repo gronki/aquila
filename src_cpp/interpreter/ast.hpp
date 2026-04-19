@@ -29,10 +29,10 @@ struct AstNode
 
 struct AstValueNode : public AstNode
 {
-    std::unique_ptr<AnySimpleValue> constant;
+    std::unique_ptr<Value> constant;
 
-    AstValueNode(std::unique_ptr<AnySimpleValue> constant, const TokenLoc &loc) :
-        constant(std::move(constant)), AstNode(loc)
+    AstValueNode(std::unique_ptr<Value> constant, const TokenLoc &loc) :
+        AstNode(loc), constant(std::move(constant))
     {
     }
 
@@ -62,7 +62,7 @@ struct AstExpandNode : public AstNode
     Kind kind;
 
     AstExpandNode(std::unique_ptr<AstNode> expandable, Kind kind, const TokenLoc &loc) :
-        expandable(std::move(expandable)), kind(kind), AstNode(loc)
+        AstNode(loc), expandable(std::move(expandable)), kind(kind)
     {
     }
 
@@ -85,7 +85,7 @@ struct AstRefNode : public AstNode
     std::string refname;
 
     AstRefNode(const std::string &refname, const TokenLoc &loc) :
-        refname(refname), AstNode(loc)
+        AstNode(loc), refname(refname)
     {
     }
 
@@ -109,7 +109,7 @@ struct AstAssignmentNode : public AstNode
 
     AstAssignmentNode(
         const std::string &lhs, std::unique_ptr<AstNode> rhs, const TokenLoc &loc) :
-        lhs(lhs), rhs(std::move(rhs)), AstNode(loc)
+        AstNode(loc), lhs(lhs), rhs(std::move(rhs))
     {
     }
 
@@ -133,7 +133,7 @@ struct AstOpNode : public AstNode
     std::vector<OpArg> args;
 
     AstOpNode(const std::string &opname, std::vector<OpArg> args, const TokenLoc &loc) :
-        opname(opname), args(std::move(args)), AstNode(loc)
+        AstNode(loc), opname(opname), args(std::move(args))
     {
     }
 

@@ -4,6 +4,7 @@
 #include <string>
 #include <tuple>
 #include <vector>
+#include "../src_cpp/interpreter/value.hpp"
 
 class __TestBase
 {
@@ -17,6 +18,19 @@ public:
 };
 
 static std::vector<__TestBase *> __tests;
+
+template <typename T>
+inline bool operator==(const aquila::Value& v, const aquila::interpreter::SimpleValue<T>& sv) {
+    const auto& vt = aquila::value_cast<aquila::interpreter::SimpleValue<T>>(v);
+    return vt == sv;
+}
+
+template <typename T>
+inline bool operator==(const aquila::interpreter::SimpleValue<T>& sv, const aquila::Value& v) {
+    const auto& vt = aquila::value_cast<aquila::interpreter::SimpleValue<T>>(v);
+    return vt == sv;
+}
+
 
 #define UNREACHABLE(messg)                                                             \
     do                                                                                 \

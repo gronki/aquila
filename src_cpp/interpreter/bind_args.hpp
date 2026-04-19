@@ -12,13 +12,13 @@ namespace aquila::interpreter
 template <typename T>
 inline const T *cast_value(const Value *v)
 {
-    return dynamic_cast<const T *>(v);
+    return value_cast<T>(v);
 }
 
 template <typename T>
 inline const T *cast_simple_value(const Value *v)
 {
-    const SimpleValue<T> *sv = dynamic_cast<const SimpleValue<T> *>(v);
+    const SimpleValue<T> *sv = value_cast<SimpleValue<T>>(v);
     if (!sv)
         return nullptr;
     return &sv->value;

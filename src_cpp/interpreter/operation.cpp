@@ -134,7 +134,6 @@ std::vector<ArgMatch> match_arguments(
 
     std::cout << "num_positionals =" << num_positionals << std::endl;
 
-    const size_t n_given = given_keys.size();
     const size_t n_spec = expect_ellipsis ? manifest.size() - 1 : manifest.size();
     std::vector<ArgMatch> match(n_spec);
 

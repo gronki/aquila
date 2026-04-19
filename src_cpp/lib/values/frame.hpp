@@ -1,20 +1,19 @@
 #pragma once
 
-#include "../buffer/buffer.hpp"
 #include "../../interpreter/value.hpp"
+#include "../buffer/buffer.hpp"
 #include "../io/fits.hpp"
 
 namespace aquila::values
 {
 
-struct BufferValue : public interpreter::CompoundValue
+struct BufferValue : public ValueBase<BufferValue>
 {
+    TYPE_NAME("frame");
+
     Buffer<real_buf_t> buffer;
     BufferValue(Buffer<real_buf_t> v) : buffer(std::move(v)) {}
-    std::unique_ptr<Value> clone() const
-    {
-        return std::make_unique<BufferValue>(buffer);
-    }
+    BufferValue(const BufferValue &other) : buffer(other.buffer) {}
     void write(std::ostream &os) const
     {
         os << "(frame " << buffer.cols() << "x" << buffer.rows() << ")";

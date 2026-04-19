@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../../buffer/buffer.hpp"
 #include "../../../interpreter/value.hpp"
+#include "../../buffer/buffer.hpp"
 #include "../../values/frame.hpp"
 
 namespace aquila::ops
@@ -10,12 +10,12 @@ namespace aquila::ops
 template <typename F, typename... Args>
 ValuePtr apply_unitary(const Value &a, F op, Args &&...args)
 {
-    auto scalar_ptr = dynamic_cast<const RealValue *>(&a);
+    auto scalar_ptr = value_cast<RealValue>(&a);
 
     if (scalar_ptr)
         return std::make_unique<RealValue>(op(scalar_ptr->value), args...);
 
-    auto buffer_ptr = dynamic_cast<const values::BufferValue *>(&a);
+    auto buffer_ptr = value_cast<values::BufferValue>(&a);
 
     if (buffer_ptr)
         return std::make_unique<values::BufferValue>(
@@ -28,10 +28,10 @@ ValuePtr apply_unitary(const Value &a, F op, Args &&...args)
 template <typename F, typename... Args>
 ValuePtr apply_binary(const Value &a, const Value &b, F op, Args &&...args)
 {
-    auto scalar_ptr_a = dynamic_cast<const RealValue *>(&a);
-    auto buffer_ptr_a = dynamic_cast<const values::BufferValue *>(&a);
-    auto scalar_ptr_b = dynamic_cast<const RealValue *>(&b);
-    auto buffer_ptr_b = dynamic_cast<const values::BufferValue *>(&b);
+    auto scalar_ptr_a = value_cast<RealValue>(&a);
+    auto buffer_ptr_a = value_cast<values::BufferValue>(&a);
+    auto scalar_ptr_b = value_cast<RealValue>(&b);
+    auto buffer_ptr_b = value_cast<values::BufferValue>(&b);
 
     if (scalar_ptr_a && scalar_ptr_b)
         return std::make_unique<RealValue>(
@@ -77,12 +77,12 @@ ValuePtr apply_binary(const Value &a, const Value &b, F op, Args &&...args)
 template <typename F, typename... Args>
 ValuePtr apply_tertiary(const Value &a, const Value &b, const Value &c, F op, Args &&...args)
 {
-    auto scalar_ptr_a = dynamic_cast<const RealValue *>(&a);
-    auto buffer_ptr_a = dynamic_cast<const values::BufferValue *>(&a);
-    auto scalar_ptr_b = dynamic_cast<const RealValue *>(&b);
-    auto buffer_ptr_b = dynamic_cast<const values::BufferValue *>(&b);
-    auto scalar_ptr_c = dynamic_cast<const RealValue *>(&c);
-    auto buffer_ptr_c = dynamic_cast<const values::BufferValue *>(&c);
+    auto scalar_ptr_a = value_cast<RealValue>(&a);
+    auto buffer_ptr_a = value_cast<values::BufferValue>(&a);
+    auto scalar_ptr_b = value_cast<RealValue>(&b);
+    auto buffer_ptr_b = value_cast<values::BufferValue>(&b);
+    auto scalar_ptr_c = value_cast<RealValue>(&c);
+    auto buffer_ptr_c = value_cast<values::BufferValue>(&c);
 
     // 3x scalar
 

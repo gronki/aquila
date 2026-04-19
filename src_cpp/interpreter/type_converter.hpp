@@ -18,7 +18,7 @@ void __maybe_convert(const Value &v,
     if (dst)
         return;
     // wet try casting to the input type. TODO: sth faster than dynamic_cast
-    const auto *typed_ptr = dynamic_cast<const PossibleValT *>(&v);
+    const auto *typed_ptr = value_cast<PossibleValT>(&v);
     if (!typed_ptr)
         return;
     // if cast successful, run the converter.
@@ -30,8 +30,8 @@ ConvertFun guard(ConvFuncsT... conv_funcs)
 {
     return [conv_funcs...](const Value &v) -> std::unique_ptr<Value>
     {
-        // if (dynamic_cast<const DestT *>(&v))
-        //     return nullptr;
+        if (value_cast<DestT>(&v))
+            return nullptr;
         std::unique_ptr<Value> dst;
         (__maybe_convert<DestT, PossibleValT>(v, conv_funcs, dst), ...);
         return dst;

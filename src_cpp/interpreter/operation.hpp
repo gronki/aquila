@@ -15,19 +15,6 @@
 namespace aquila::interpreter
 {
 
-template <typename T>
-inline bool is_type(const Value &val)
-{
-    return dynamic_cast<T *>(val) != nullptr;
-}
-
-inline bool default_check(const Value &val)
-{
-    return true;
-}
-
-using CheckFunction = bool (*)(const Value &);
-
 struct ArgSpec
 {
     std::string name;
@@ -41,7 +28,6 @@ struct ArgSpec
 
     bool has_default() const;
     std::unique_ptr<Value> build_default() const;
-    // CheckFunction check = default_check;
 
     bool sequence = false;
 

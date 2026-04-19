@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <format>
 #include <iostream>
 #include <memory>
 #include <ostream>
@@ -12,7 +13,57 @@
 namespace aquila::interpreter
 {
 
-#define VALUE_NAME(a)
+static const size_t TYPE_N_LEN = 24;
+struct value_type
+{
+    char tname[TYPE_N_LEN];
+    std::uint64_t hsh = 1469598103934665603ull;
+    constexpr value_type(const char *name)
+    {
+        for (std::size_t i = 0; i < TYPE_N_LEN; i++)
+        {
+            tname[i] = ' ';
+        }
+        for (std::size_t i = 0; i < TYPE_N_LEN; i++)
+        {
+            if (name[i])
+            {
+                tname[i] = name[i];
+                hsh ^= name[i];
+                hsh *= 1099511628211ull;
+            }
+            else
+            {
+                break;
+            }
+        }
+    }
+    friend std::ostream &operator<<(std::ostream &os, const value_type &tid)
+    {
+        std::size_t len_trim;
+        for (len_trim = TYPE_N_LEN; len_trim > 0; len_trim--)
+        {
+            if (tid.tname[len_trim - 1] != ' ')
+                break;
+        }
+
+        for (std::size_t i = 0; i < len_trim; i++)
+        {
+            os.put(tid.tname[i]);
+        }
+
+        os << std::format(" [{:x}]", tid.hsh);
+        return os;
+    }
+    constexpr bool operator==(const value_type &other) const
+    {
+        return hsh == other.hsh;
+    }
+    constexpr bool operator!=(const value_type &other) const
+    {
+        return hsh != other.hsh;
+    }
+};
 
 struct Value
 {
@@ -22,12 +73,31 @@ struct Value
     virtual std::unique_ptr<Value> clone() const = 0;
     virtual void write(std::ostream &os) const = 0;
     virtual ~Value() = default;
+    virtual const value_type &get_type() const = 0;
     std::string str() const
     {
         std::stringstream ss;
         write(ss);
         return ss.str();
     }
+};
+
+#define TYPE_NAME(x)                                                                   \
+    constexpr static aquila::interpreter::value_type type_name                         \
+    {                                                                                  \
+        x                                                                              \
+    }
+template <typename T>
+struct ValueBase : public Value
+{
+
+    std::unique_ptr<Value> clone() const override
+    {
+        const T *tptr = static_cast<const T *>(this);
+        return std::make_unique<T>(*tptr);
+    }
+
+    const value_type &get_type() const override { return T::type_name; }
 };
 
 inline std::ostream &operator<<(std::ostream &os, const Value &v)
@@ -37,44 +107,94 @@ inline std::ostream &operator<<(std::ostream &os, const Value &v)
 }
 
 template <typename T>
-std::unique_ptr<T> as_ptr(T &&t)
+inline T *value_cast(Value *other)
 {
-    return std::make_unique<T>(std::move(t));
+    if (!other)
+        return nullptr;
+    if (other->get_type() != T::type_name)
+        return nullptr;
+    return static_cast<T *>(other);
+}
+
+template <>
+inline Value *value_cast<Value>(Value *other)
+{
+    return other;
 }
 
 template <typename T>
-std::unique_ptr<T> as_ptr(const T &t)
+inline const T *value_cast(const Value *other)
 {
-    return std::make_unique<T>(t);
+    if (!other)
+        return nullptr;
+    if (other->get_type() != T::type_name)
+        return nullptr;
+    return static_cast<const T *>(other);
 }
 
-struct AnySimpleValue : public Value
+template <>
+inline const Value *value_cast<Value>(const Value *other)
 {
-public:
-    virtual bool dyn_compare(const AnySimpleValue &other) const = 0;
+    return other;
+}
 
-    friend bool operator==(const AnySimpleValue &a, const AnySimpleValue &b)
-    {
-        return a.dyn_compare(b);
-    }
+template <typename T>
+inline T &value_cast(Value &other)
+{
+    if (other.get_type() != T::type_name)
+        throw std::bad_cast{};
+    return static_cast<T &>(other);
+}
 
-    friend bool operator!=(const AnySimpleValue &a, const AnySimpleValue &b)
-    {
-        return !a.dyn_compare(b);
-    }
+template <>
+inline Value &value_cast<Value>(Value &other)
+{
+    return other;
+}
+
+template <typename T>
+inline const T &value_cast(const Value &other)
+{
+    if (other.get_type() != T::type_name)
+        throw std::bad_cast{};
+    return static_cast<const T &>(other);
+}
+
+template <>
+inline const Value &value_cast<Value>(const Value &other)
+{
+    return other;
+}
+
+template <typename T>
+struct __simpleval_typenames;
+template <>
+struct __simpleval_typenames<std::string>
+{
+    TYPE_NAME("str");
+};
+template <>
+struct __simpleval_typenames<std::int64_t>
+{
+    TYPE_NAME("int");
+};
+template <>
+struct __simpleval_typenames<double>
+{
+    TYPE_NAME("float");
 };
 
 template <typename T>
-struct SimpleValue : public AnySimpleValue
+struct SimpleValue : public ValueBase<SimpleValue<T>>
 {
+    constexpr static value_type type_name{__simpleval_typenames<T>::type_name};
+
     T value;
 
     SimpleValue(const T &value) : value(value) {}
     SimpleValue(const SimpleValue<T> &value) : value(value.value) {}
 
     void write(std::ostream &os) const override { os << value; }
-
-    std::unique_ptr<Value> clone() const override { return as_ptr(*this); }
 
     friend bool operator==(const SimpleValue<T> &a, const SimpleValue<T> &b)
     {
@@ -84,22 +204,6 @@ struct SimpleValue : public AnySimpleValue
     friend bool operator!=(const SimpleValue<T> &a, const SimpleValue<T> &b)
     {
         return a.value != b.value;
-    }
-
-    virtual bool dyn_compare(const AnySimpleValue &other) const override
-    {
-        std::cout << "Dynamic compare called between " << *this << " and " << other
-                  << std::endl;
-        try
-        {
-            const SimpleValue<T> &other_sametype =
-                dynamic_cast<const SimpleValue<T> &>(other);
-            return other_sametype.value == value;
-        }
-        catch (const std::bad_cast &ex)
-        {
-            return false;
-        }
     }
 };
 
@@ -113,15 +217,13 @@ using IntValue = SimpleValue<std::int64_t>;
 using RealValue = SimpleValue<double>;
 using StrValue = SimpleValue<std::string>;
 
-struct CompoundValue : public Value
-{
-};
-
 using ValuePtr = std::unique_ptr<Value>;
 using ValuePtrVector = std::vector<ValuePtr>;
 
-struct SequenceValue : public Value
+struct SequenceValue : public ValueBase<SequenceValue>
 {
+    TYPE_NAME("sequence");
+
     ValuePtrVector items;
 
     SequenceValue(const SequenceValue &other)
@@ -163,8 +265,6 @@ struct SequenceValue : public Value
         os << "]";
     }
 
-    std::unique_ptr<Value> clone() const override { return as_ptr(*this); }
-
     template <typename U>
     std::vector<const U *> items_as() const
     {
@@ -177,7 +277,7 @@ struct SequenceValue : public Value
                 casted_item = nullptr;
                 continue;
             }
-            casted_item = dynamic_cast<const U *>(items[iarg].get());
+            casted_item = value_cast<U>(items[iarg].get());
             if (!casted_item)
                 throw std::runtime_error(std::string("Cast failed for item ")
                     + std::to_string(iarg + 1) + " of the list.");
@@ -196,6 +296,9 @@ using interpreter::RealValue;
 using interpreter::SequenceValue;
 using interpreter::StrValue;
 using interpreter::Value;
+using interpreter::value_cast;
+using interpreter::value_type;
+using interpreter::ValueBase;
 using interpreter::ValuePtr;
 
 } // namespace aquila

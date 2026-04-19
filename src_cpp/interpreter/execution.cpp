@@ -73,7 +73,7 @@ static std::unique_ptr<Value> op_call_with_sequencing(const Operation &op,
         // confusing, but if an argument is expected to be a sequence,
         // we consider it as a single value instead of expanding it
         auto seq_arg = match[iarg].sequence ? nullptr
-                                            : dynamic_cast<const SequenceValue *>(arg);
+                                            : value_cast<SequenceValue>(arg);
 
         sequence_args[iarg] = seq_arg;
 

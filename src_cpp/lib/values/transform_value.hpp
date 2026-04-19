@@ -6,17 +6,16 @@
 namespace aquila::values
 {
 
-struct TransformValue : public interpreter::CompoundValue
+struct TransformValue : public ValueBase<TransformValue>
 {
+    TYPE_NAME("transform");
     transform_t transform;
     TransformValue(const transform_t &transform) : transform(transform) {}
-    std::unique_ptr<Value> clone() const
-    {
-        return std::make_unique<TransformValue>(transform);
-    }
+    TransformValue(const TransformValue &other) : transform(other.transform) {}
     void write(std::ostream &os) const
     {
-        os << "transform(" << std::string(transform.type, 7) << " r= " << transform.scale << " v= ";
+        os << "transform(" << std::string(transform.type, 7)
+           << " r= " << transform.scale << " v= ";
         for (int i = 0; i < std::min(transform.npar, TRANSFORM_MAX_PAR); i++)
         {
             if (i > 0)

@@ -53,11 +53,6 @@ std::unique_ptr<ExecNode> build_exec_tree(
             ast_assgn_node->lhs, build_exec_tree(ast_assgn_node->rhs, ns, opdb), ns);
     }
 
-    if (const auto *ast_exp_node = dynamic_cast<const AstExpandNode *>(ast.get()))
-    {
-        throw std::logic_error("not implemented");
-    }
-
     throw std::logic_error("Unreachable");
     return nullptr;
 }

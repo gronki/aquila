@@ -17,6 +17,13 @@ std::unique_ptr<Value> AddOp::call(const std::vector<const Value *> &args) const
     return result;
 }
 
+ArgManifest AddOp::arg_manifest() const
+{
+    return ArgManifest{
+        ArgSpec{.name = "...", .convert=guard(convert::loadFrame)},
+    };
+}
+
 REGISTER(SubOp);
 std::unique_ptr<Value> SubOp::call(const std::vector<const Value *> &args) const
 {
@@ -31,8 +38,8 @@ std::unique_ptr<Value> SubOp::call(const std::vector<const Value *> &args) const
 ArgManifest SubOp::arg_manifest() const
 {
     return ArgManifest{
-        ArgSpec{.name = "x"},
-        ArgSpec{.name = "..."},
+        ArgSpec{.name = "x", .convert=guard(convert::loadFrame)},
+        ArgSpec{.name = "...", .convert=guard(convert::loadFrame)},
     };
 }
 
@@ -45,6 +52,13 @@ std::unique_ptr<Value> MulOp::call(const std::vector<const Value *> &args) const
         result = apply_binary(*result, *arg, [](auto a, auto b) { return a * b; });
     }
     return result;
+}
+
+ArgManifest MulOp::arg_manifest() const
+{
+    return ArgManifest{
+        ArgSpec{.name = "...", .convert=guard(convert::loadFrame)},
+    };
 }
 
 REGISTER(MixOp);
@@ -63,6 +77,13 @@ std::unique_ptr<Value> MixOp::call(const std::vector<const Value *> &args) const
             [](auto a, auto b, auto c) { return a + b * c; });
     }
     return result;
+}
+
+ArgManifest MixOp::arg_manifest() const
+{
+    return ArgManifest{
+        ArgSpec{.name = "...", .convert=guard(convert::loadFrame)},
+    };
 }
 
 REGISTER(LrgbOp);
@@ -94,8 +115,8 @@ std::unique_ptr<Value> LrgbOp::call(const std::vector<const Value *> &args) cons
 ArgManifest LrgbOp::arg_manifest() const
 {
     return ArgManifest{
-        ArgSpec{.name = "L", .help = "luminance"},
-        ArgSpec{.name = "...", .help = "color channels"},
+        ArgSpec{.name = "L", .help = "luminance", .convert=guard(convert::loadFrame)},
+        ArgSpec{.name = "...", .help = "color channels", .convert=guard(convert::loadFrame)},
     };
 }
 
@@ -108,8 +129,8 @@ ValuePtr PowOp::run(const Value &a, const Value &b) const
 ArgManifest PowOp::arg_manifest() const
 {
     return ArgManifest{
-        ArgSpec{.name = "base"},
-        ArgSpec{.name = "exponent"},
+        ArgSpec{.name = "base", .convert=guard(convert::loadFrame)},
+        ArgSpec{.name = "exponent", .convert=guard(convert::loadFrame)},
     };
 }
 
@@ -121,7 +142,7 @@ ValuePtr SqrtOp::run(const Value &x) const
 
 ArgManifest SqrtOp::arg_manifest() const
 {
-    return ArgManifest{ArgSpec{.name = "x"}};
+    return ArgManifest{ArgSpec{.name = "x", .convert=guard(convert::loadFrame)}};
 }
 
 } // namespace aquila::ops

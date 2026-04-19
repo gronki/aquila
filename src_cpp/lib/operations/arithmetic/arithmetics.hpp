@@ -9,6 +9,7 @@ namespace aquila::ops
 struct AddOp : public Operation
 {
     std::unique_ptr<Value> call(const std::vector<const Value *> &) const;
+    ArgManifest arg_manifest() const override;
     std::string name() const { return "add"; }
     std::string description() const override
     {
@@ -31,6 +32,7 @@ struct SubOp : public Operation
 struct MulOp : public Operation
 {
     std::unique_ptr<Value> call(const std::vector<const Value *> &) const;
+    ArgManifest arg_manifest() const override;
     std::string name() const { return "mul"; }
     std::string description() const override
     {
@@ -41,6 +43,7 @@ struct MulOp : public Operation
 struct MixOp : public Operation
 {
     std::unique_ptr<Value> call(const std::vector<const Value *> &) const;
+    ArgManifest arg_manifest() const override;
     std::string name() const { return "mix"; }
     std::string description() const override
     {

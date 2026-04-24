@@ -19,30 +19,13 @@ set(CMAKE_C_FLAGS_NATIVE       "-g1 -O2")
 set(CMAKE_CXX_FLAGS_NATIVE     "-g1 -O2")
 set(CMAKE_Fortran_FLAGS_NATIVE "-g1 -O2")
 
-include(FetchContent)
-set(FETCHCONTENT_BASE_DIR "${CMAKE_SOURCE_DIR}/deps")
-FetchContent_Declare(
-    cfitsio
-    GIT_REPOSITORY https://github.com/HEASARC/cfitsio.git
-    GIT_TAG "cfitsio-4.6.3"
-    GIT_SHALLOW TRUE        # shallow clone (depth=1)
-    GIT_PROGRESS TRUE       # show progress
-)
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "shared CFITSIO" FORCE)
 set(USE_CURL OFF CACHE BOOL "Disable CURL in CFITSIO")
 set(USE_PTHREADS ON CACHE BOOL "Enable pthreads in CFITSIO" FORCE)
 set(TESTS OFF CACHE BOOL "Disable CFITSIO tests")
 set(UTILS OFF CACHE BOOL "Disable CFITSIO utils")
-FetchContent_MakeAvailable(cfitsio)
+add_subdirectory(deps/cfitsio)
 target_compile_options(cfitsio PRIVATE -fPIC)
-
-FetchContent_Declare(
-    libpng
-    GIT_REPOSITORY https://github.com/glennrp/libpng.git
-    GIT_TAG v1.6.56         # stable libpng release
-    GIT_SHALLOW TRUE        # shallow clone
-    GIT_PROGRESS TRUE
-)
 
 set(PNG_TESTS OFF CACHE BOOL "Disable libpng tests")
 set(PNG_SHARED OFF CACHE BOOL "Build static library only" FORCE)
@@ -50,7 +33,7 @@ set(PNG_STATIC ON CACHE BOOL "Enable static library" FORCE)
 set(PNG_TOOLS OFF CACHE BOOL "Disable building executables")
 set(PNG_INSTALL OFF CACHE BOOL "Disable install rules")
 
-FetchContent_MakeAvailable(libpng)
+add_subdirectory(deps/libpng)
 target_compile_options(png_static PRIVATE -fPIC)
 
 set(CMAKE_C_FLAGS_DEBUG   "-g -Og -Wall -Wextra -Wpedantic -Werror=return-type -Werror=uninitialized -Werror=sign-compare -Werror=maybe-uninitialized -Wno-unused-parameter")

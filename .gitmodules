@@ -1,0 +1,6 @@
+[submodule "deps/cfitsio"]
+	path = deps/cfitsio
+	url = https://github.com/HEASARC/cfitsio.git
+[submodule "deps/libpng"]
+	path = deps/libpng
+	url = https://github.com/glennrp/libpng.git

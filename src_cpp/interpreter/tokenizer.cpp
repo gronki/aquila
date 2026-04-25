@@ -57,11 +57,17 @@ Token Tokenizer::next_token()
 {
     Token t = next_token_();
 
-#ifndef NDEBUG
+#ifdef PARSER_DEBUG
     std::cout << t << std::endl;
 #endif
 
     return t;
+}
+
+TokenLoc Tokenizer::update_end(TokenLoc loc) const
+{
+    loc.end = pos;
+    return loc;
 }
 
 Token Tokenizer::next_token_()
@@ -72,14 +78,15 @@ Token Tokenizer::next_token_()
         return Token(TokenType::END, TokenLoc(start_line, pos));
 
     TokenChar ch = get_char();
-    TokenLoc loc{start_line, pos};
+    TokenLoc loc{start_line, pos, pos};
 
     if (ch == COMMENT_START)
         return Token(TokenType::END, loc);
 
     if (is_ident_start(ch))
     {
-        return Token(TokenType::IDENT, consume_until(is_ident), loc);
+        TokenStr ident_val = consume_until(is_ident);
+        return Token(TokenType::IDENT, ident_val, update_end(loc));
     }
 
     if (is_str_literal_start(ch))
@@ -96,18 +103,19 @@ Token Tokenizer::next_token_()
 
         next_char();
 
-        return Token(TokenType::STR_LITERAL, content, loc);
+        return Token(TokenType::STR_LITERAL, content, update_end(loc));
     }
 
     if (is_number_start(ch))
     {
-        return Token(TokenType::NUM_LITERAL, consume_until(is_number_body), loc);
+        TokenStr number_body = consume_until(is_number_body);
+        return Token(TokenType::NUM_LITERAL, number_body, update_end(loc));
     }
 
     if (is_delim(ch))
     {
         next_char();
-        return Token(TokenType::DELIM, TokenStr(1, ch), loc);
+        return Token(TokenType::DELIM, TokenStr(1, ch), update_end(loc));
     }
 
     throw_error("error tokenizing expression");
@@ -140,6 +148,14 @@ Token LazyTokenArray::peek_token(std::int64_t offset)
         tokens.push_back(tokenizer.next_token());
     }
     return tokens[offset + pos];
+}
+
+const std::vector<Token> &LazyTokenArray::all_tokens()
+{
+    std ::int64_t off = 0;
+    while (peek_token(off++).type != TokenType::END)
+        ;
+    return tokens;
 }
 
 Token LazyTokenArray::cur_token()

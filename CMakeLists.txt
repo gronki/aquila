@@ -36,6 +36,8 @@ set(PNG_INSTALL OFF CACHE BOOL "Disable install rules")
 add_subdirectory(deps/libpng)
 target_compile_options(png_static PRIVATE -fPIC)
 
+add_subdirectory(deps/FTXUI)
+
 set(CMAKE_C_FLAGS_DEBUG   "-g -Og -Wall -Wextra -Wpedantic -Werror=return-type -Werror=uninitialized -Werror=sign-compare -Werror=maybe-uninitialized -Wno-unused-parameter")
 set(CMAKE_CXX_FLAGS_DEBUG   "-g -Og -Wall -Wextra -Wpedantic -Werror=return-type -Werror=uninitialized -Werror=sign-compare -Werror=maybe-uninitialized -Werror=delete-incomplete -Wnon-virtual-dtor -Wno-unused-parameter")
 set(CMAKE_Fortran_FLAGS_DEBUG   "-g -Og -fcheck=all -Wall -Wextra -Wno-unused-dummy-argument")
@@ -124,7 +126,6 @@ install(TARGETS aquila aquila_static LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
 install(FILES src/c_binding/aquila.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
 file(GLOB TEST_CORE_SOURCES CONFIGURE_DEPENDS test_core/*.[fF]90)
-
 foreach(test_src ${TEST_CORE_SOURCES})
     get_filename_component(test_name ${test_src} NAME_WE)
     add_executable(${test_name} ${test_src})
@@ -154,7 +155,6 @@ target_include_directories(aqtask_dispatch PUBLIC src_cpp/interpreter)
 install(TARGETS aqtask_dispatch LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
 file(GLOB TEST_TASK_DISPATCH_SOURCES CONFIGURE_DEPENDS test_task_dispatch/*.cpp)
-
 foreach(test_src ${TEST_TASK_DISPATCH_SOURCES})
     get_filename_component(test_name ${test_src} NAME_WE)
     add_executable(${test_name} ${test_src})
@@ -177,9 +177,7 @@ if (OPENMP)
     target_link_libraries(aquila2 PRIVATE OpenMP::OpenMP_CXX)
 endif ()
 
-target_link_libraries(aquila2 PUBLIC 
-    aqtask_dispatch
-    aquila_static)
+target_link_libraries(aquila2 PUBLIC aquila_static)
 
 install(TARGETS aquila2 LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
@@ -188,12 +186,19 @@ target_link_libraries(aqfindstar aquila2)
 
 add_executable(aq2 src_cpp/app/aq2cpp.cpp)
 target_link_libraries(aq2 
-    "-Wl,--whole-archive" 
-    aquila2 aqtask_dispatch 
-    "-Wl,--no-whole-archive" 
+    "-Wl,--whole-archive" aquila2 aqtask_dispatch "-Wl,--no-whole-archive" 
     ${READLINE_LIBRARIES})
 
 install(TARGETS aqfindstar aq2 RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+file(GLOB TEST_UI_SOURCES CONFIGURE_DEPENDS test_ui/*.cpp)
+foreach(test_src ${TEST_UI_SOURCES})
+    get_filename_component(test_name ${test_src} NAME_WE)
+    add_executable(${test_name} ${test_src})
+    target_link_libraries(${test_name} PRIVATE 
+        "-Wl,--whole-archive" aquila2 aqtask_dispatch "-Wl,--no-whole-archive" 
+       screen dom component)
+endforeach()
 
 # CPack config
 set(CPACK_GENERATOR "TGZ")

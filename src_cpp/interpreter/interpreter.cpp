@@ -6,8 +6,7 @@ namespace aquila::interpreter
 std::unique_ptr<ExecNode> build_exectree_from_str(
     const std::string &code, Namespace &ns, const OpDatabase &opdb)
 {
-    Tokenizer tokenizer(code);
-    LazyTokenArray token_array(tokenizer);
+    LazyTokenArray token_array(Tokenizer{code});
     std::unique_ptr<AstNode> root;
     parse(token_array, root);
     if (!root)

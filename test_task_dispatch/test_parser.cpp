@@ -10,7 +10,7 @@ using namespace aquila::interpreter;
 TEST(ident)
 {
     Tokenizer tokenizer("a");
-    LazyTokenArray token_array(tokenizer);
+    LazyTokenArray token_array(std::move(tokenizer));
     std::unique_ptr<AstNode> root;
     parse(token_array, root);
     std::cout << *root << std::endl;
@@ -23,7 +23,7 @@ TEST(ident)
 TEST(num_lit)
 {
     Tokenizer tokenizer("3.0");
-    LazyTokenArray token_array(tokenizer);
+    LazyTokenArray token_array(std::move(tokenizer));
     std::unique_ptr<AstNode> root;
     parse(token_array, root);
     std::cout << *root << std::endl;
@@ -38,7 +38,7 @@ TEST(str_lit)
 {
 
     Tokenizer tokenizer("   \"3.0\"");
-    LazyTokenArray token_array(tokenizer);
+    LazyTokenArray token_array(std::move(tokenizer));
     std::unique_ptr<AstNode> root;
     parse(token_array, root);
     std::cout << *root << std::endl;
@@ -52,7 +52,7 @@ TEST(str_lit)
 TEST(call)
 {
     Tokenizer tokenizer(" ff (3.0, \"a\"  )");
-    LazyTokenArray token_array(tokenizer);
+    LazyTokenArray token_array(std::move(tokenizer));
     std::unique_ptr<AstNode> root;
     parse(token_array, root);
     std::cout << *root << std::endl;
@@ -79,7 +79,7 @@ TEST(call_chain_keys)
         + " gg(key: \"a\"  )");
     // equivalent to: gg(ff(3.0), key: "a")
 
-    LazyTokenArray token_array(tokenizer);
+    LazyTokenArray token_array(std::move(tokenizer));
     std::unique_ptr<AstNode> root;
     parse(token_array, root);
     std::cout << *root << std::endl;
@@ -114,7 +114,7 @@ TEST(call_chain_keys_2)
         + "gg(key: \"a\"  ) )");
     // equivalent to: gg(ff(3.0), key: "a")
 
-    LazyTokenArray token_array(tokenizer);
+    LazyTokenArray token_array(std::move(tokenizer));
     std::unique_ptr<AstNode> root;
     parse(token_array, root);
     std::cout << *root << std::endl;
@@ -156,7 +156,7 @@ TEST(call_chain_keys_3)
         + " gg( ) " + std::string(1, CHAIN_CALL_DELIM) + "t()");
     // equivalent to: gg(ff(3.0), key: "a")
 
-    LazyTokenArray token_array(tokenizer);
+    LazyTokenArray token_array(std::move(tokenizer));
     std::unique_ptr<AstNode> root;
     parse(token_array, root);
     std::cout << *root << std::endl;
@@ -193,7 +193,7 @@ TEST(call_param)
         std::string(" ff (3.0) ") + std::string(1, CHAIN_CALL_DELIM) + " gg");
     // equivalent to: gg(ff(3.0), key: "a")
 
-    LazyTokenArray token_array(tokenizer);
+    LazyTokenArray token_array(std::move(tokenizer));
     std::unique_ptr<AstNode> root;
     parse(token_array, root);
     std::cout << *root << std::endl;
@@ -229,7 +229,7 @@ TEST(print)
         + "prop, v: "
           "z) "
         + std::string(1, CHAIN_CALL_DELIM) + " ababa(33, xyz, 13) ");
-    LazyTokenArray token_array(tokenizer);
+    LazyTokenArray token_array(std::move(tokenizer));
     std::unique_ptr<AstNode> root;
     parse(token_array, root);
     std::cout << *root << std::endl;

@@ -1,12 +1,11 @@
 #pragma once
 
-
+#include <cstdint>
 #include <iostream>
 #include <map>
 #include <ostream>
 #include <sstream>
 #include <stdexcept>
-#include <cstdint>
 
 namespace aquila::interpreter
 {
@@ -24,26 +23,29 @@ enum class TokenType
 };
 
 const std::map<TokenType, std::string> TOKENTYPE_STR{{TokenType::DELIM, "DELIM"},
-                                                     {TokenType::IDENT, "IDENT"},
-                                                     {TokenType::NUM_LITERAL, "NUM_LITERAL"},
-                                                     {TokenType::STR_LITERAL, "STR_LITERAL"},
-                                                     {TokenType::END, "END"}};
+    {TokenType::IDENT, "IDENT"},
+    {TokenType::NUM_LITERAL, "NUM_LITERAL"},
+    {TokenType::STR_LITERAL, "STR_LITERAL"},
+    {TokenType::END, "END"}};
 
 struct TokenLoc
 {
     TokenLoc() {}
-    TokenLoc(std::int64_t line, std::int64_t offset) : line(line), offset(offset) {}
-    std::int64_t line = -1, offset = -1;
+    TokenLoc(std::int64_t line, std::int64_t offset, std::int64_t end = -1) :
+        line(line), offset(offset), end(end)
+    {
+    }
+    std::int64_t line = -1, offset = -1, end = -1;
 };
 
 struct Token
 {
-    Token(TokenType type, const TokenStr &value, const TokenLoc &loc = {})
-        : type(type), value(value), loc(loc)
+    Token(TokenType type, const TokenStr &value, const TokenLoc &loc = {}) :
+        type(type), value(value), loc(loc)
     {
     }
-    Token(TokenType type, TokenChar value, const TokenLoc &loc = {})
-        : type(type), value(TokenStr(1, value)), loc(loc)
+    Token(TokenType type, TokenChar value, const TokenLoc &loc = {}) :
+        type(type), value(TokenStr(1, value)), loc(loc)
     {
     }
     Token(TokenType type, const TokenLoc &loc = {}) : type(type), loc(loc)
@@ -72,7 +74,9 @@ struct Token
         if (t.type != TokenType::END)
         {
             os << "Token(" << TOKENTYPE_STR.at(t.type) << ", value=\"" << t.value
-               << "\", pos=" << t.loc.offset << ")";
+               << "\", pos=" << t.loc.offset
+               << (t.loc.end == -1 ? "" : std::string(":") + std::to_string(t.loc.end))
+               << ")";
         }
         else
         {

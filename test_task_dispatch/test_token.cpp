@@ -63,8 +63,7 @@ TEST(into_array)
 
 TEST(lazy)
 {
-    Tokenizer tokenizer("f(x)");
-    LazyTokenArray array(tokenizer);
+    LazyTokenArray array(Tokenizer{"f(x)"});
     REQUIRE_EQ(array.cur_token(), Token(TokenType::IDENT, "f"));
     REQUIRE_EQ(array.next_token(), Token(TokenType::DELIM, "("));
     REQUIRE_EQ(array.peek_token(2), Token(TokenType::DELIM, ")"));

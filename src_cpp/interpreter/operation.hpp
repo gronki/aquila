@@ -99,14 +99,7 @@ struct register_op_global
 
         auto [it, inserted] = aquila::interpreter::global_op_db().insert({name, entry});
 
-        if (inserted)
-        {
-            std::cout << "* " << entry.signature_str;
-            if (!entry.description.empty())
-                std::cout << " -- " << entry.description;
-            std::cout << std::endl;
-        }
-        else
+        if (!inserted)
         {
             std::cerr << "Duplicate operation definition: " << name << ", skipping..."
                       << std::endl;

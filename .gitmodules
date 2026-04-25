@@ -4,3 +4,6 @@
 [submodule "deps/libpng"]
 	path = deps/libpng
 	url = https://github.com/glennrp/libpng.git
+[submodule "deps/FTXUI"]
+	path = deps/FTXUI
+	url = https://github.com/ArthurSonzogni/FTXUI.git

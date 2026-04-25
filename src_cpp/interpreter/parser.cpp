@@ -229,7 +229,11 @@ static void parse_assignment(LazyTokenArray &tokens, std::unique_ptr<AstNode> &n
     if (maybe_lhs.type == TokenType::IDENT && maybe_eq == Token(TokenType::DELIM, '='))
     {
         std::unique_ptr<AstNode> rhs;
-        tokens.next_token(2);
+        Token first_rhs = tokens.next_token(2);
+        if (first_rhs.type == TokenType::END)
+        {
+            throw std::runtime_error("Expression expected after =");
+        }
         parse_expression(tokens, rhs);
         node = std::make_unique<AstAssignmentNode>(
             maybe_lhs.value, std::move(rhs), maybe_lhs.loc);

@@ -18,7 +18,7 @@ subroutine convol(x,k,y)
    if (mod(size(k,1), 2) == 0 .or. mod(size(k,2), 2) == 0)     &
       error stop "kernel must have uneven dimensions"
 
-   call conv2d_nopad(x, k, .true., y)
+   call conv2d_pad(x, padded_2d_kernel(k, 8_size_k), size(k, 1, size_k), .true., y)
 
 end subroutine
 
@@ -156,9 +156,9 @@ subroutine conv2d_fix(x,k,method,y,parallel, errno)
    offset = (shape(k, size_k) - 1) / 2
    padded_kernel = padded_2d_kernel(k, 8_size_k)
 
-   call conv2d_nopad(x, k, .false., &
+   call conv2d_pad(x, padded_kernel, size(k, 1, size_k), .false., &
       y(1 + offset(1) : input_shape(1) - offset(1), &
-      1 + offset(2) : input_shape(2) - offset(2)), parallel)
+   & 1 + offset(2) : input_shape(2) - offset(2)), parallel)
 
 
    if (offset(2) > 0) then
@@ -168,7 +168,7 @@ subroutine conv2d_fix(x,k,method,y,parallel, errno)
       call build_image_expansion(x, 1 - offset, &
          [input_shape(1) + offset(1), 2 * offset(2)], method, temp_input, errno)
       if (failed(errno)) return
-      call conv2d_nopad(temp_input, k, .false., &
+      call conv2d_pad(temp_input, padded_kernel, size(k, 1, size_k), .false., &
          y(:, :offset(2)))
 
       ! roght strip
@@ -177,7 +177,7 @@ subroutine conv2d_fix(x,k,method,y,parallel, errno)
          input_shape + offset, &
          method, temp_input, errno)
       if (failed(errno)) return
-      call conv2d_nopad(temp_input, k, .false., &
+      call conv2d_pad(temp_input, padded_kernel, size(k, 1, size_k), .false., &
          y(:, input_shape(2) - offset(2) + 1:))
       deallocate(temp_input)
    end if

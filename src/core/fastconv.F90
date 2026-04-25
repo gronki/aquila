@@ -34,7 +34,7 @@ pure subroutine conv1d_core(x, k, y)
 #       endif
 
    if (kernel_size == 1) then
-      y(:) = x * k(1)
+      y(:) = y(:) + x(:) * k(1)
    else if (modulo(kernel_size, 8) == 0) then
       call conv1d_k8(x, k, y)
    else if (modulo(kernel_size, 4) == 0) then
@@ -59,39 +59,14 @@ pure subroutine conv1d_general(x, k, y)
    kernel_size = size(k, kind=size_k)
    output_size = size(x, kind=size_k) - kernel_size + 1_size_k
 
-   do i = 1, output_size
-      total = 0
-      do j = 1, kernel_size
-         total = total + k(j) * x(i + j - 1)
+   do j = 1, kernel_size
+      do i = 1, output_size
+         y(i) = y(i) + k(j) * x(i + j - 1)
       end do
-      y(i) = total
    end do
 
 end subroutine
 
- !> compute the convolution for any kernel length
-pure subroutine conv1d_general_plus(x, k, y)
-   !> vector to be convolved
-   real(real_k), intent(in), contiguous :: x(:)
-   !> convolution kernel (should be reversed beforehand)
-   real(real_k), intent(in), contiguous :: k(:)
-   !> output vector, length size(x) + 1 - size(k)
-   real(real_k), intent(inout), contiguous :: y(:)
-   integer(kind=size_k) :: i, j, kernel_size, output_size
-   real(real_k) :: total
-
-   kernel_size = size(k, kind=size_k)
-   output_size = size(x, kind=size_k) - kernel_size + 1_size_k
-
-   do i = 1, output_size
-      total = 0
-      do j = 1, kernel_size
-         total = total + k(j) * x(i + j - 1)
-      end do
-      y(i) = y(i) + total
-   end do
-
-end subroutine
  !> specific implementation for multiplies of 8
 pure subroutine conv1d_k8(x, k, y)
    !> vector to be convolved
@@ -111,10 +86,9 @@ pure subroutine conv1d_k8(x, k, y)
    kernel_size_simd = kernel_size / 8
    output_size = size(x, kind=size_k) - kernel_size + 1
 
-   do i = 1, output_size
-      total = 0
-      do j = 1, kernel_size, 8
-         total = total &
+   do j = 1, kernel_size, 8
+      do i = 1, output_size
+         y(i) = y(i) + &
             + k(j) * x(i + j - 1) &
             + k(j+1) * x(i + j+1 - 1) &
             + k(j+2) * x(i + j+2 - 1) &
@@ -124,9 +98,7 @@ pure subroutine conv1d_k8(x, k, y)
             + k(j+6) * x(i + j+6 - 1) &
             + k(j+7) * x(i + j+7 - 1)
       end do
-      y(i) = total
    end do
-
 end subroutine
 
  !> specific implementation for multiplies of 4
@@ -148,16 +120,14 @@ pure subroutine conv1d_k4(x, k, y)
    kernel_size_simd = kernel_size / 4
    output_size = size(x, kind=size_k) - kernel_size + 1
 
-   do i = 1, output_size
-      total = 0
-      do j = 1, kernel_size, 4
-         total = total &
+   do j = 1, kernel_size, 4
+      do i = 1, output_size
+         y(i) = y(i) &
             + k(j) * x(i + j - 1) &
             + k(j+1) * x(i + j+1 - 1) &
             + k(j+2) * x(i + j+2 - 1) &
             + k(j+3) * x(i + j+3 - 1)
       end do
-      y(i) = total
    end do
 
 end subroutine
@@ -229,14 +199,14 @@ pure subroutine conv1d_pad_core(x, k, kernel_size, y)
 
    ! corner case when the input is ultra-short, actually shorter than the padding
    if (output_size_raw - padding < 1) then
-      call conv1d_core(x, k(:kernel_size), y)
+      call conv1d_general(x, k(:kernel_size), y)
       return
    end if
 
    call conv1d_core(x, k, y(:output_size_raw - padding))
 
    if (padding > 0) then
-      call conv1d_core(x(output_size_raw - padding + 1_size_k:), &
+      call conv1d_general(x(output_size_raw - padding + 1_size_k:), &
          k(:kernel_size), &
          y(output_size_raw - (padding - 1_size_k) : output_size_raw))
    end if
@@ -350,25 +320,20 @@ subroutine conv2d_pad(x, k, size_k_1, keep_shape, y, parallel)
    end if
 #   endif
 
-   block
-      real(real_k) :: buf(output_shape_raw(1))
 
-      !$omp parallel do private(ik, buf) if(parallel_)
-      do ix = 1, output_shape_raw(2)
-         associate(y_row => y( &
-            1 + output_offset(1) : output_shape_raw(1) + output_offset(1), &
-            ix + output_offset(2)))
+   !$omp parallel do private(ik) if(parallel_)
+   do ix = 1, output_shape_raw(2)
+      associate(y_row => y( &
+         1 + output_offset(1) : output_shape_raw(1) + output_offset(1), &
+         ix + output_offset(2)))
 
-            call conv1d_pad_core(x(:, ix), k(:, 1), size_k_1, y_row)
+         y_row(:) = 0
+         do ik = 1, kernel_shape(1)
+            call conv1d_pad_core(x(:, ix + ik - 1), k(:, ik), size_k_1, y_row)
+         end do
 
-            do ik = 2, kernel_shape(2)
-               call conv1d_pad_core(x(:, ix + ik - 1), k(:, ik), size_k_1, buf)
-               y_row(:) = y_row + buf
-            end do
-
-         end associate
-      end do
-   end block
+      end associate
+   end do
 
 end subroutine
 
@@ -412,22 +377,18 @@ subroutine conv2d_nopad(x, k, keep_shape, y, parallel)
    end if
 #   endif
 
-   block
-      real(real_k) :: buf(output_shape_raw(1))
 
-      !$omp parallel do private(ik, buf) if(parallel_)
-      do ix = 1, output_shape_raw(2)
-         associate(y_row => y( &
-            1 + output_offset(1) : output_shape_raw(1) + output_offset(1), &
-            ix + output_offset(2)))
-            call conv1d_core(x(:, ix), k(:, 1), y_row)
-            do ik = 2, kernel_shape(2)
-               call conv1d_core(x(:, ix + ik - 1), k(:, ik), buf)
-               y_row(:) = y_row + buf
-            end do
-         end associate
-      end do
-   end block
+   !$omp parallel do private(ik) if(parallel_)
+   do ix = 1, output_shape_raw(2)
+      associate(y_row => y( &
+         1 + output_offset(1) : output_shape_raw(1) + output_offset(1), &
+         ix + output_offset(2)))
+         y_row(:) = 0
+         do ik = 1, kernel_shape(2)
+            call conv1d_general(x(:, ix + ik - 1), k(:, ik), y_row)
+         end do
+      end associate
+   end do
 end subroutine
 
 subroutine conv2d_ref(x, k, keep_shape, y)

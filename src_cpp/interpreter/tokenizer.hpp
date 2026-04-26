@@ -1,5 +1,6 @@
 #pragma once
 
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -9,6 +10,17 @@ namespace aquila::interpreter
 {
 
 using ConsumeCondition = bool (*)(TokenChar);
+
+struct TokenResult
+{
+    TokenResult(Token token) : token(token) {}
+    TokenResult(Token token, std::string message) :
+        token(token), error(ParsingError{message, token.loc})
+    {
+    }
+    Token token;
+    std::optional<ParsingError> error;
+};
 
 class Tokenizer
 {
@@ -21,7 +33,6 @@ class Tokenizer
     void skip_whitespace();
     TokenStr consume_until(ConsumeCondition consume_condition);
     void throw_error(const std::string &message);
-    Token next_token_();
     TokenLoc update_end(TokenLoc) const;
 
 public:
@@ -32,9 +43,8 @@ public:
 
     inline bool is_end() const { return pos >= std::ptrdiff_t(buffer.size()); }
     Token next_token();
+    TokenResult next_token_();
 };
-
-std::vector<Token> tokenize(const TokenStr &buffer, std::int64_t start_line = 1);
 
 class LazyTokenArray
 {
@@ -49,5 +59,7 @@ public:
     Token next_token(std::int64_t offset = 1);
     const std::vector<Token> &all_tokens();
 };
+
+std::vector<Token> tokenize(const TokenStr &buffer, std::int64_t start_line = 1);
 
 } // namespace aquila::interpreter

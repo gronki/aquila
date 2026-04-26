@@ -34,12 +34,14 @@ std::string find_current_token(const std::vector<Token> &tokens)
 }
 void update_state(const std::string &command,
     std::string &command_output,
+    std::string &errmsg,
     std::string &token_summ,
     std::string &current_token)
 {
-    command_output = "";
-    current_token = "";
-    token_summ = "";
+    command_output = " ";
+    current_token = " ";
+    token_summ = " ";
+    errmsg = " ";
     std::stringstream token_summ_ss;
     try
     {
@@ -63,7 +65,7 @@ void update_state(const std::string &command,
     }
     catch (const std::exception &e)
     {
-        current_token = e.what();
+        errmsg = e.what();
     }
 }
 
@@ -78,8 +80,8 @@ int main(int argc, char **argv)
     auto renderer = Renderer(input_command,
         [&]()
         {
-            std::string command_output, token_summ, current_token;
-            update_state(command, command_output, token_summ, current_token);
+            std::string command_output, errmsg, token_summ, current_token;
+            update_state(command, command_output, errmsg, token_summ, current_token);
             return vbox({
                 input_command->Render() | border,
                 hbox({
@@ -88,7 +90,11 @@ int main(int argc, char **argv)
                     paragraphAlignCenter(token_summ) | size(WIDTH, EQUAL, 48),
                 }) | border
                     | flex,
-                text(current_token) | bold,
+                hbox({
+                    text(errmsg) | color(Color::Red) | bold,
+                    filler(),
+                    text(current_token) | bold,
+                }),
             });
         });
 

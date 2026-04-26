@@ -55,13 +55,15 @@ TokenStr Tokenizer::consume_until(ConsumeCondition consume_condition)
 
 Token Tokenizer::next_token()
 {
-    Token t = next_token_();
+    TokenResult t = next_token_();
 
 #ifdef PARSER_DEBUG
     std::cout << t << std::endl;
 #endif
 
-    return t;
+    if (t.error)
+        throw std::runtime_error(t.error->message);
+    return t.token;
 }
 
 TokenLoc Tokenizer::update_end(TokenLoc loc) const
@@ -70,23 +72,23 @@ TokenLoc Tokenizer::update_end(TokenLoc loc) const
     return loc;
 }
 
-Token Tokenizer::next_token_()
+TokenResult Tokenizer::next_token_()
 {
     skip_whitespace();
 
     if (is_end())
-        return Token(TokenType::END, TokenLoc(start_line, pos));
+        return {Token(TokenType::END, TokenLoc(start_line, pos))};
 
     TokenChar ch = get_char();
     TokenLoc loc{start_line, pos, pos};
 
     if (ch == COMMENT_START)
-        return Token(TokenType::END, loc);
+        return {Token(TokenType::END, loc)};
 
     if (is_ident_start(ch))
     {
         TokenStr ident_val = consume_until(is_ident);
-        return Token(TokenType::IDENT, ident_val, update_end(loc));
+        return {Token(TokenType::IDENT, ident_val, update_end(loc))};
     }
 
     if (is_str_literal_start(ch))
@@ -103,23 +105,22 @@ Token Tokenizer::next_token_()
 
         next_char();
 
-        return Token(TokenType::STR_LITERAL, content, update_end(loc));
+        return {Token(TokenType::STR_LITERAL, content, update_end(loc))};
     }
 
     if (is_number_start(ch))
     {
         TokenStr number_body = consume_until(is_number_body);
-        return Token(TokenType::NUM_LITERAL, number_body, update_end(loc));
+        return {Token(TokenType::NUM_LITERAL, number_body, update_end(loc))};
     }
 
     if (is_delim(ch))
     {
         next_char();
-        return Token(TokenType::DELIM, TokenStr(1, ch), update_end(loc));
+        return {Token(TokenType::DELIM, TokenStr(1, ch), update_end(loc))};
     }
 
-    throw_error("error tokenizing expression");
-    return Token(TokenType::END); // to silence warning
+    return {Token(TokenType::END), "error tokenizing expression"}; // to silence warning
 }
 
 std::vector<Token> tokenize(const TokenStr &buffer, std::int64_t start_line)

@@ -6,6 +6,7 @@
 #include <ostream>
 #include <sstream>
 #include <stdexcept>
+#include <variant>
 
 namespace aquila::interpreter
 {
@@ -36,6 +37,16 @@ struct TokenLoc
     {
     }
     std::int64_t line = -1, offset = -1, end = -1;
+};
+
+struct ParsingError
+{
+    std::string message;
+    TokenLoc loc;
+    ParsingError(std::string message, const TokenLoc &loc) :
+        message(std::move(message)), loc(loc)
+    {
+    }
 };
 
 struct Token

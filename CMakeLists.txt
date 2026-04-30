@@ -38,6 +38,8 @@ target_compile_options(png_static PRIVATE -fPIC)
 
 add_subdirectory(deps/FTXUI)
 
+
+
 set(CMAKE_C_FLAGS_DEBUG   "-g -Og -Wall -Wextra -Wpedantic -Werror=return-type -Werror=uninitialized -Werror=sign-compare -Werror=maybe-uninitialized -Wno-unused-parameter")
 set(CMAKE_CXX_FLAGS_DEBUG   "-g -Og -Wall -Wextra -Wpedantic -Werror=return-type -Werror=uninitialized -Werror=sign-compare -Werror=maybe-uninitialized -Werror=delete-incomplete -Wnon-virtual-dtor -Wno-unused-parameter")
 set(CMAKE_Fortran_FLAGS_DEBUG   "-g -Og -fcheck=all -Wall -Wextra -Wno-unused-dummy-argument")
@@ -55,36 +57,6 @@ option(OPENMP "use OpenMP in build" OFF)
 find_package(PkgConfig REQUIRED)
 find_package(OpenMP)
 pkg_check_modules(READLINE REQUIRED readline)
-
-option (BUNDLE "bundle libs" Off)
-
-function(bundle_lib libname)
-    file(COPY
-        ${SYS_LIBDIR}/${libname}
-        DESTINATION ${CMAKE_BINARY_DIR}/_bundle
-        USE_SOURCE_PERMISSIONS
-        FOLLOW_SYMLINK_CHAIN
-    )
-    set(dest "${CMAKE_BINARY_DIR}/_bundle/${libname}")
-    execute_process(
-        COMMAND patchelf --set-rpath \$ORIGIN "${dest}"
-    )
-endfunction()
-
-if (BUNDLE)
-    bundle_lib(libreadline.so.8)
-    bundle_lib(libtinfo.so.6)
-    bundle_lib(libgfortran.so.5)
-    bundle_lib(libz.so.1)
-    bundle_lib(libgomp.so.1)
-    bundle_lib(libquadmath.so.0)
-
-    install(
-        DIRECTORY ${CMAKE_BINARY_DIR}/_bundle/
-        DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        USE_SOURCE_PERMISSIONS
-    )
-endif()
 
 include_directories(src_cpp/global)
 

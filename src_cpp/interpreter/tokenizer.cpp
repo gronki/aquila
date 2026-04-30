@@ -34,11 +34,6 @@ TokenChar Tokenizer::next_char()
     return get_char();
 }
 
-void Tokenizer::throw_error(const std::string &message)
-{
-    throw std::runtime_error(message);
-}
-
 TokenStr Tokenizer::consume_until(ConsumeCondition consume_condition)
 {
     std::basic_stringstream<TokenChar> ss;
@@ -53,26 +48,13 @@ TokenStr Tokenizer::consume_until(ConsumeCondition consume_condition)
     return ss.str();
 }
 
-Token Tokenizer::next_token()
-{
-    TokenResult t = next_token_();
-
-#ifdef PARSER_DEBUG
-    std::cout << t << std::endl;
-#endif
-
-    if (t.error)
-        throw std::runtime_error(t.error->message);
-    return t.token;
-}
-
 TokenLoc Tokenizer::update_end(TokenLoc loc) const
 {
     loc.end = pos;
     return loc;
 }
 
-TokenResult Tokenizer::next_token_()
+TokenResult Tokenizer::next_token()
 {
     skip_whitespace();
 
@@ -96,12 +78,14 @@ TokenResult Tokenizer::next_token_()
         next_char();
 
         if (is_end())
-            throw_error("unexpected end of input after opened string literal");
+            return {Token(TokenType::STR_LITERAL, "", update_end(loc)),
+                "unexpected end of input after opened string literal"};
 
         TokenStr content = consume_until(is_not_str_literal_end);
 
         if (is_end())
-            throw_error("unexpected end of input after opened string literal");
+            return {Token(TokenType::STR_LITERAL, content, update_end(loc)),
+                "unexpected end of input after opened string literal"};
 
         next_char();
 
@@ -125,38 +109,44 @@ TokenResult Tokenizer::next_token_()
 
 std::vector<Token> tokenize(const TokenStr &buffer, std::int64_t start_line)
 {
-    Tokenizer tokenizer(buffer, start_line);
-    std::vector<Token> tokens;
-    bool is_end = false;
+    return LazyTokenArray(Tokenizer(buffer)).all_tokens();
+}
 
-    do
+TokenResult LazyTokenArray::get_token(std::int64_t abs_pos)
+{
+    if (abs_pos < 0)
+        throw std::runtime_error("may not rewind before the first token");
+
+    while (std::int64_t(tokens.size()) < abs_pos + 1)
     {
-        Token t = tokenizer.next_token();
-        is_end = t.type == TokenType::END;
-        tokens.push_back(std::move(t));
-    } while (!is_end);
-
-    return tokens;
+        auto result = tokenizer.next_token();
+        std::cout << "at pos " << abs_pos << " token " << result.token << std::endl;
+        tokens.push_back(result.token);
+    }
+    return tokens[abs_pos];
 }
 
 Token LazyTokenArray::peek_token(std::int64_t offset)
 {
-    if (offset + pos < 0)
-        throw std::runtime_error("may not rewind before the first token");
-
-    while (std::int64_t(tokens.size()) < offset + pos + 1)
-    {
-        tokens.push_back(tokenizer.next_token());
-    }
-    return tokens[offset + pos];
+    auto result = get_token(offset + pos);
+    if (result.error)
+        throw std::runtime_error(result.error->message);
+    return result.token;
 }
 
-const std::vector<Token> &LazyTokenArray::all_tokens()
+std::vector<Token> LazyTokenArray::all_tokens()
 {
-    std ::int64_t off = 0;
-    while (peek_token(off++).type != TokenType::END)
-        ;
-    return tokens;
+    std::int64_t off = 0;
+    std::vector<Token> only_tokens;
+    bool is_end;
+    do
+    {
+        Token t = get_token(off++).token;
+        is_end = t.type == TokenType::END;
+        only_tokens.push_back(std::move(t));
+    } while (!is_end);
+
+    return only_tokens;
 }
 
 Token LazyTokenArray::cur_token()
@@ -166,9 +156,9 @@ Token LazyTokenArray::cur_token()
 
 Token LazyTokenArray::next_token(std::int64_t offset)
 {
-    const Token &t = peek_token(offset);
+    Token t = peek_token(offset);
     pos += offset;
-    return t;
+    return std::move(t);
 }
 
 } // namespace aquila::interpreter

@@ -15,39 +15,39 @@ TEST(test1)
 {
     Tokenizer tokenizer("  y= ff(a, b) ");
 
-    REQUIRE_EQ(tokenizer.next_token(), Token(TokenType::IDENT, "y"));
-    REQUIRE_EQ(tokenizer.next_token(), Token(TokenType::DELIM, "="));
-    REQUIRE_EQ(tokenizer.next_token(), Token(TokenType::IDENT, "ff"));
-    REQUIRE_EQ(tokenizer.next_token(), Token(TokenType::DELIM, "("));
-    REQUIRE_EQ(tokenizer.next_token(), Token(TokenType::IDENT, "a"));
-    REQUIRE_EQ(tokenizer.next_token(), Token(TokenType::DELIM, ","));
-    REQUIRE_EQ(tokenizer.next_token(), Token(TokenType::IDENT, "b"));
-    REQUIRE_EQ(tokenizer.next_token(), Token(TokenType::DELIM, ")"));
-    REQUIRE_EQ(tokenizer.next_token(), Token(TokenType::END));
+    REQUIRE_EQ(tokenizer.next_token().token, Token(TokenType::IDENT, "y"));
+    REQUIRE_EQ(tokenizer.next_token().token, Token(TokenType::DELIM, "="));
+    REQUIRE_EQ(tokenizer.next_token().token, Token(TokenType::IDENT, "ff"));
+    REQUIRE_EQ(tokenizer.next_token().token, Token(TokenType::DELIM, "("));
+    REQUIRE_EQ(tokenizer.next_token().token, Token(TokenType::IDENT, "a"));
+    REQUIRE_EQ(tokenizer.next_token().token, Token(TokenType::DELIM, ","));
+    REQUIRE_EQ(tokenizer.next_token().token, Token(TokenType::IDENT, "b"));
+    REQUIRE_EQ(tokenizer.next_token().token, Token(TokenType::DELIM, ")"));
+    REQUIRE_EQ(tokenizer.next_token().token, Token(TokenType::END));
 }
 
 TEST(test2)
 {
     Tokenizer tokenizer(R"( f(3.0, 4, image("file.fits")) )");
 
-    REQUIRE_EQ(tokenizer.next_token(), Token(TokenType::IDENT, "f"));
-    REQUIRE_EQ(tokenizer.next_token(), Token(TokenType::DELIM, "("));
-    REQUIRE_EQ(tokenizer.next_token(), Token(TokenType::NUM_LITERAL, "3.0"));
-    REQUIRE_EQ(tokenizer.next_token(), Token(TokenType::DELIM, ","));
-    REQUIRE_EQ(tokenizer.next_token(), Token(TokenType::NUM_LITERAL, "4"));
-    REQUIRE_EQ(tokenizer.next_token(), Token(TokenType::DELIM, ","));
-    REQUIRE_EQ(tokenizer.next_token(), Token(TokenType::IDENT, "image"));
-    REQUIRE_EQ(tokenizer.next_token(), Token(TokenType::DELIM, "("));
-    REQUIRE_EQ(tokenizer.next_token(), Token(TokenType::STR_LITERAL, "file.fits"));
-    REQUIRE_EQ(tokenizer.next_token(), Token(TokenType::DELIM, ")"));
-    REQUIRE_EQ(tokenizer.next_token(), Token(TokenType::DELIM, ")"));
-    REQUIRE_EQ(tokenizer.next_token(), Token(TokenType::END));
+    REQUIRE_EQ(tokenizer.next_token().token, Token(TokenType::IDENT, "f"));
+    REQUIRE_EQ(tokenizer.next_token().token, Token(TokenType::DELIM, "("));
+    REQUIRE_EQ(tokenizer.next_token().token, Token(TokenType::NUM_LITERAL, "3.0"));
+    REQUIRE_EQ(tokenizer.next_token().token, Token(TokenType::DELIM, ","));
+    REQUIRE_EQ(tokenizer.next_token().token, Token(TokenType::NUM_LITERAL, "4"));
+    REQUIRE_EQ(tokenizer.next_token().token, Token(TokenType::DELIM, ","));
+    REQUIRE_EQ(tokenizer.next_token().token, Token(TokenType::IDENT, "image"));
+    REQUIRE_EQ(tokenizer.next_token().token, Token(TokenType::DELIM, "("));
+    REQUIRE_EQ(tokenizer.next_token().token, Token(TokenType::STR_LITERAL, "file.fits"));
+    REQUIRE_EQ(tokenizer.next_token().token, Token(TokenType::DELIM, ")"));
+    REQUIRE_EQ(tokenizer.next_token().token, Token(TokenType::DELIM, ")"));
+    REQUIRE_EQ(tokenizer.next_token().token, Token(TokenType::END));
 }
 
 TEST(test3)
 {
     Tokenizer tokenizer("  ");
-    REQUIRE_EQ(tokenizer.next_token(), Token(TokenType::END));
+    REQUIRE_EQ(tokenizer.next_token().token, Token(TokenType::END));
 }
 
 TEST(into_array)

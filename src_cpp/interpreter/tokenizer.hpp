@@ -42,22 +42,22 @@ public:
     }
 
     inline bool is_end() const { return pos >= std::ptrdiff_t(buffer.size()); }
-    Token next_token();
-    TokenResult next_token_();
+    TokenResult next_token();
 };
 
 class LazyTokenArray
 {
     Tokenizer tokenizer;
-    std::vector<Token> tokens;
+    std::vector<TokenResult> tokens;
     std::int64_t pos = 0;
 
 public:
     LazyTokenArray(Tokenizer tokenizer) : tokenizer(std::move(tokenizer)) {}
+    TokenResult get_token(std::int64_t abs_pos);
     Token peek_token(std::int64_t offset = 0);
     Token cur_token();
     Token next_token(std::int64_t offset = 1);
-    const std::vector<Token> &all_tokens();
+    std::vector<Token> all_tokens();
 };
 
 std::vector<Token> tokenize(const TokenStr &buffer, std::int64_t start_line = 1);

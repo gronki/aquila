@@ -36,11 +36,16 @@ void update_state(const std::string &command,
     std::string &command_output,
     std::string &errmsg,
     std::string &token_summ,
+    std::string &ast_summ,
     std::string &current_token)
 {
+
+    static Namespace ns;
+
     command_output = " ";
     current_token = " ";
     token_summ = " ";
+    ast_summ = " ";
     errmsg = " ";
     std::stringstream token_summ_ss;
     try
@@ -61,7 +66,18 @@ void update_state(const std::string &command,
 
         std::stringstream ss;
         ss << *ast;
-        command_output = ss.str();
+        ast_summ = ss.str();
+
+        auto gen = build_exec_tree(ast, ns, global_op_db());
+        const Value *val = gen->yield();
+        if (val)
+        {
+            command_output = val->str();
+        }
+        else
+        {
+            command_output = "(null)";
+        }
     }
     catch (const std::exception &e)
     {
@@ -80,12 +96,17 @@ int main(int argc, char **argv)
     auto renderer = Renderer(input_command,
         [&]()
         {
-            std::string command_output, errmsg, token_summ, current_token;
-            update_state(command, command_output, errmsg, token_summ, current_token);
+            std::string command_output, errmsg, token_summ, ast_summ, current_token;
+            update_state(
+                command, command_output, errmsg, token_summ, ast_summ, current_token);
             return vbox({
                 input_command->Render() | border,
                 hbox({
-                    paragraphAlignLeft(command_output) | flex,
+                    vbox({
+                        paragraphAlignLeft(ast_summ) | flex,
+                        separator(),
+                        paragraphAlignLeft(command_output) | size(HEIGHT, EQUAL, 6),
+                    }) | flex,
                     separator(),
                     paragraphAlignCenter(token_summ) | size(WIDTH, EQUAL, 48),
                 }) | border

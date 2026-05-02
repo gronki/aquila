@@ -24,13 +24,20 @@ public:
 class RefNode : public ExecNode
 {
     std::string refname;
+    StrValue fallback;
 
 public:
-    RefNode(const std::string &refname, Namespace &ns) : ExecNode(ns), refname(refname)
+    RefNode(const std::string &refname, Namespace &ns) :
+        ExecNode(ns), refname(refname), fallback(refname)
     {
     }
 
-    const Value *yield() override { return &ns.get(refname); }
+    const Value *yield() override
+    {
+        if (ns.contains(refname))
+            return &ns.get(refname);
+        return &fallback;
+    }
 };
 
 class AssignmentNode : public ExecNode

@@ -95,4 +95,30 @@ public:
     void clean() override { value = nullptr; }
 };
 
+class BuiltinOpNode : public ExecNode
+{
+    std::string opname;
+    std::unique_ptr<Value> value;
+    std::vector<std::unique_ptr<ExecNode>> args;
+    std::vector<ArgMatch> match;
+
+public:
+    BuiltinOpNode(std::string opname,
+        std::vector<std::unique_ptr<ExecNode>> args,
+        const std::vector<std::string> &keys,
+        Namespace &ns) : ExecNode(ns), opname(std::move(opname)), args(std::move(args))
+    {
+        const ArgManifest manifest{
+            ArgSpec{.name = "in"},
+            ArgSpec{.name = "..."},
+        };
+        match = match_arguments(manifest, keys);
+    }
+
+    static bool is_builtin(const std::string &name) { return name == "as"; }
+
+    const Value *yield() override;
+
+    void clean() override { value = nullptr; }
+};
 } // namespace aquila::interpreter

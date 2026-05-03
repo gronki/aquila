@@ -6,7 +6,6 @@ set(CMAKE_CXX_STANDARD 20)       # request C++20
 set(CMAKE_CXX_STANDARD_REQUIRED ON)  # fail if compiler does not support it
 set(CMAKE_CXX_EXTENSIONS OFF)    # turn off compiler-specific extensions like gnu++20
 
-enable_testing()
 include(GNUInstallDirs)
 set(CMAKE_INSTALL_LIBDIR ${CMAKE_INSTALL_LIBDIR}/aquila)
 set(CMAKE_INSTALL_RPATH "$ORIGIN/../${CMAKE_INSTALL_LIBDIR}:$ORIGIN")
@@ -38,7 +37,7 @@ target_compile_options(png_static PRIVATE -fPIC)
 
 add_subdirectory(deps/FTXUI)
 
-
+enable_testing()
 
 set(CMAKE_C_FLAGS_DEBUG   "-g -Og -Wall -Wextra -Wpedantic -Werror=return-type -Werror=uninitialized -Werror=sign-compare -Werror=maybe-uninitialized -Wno-unused-parameter")
 set(CMAKE_CXX_FLAGS_DEBUG   "-g -Og -Wall -Wextra -Wpedantic -Werror=return-type -Werror=uninitialized -Werror=sign-compare -Werror=maybe-uninitialized -Werror=delete-incomplete -Wnon-virtual-dtor -Wno-unused-parameter")
@@ -102,7 +101,7 @@ foreach(test_src ${TEST_CORE_SOURCES})
     get_filename_component(test_name ${test_src} NAME_WE)
     add_executable(${test_name} ${test_src})
     target_link_libraries(${test_name} aquila_static)
-    add_test(NAME ${test_name} COMMAND ${test_name})
+    add_test(NAME "aquila_core_${test_name}" COMMAND ${test_name})
 endforeach()
 
 add_executable(aqstack app/aqstack.f90)
@@ -131,7 +130,7 @@ foreach(test_src ${TEST_TASK_DISPATCH_SOURCES})
     get_filename_component(test_name ${test_src} NAME_WE)
     add_executable(${test_name} ${test_src})
     target_link_libraries(${test_name} PRIVATE aqtask_dispatch)
-    add_test(NAME ${test_name} COMMAND ${test_name})
+    add_test(NAME "aquila_task_${test_name}" COMMAND ${test_name})
 endforeach()
 
 file(GLOB_RECURSE libaq2_SOURCES CONFIGURE_DEPENDS
@@ -163,8 +162,8 @@ target_link_libraries(aq2
 
 install(TARGETS aqfindstar aq2 RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
-file(GLOB TEST_UI_SOURCES CONFIGURE_DEPENDS test_ui/*.cpp)
-foreach(test_src ${TEST_UI_SOURCES})
+file(GLOB TEST_INTERACTIVE_SOURCES CONFIGURE_DEPENDS test_interactive/*.cpp)
+foreach(test_src ${TEST_INTERACTIVE_SOURCES})
     get_filename_component(test_name ${test_src} NAME_WE)
     add_executable(${test_name} ${test_src})
     target_link_libraries(${test_name} PRIVATE 

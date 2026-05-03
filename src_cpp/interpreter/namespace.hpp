@@ -16,7 +16,7 @@ public:
     Namespace() {}
     Namespace(const Namespace &global) : global(&global) {}
 
-    void push(const std::string &name, std::unique_ptr<Value> v);
+    const Value *push(const std::string &name, std::unique_ptr<Value> v);
     const Value &get(const std::string &name) const;
     bool contains(const std::string &name) const;
 };

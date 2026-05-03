@@ -88,7 +88,7 @@ pure subroutine conv1d_k8(x, k, y)
 
    do j = 1, kernel_size, 8
       do i = 1, output_size
-         y(i) = y(i) + &
+         y(i) = y(i) &
             + k(j) * x(i + j - 1) &
             + k(j+1) * x(i + j+1 - 1) &
             + k(j+2) * x(i + j+2 - 1) &
@@ -321,19 +321,23 @@ subroutine conv2d_pad(x, k, size_k_1, keep_shape, y, parallel)
 #   endif
 
 
-   !$omp parallel do private(ik) if(parallel_)
-   do ix = 1, output_shape_raw(2)
-      associate(y_row => y( &
-         1 + output_offset(1) : output_shape_raw(1) + output_offset(1), &
-         ix + output_offset(2)))
+   block
+      real (kind=real_k) :: line(output_shape_raw(1))
+      !$omp parallel do private(ik, line) if(parallel_)
+      do ix = 1, output_shape_raw(2)
+         associate(y_row => y( &
+            1 + output_offset(1) : output_shape_raw(1) + output_offset(1), &
+            ix + output_offset(2)))
 
-         y_row(:) = 0
-         do ik = 1, kernel_shape(1)
-            call conv1d_pad_core(x(:, ix + ik - 1), k(:, ik), size_k_1, y_row)
-         end do
+            line(:) = 0
+            do ik = 1, kernel_shape(1)
+               call conv1d_pad_core(x(:, ix + ik - 1), k(:, ik), size_k_1, line)
+            end do
+            y_row(:) = line
 
-      end associate
-   end do
+         end associate
+      end do
+   end block
 
 end subroutine
 
@@ -378,17 +382,25 @@ subroutine conv2d_nopad(x, k, keep_shape, y, parallel)
 #   endif
 
 
-   !$omp parallel do private(ik) if(parallel_)
-   do ix = 1, output_shape_raw(2)
-      associate(y_row => y( &
-         1 + output_offset(1) : output_shape_raw(1) + output_offset(1), &
-         ix + output_offset(2)))
-         y_row(:) = 0
-         do ik = 1, kernel_shape(2)
-            call conv1d_general(x(:, ix + ik - 1), k(:, ik), y_row)
-         end do
-      end associate
-   end do
+   block
+      real (kind=real_k) :: line(output_shape_raw(1))
+
+      !$omp parallel do private(ik, line) if(parallel_)
+      do ix = 1, output_shape_raw(2)
+         associate(y_row => y( &
+            1 + output_offset(1) : output_shape_raw(1) + output_offset(1), &
+            ix + output_offset(2)))
+
+            line(:) = 0
+            do ik = 1, kernel_shape(2)
+               call conv1d_general(x(:, ix + ik - 1), k(:, ik), line)
+            end do
+            y_row(:) = line
+
+         end associate
+      end do
+   end block
+
 end subroutine
 
 subroutine conv2d_ref(x, k, keep_shape, y)

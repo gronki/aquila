@@ -37,7 +37,8 @@ struct value_type
             }
         }
     }
-    std::string str() const {
+    std::string str() const
+    {
         std::size_t len_trim;
         for (len_trim = TYPE_N_LEN; len_trim > 0; len_trim--)
         {
@@ -49,7 +50,7 @@ struct value_type
     }
     friend std::ostream &operator<<(std::ostream &os, const value_type &tid)
     {
-        os << tid.str() << " (" << std::hex <<  tid.hsh << std::dec << ")";
+        os << tid.str() << " (" << std::hex << tid.hsh << std::dec << ")";
         return os;
     }
     constexpr bool operator==(const value_type &other) const
@@ -210,9 +211,91 @@ inline void SimpleValue<std::string>::write(std::ostream &os) const
     os << "\"" << value << "\"";
 }
 
-using IntValue = SimpleValue<std::int64_t>;
-using RealValue = SimpleValue<double>;
 using StrValue = SimpleValue<std::string>;
+
+template <>
+inline std::string *value_cast<std::string>(Value *other)
+{
+    auto sv = value_cast<SimpleValue<std::string>>(other);
+    if (!sv)
+        return nullptr;
+    return &sv->value;
+}
+template <>
+inline const std::string *value_cast<std::string>(const Value *other)
+{
+    auto sv = value_cast<SimpleValue<std::string>>(other);
+    if (!sv)
+        return nullptr;
+    return &sv->value;
+}
+template <>
+inline std::string &value_cast<std::string>(Value &other)
+{
+    return value_cast<SimpleValue<std::string>>(other).value;
+}
+template <>
+inline const std::string &value_cast<std::string>(const Value &other)
+{
+    return value_cast<SimpleValue<std::string>>(other).value;
+}
+
+using IntValue = SimpleValue<std::int64_t>;
+
+template <>
+inline std::int64_t *value_cast<std::int64_t>(Value *other)
+{
+    auto sv = value_cast<SimpleValue<std::int64_t>>(other);
+    if (!sv)
+        return nullptr;
+    return &sv->value;
+}
+template <>
+inline const std::int64_t *value_cast<std::int64_t>(const Value *other)
+{
+    auto sv = value_cast<SimpleValue<std::int64_t>>(other);
+    if (!sv)
+        return nullptr;
+    return &sv->value;
+}
+template <>
+inline std::int64_t &value_cast<std::int64_t>(Value &other)
+{
+    return value_cast<SimpleValue<std::int64_t>>(other).value;
+}
+template <>
+inline const std::int64_t &value_cast<std::int64_t>(const Value &other)
+{
+    return value_cast<SimpleValue<std::int64_t>>(other).value;
+}
+using RealValue = SimpleValue<double>;
+
+template <>
+inline double *value_cast<double>(Value *other)
+{
+    auto sv = value_cast<SimpleValue<double>>(other);
+    if (!sv)
+        return nullptr;
+    return &sv->value;
+}
+template <>
+inline const double *value_cast<double>(const Value *other)
+{
+    auto sv = value_cast<SimpleValue<double>>(other);
+    if (!sv)
+        return nullptr;
+    return &sv->value;
+}
+template <>
+inline double &value_cast<double>(Value &other)
+{
+    return value_cast<SimpleValue<double>>(other).value;
+}
+template <>
+inline const double &value_cast<double>(const Value &other)
+{
+    return value_cast<SimpleValue<double>>(other).value;
+}
 
 using ValuePtr = std::unique_ptr<Value>;
 using ValuePtrVector = std::vector<ValuePtr>;

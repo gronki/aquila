@@ -3,9 +3,10 @@
 namespace aquila::interpreter
 {
 
-void Namespace::push(const std::string &name, std::unique_ptr<Value> v)
+const Value *Namespace::push(const std::string &name, std::unique_ptr<Value> v)
 {
-    vault.insert_or_assign(name, std::move(v));
+    auto [it, replaced] = vault.insert_or_assign(name, std::move(v));
+    return it->second.get();
 }
 
 const Value &Namespace::get(const std::string &name) const

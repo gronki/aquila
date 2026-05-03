@@ -3,18 +3,9 @@
 namespace aquila::interpreter
 {
 
-static std::unique_ptr<OpNode> build_op_node(
+static std::unique_ptr<ExecNode> build_op_node(
     const AstOpNode &ast_op_node, Namespace &ns, const OpDatabase &opdb)
 {
-
-    auto op_it = opdb.find(ast_op_node.opname);
-    if (op_it == opdb.end())
-        throw std::runtime_error(std::string("Operation not found: ") + ast_op_node.opname);
-    const OpDbEntry &op_entry = op_it->second;
-    auto op = op_entry.factory();
-
-    if (!op)
-        throw std::logic_error("Null operation pointer.");
 
     std::vector<std::unique_ptr<ExecNode>> args;
     args.reserve(ast_op_node.args.size());
@@ -25,6 +16,21 @@ static std::unique_ptr<OpNode> build_op_node(
         args.push_back(build_exec_tree(arg.arg_val, ns, opdb));
         keys.push_back(arg.key);
     }
+
+    if (BuiltinOpNode::is_builtin(ast_op_node.opname))
+    {
+        return std::make_unique<BuiltinOpNode>(
+            ast_op_node.opname, std::move(args), keys, ns);
+    }
+
+    auto op_it = opdb.find(ast_op_node.opname);
+    if (op_it == opdb.end())
+        throw std::runtime_error(std::string("Operation not found: ") + ast_op_node.opname);
+    const OpDbEntry &op_entry = op_it->second;
+    auto op = op_entry.factory();
+
+    if (!op)
+        throw std::logic_error("Null operation pointer.");
 
     return std::make_unique<OpNode>(std::move(op), std::move(args), keys, ns);
 }

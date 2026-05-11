@@ -8,6 +8,8 @@ set(CMAKE_CXX_EXTENSIONS OFF)    # turn off compiler-specific extensions like gn
 
 include(GNUInstallDirs)
 set(CMAKE_INSTALL_LIBDIR ${CMAKE_INSTALL_LIBDIR}/aquila)
+set(CMAKE_INSTALL_INCLUDEDIR ${CMAKE_INSTALL_INCLUDEDIR}/aquila)
+set(CMAKE_INSTALL_DATADIR ${CMAKE_INSTALL_DATADIR}/aquila)
 set(CMAKE_INSTALL_RPATH "$ORIGIN/../${CMAKE_INSTALL_LIBDIR}:$ORIGIN")
 
 set(CMAKE_C_FLAGS_RELEASE       "-g1 -O2")
@@ -18,26 +20,38 @@ set(CMAKE_C_FLAGS_NATIVE       "-g1 -O2")
 set(CMAKE_CXX_FLAGS_NATIVE     "-g1 -O2")
 set(CMAKE_Fortran_FLAGS_NATIVE "-g1 -O2")
 
-set(BUILD_SHARED_LIBS OFF CACHE BOOL "shared CFITSIO" FORCE)
-set(USE_CURL OFF CACHE BOOL "Disable CURL in CFITSIO")
+find_package(PkgConfig REQUIRED)
+
+set(BUILD_SHARED_LIBS ON CACHE BOOL "shared CFITSIO" FORCE)
+set(USE_CURL OFF CACHE BOOL "Disable CURL in CFITSIO" FORCE)
 set(USE_PTHREADS ON CACHE BOOL "Enable pthreads in CFITSIO" FORCE)
-set(TESTS OFF CACHE BOOL "Disable CFITSIO tests")
-set(UTILS OFF CACHE BOOL "Disable CFITSIO utils")
+set(TESTS OFF CACHE BOOL "Disable CFITSIO tests" FORCE)
+set(UTILS OFF CACHE BOOL "Disable CFITSIO utils" FORCE)
 add_subdirectory(deps/cfitsio)
-target_compile_options(cfitsio PRIVATE -fPIC)
 
-set(PNG_TESTS OFF CACHE BOOL "Disable libpng tests")
-set(PNG_SHARED OFF CACHE BOOL "Build static library only" FORCE)
-set(PNG_STATIC ON CACHE BOOL "Enable static library" FORCE)
-set(PNG_TOOLS OFF CACHE BOOL "Disable building executables")
-set(PNG_INSTALL OFF CACHE BOOL "Disable install rules")
+option (AQUILA_SYSTEM_LIBPNG "Use system libPNG" Off)
+add_library(png_target INTERFACE)
+if (AQUILA_SYSTEM_LIBPNG)
+    find_package(PNG REQUIRED)
+    target_link_libraries(png_target INTERFACE PNG::PNG)
+else()
+    set(PNG_TESTS OFF CACHE BOOL "Disable libpng tests" FORCE)
+    set(PNG_SHARED ON CACHE BOOL "Build static library only" FORCE)
+    set(PNG_STATIC OFF CACHE BOOL "Enable static library" FORCE)
+    set(PNG_TOOLS OFF CACHE BOOL "Disable building executables" FORCE)
+    add_subdirectory(deps/libpng)
+    target_link_libraries(png_target INTERFACE png_shared)
+endif()
 
-add_subdirectory(deps/libpng)
-target_compile_options(png_static PRIVATE -fPIC)
-
+option(AQUILA_TUI "aquila tui" Off)
+if (AQUILA_TUI)
 add_subdirectory(deps/FTXUI)
+endif()
 
+option(AQUILA_BUILD_TESTS "build tests and examples" On)
+if (AQUILA_BUILD_TESTS)
 enable_testing()
+endif()
 
 set(CMAKE_C_FLAGS_DEBUG   "-g -Og -Wall -Wextra -Wpedantic -Werror=return-type -Werror=uninitialized -Werror=sign-compare -Werror=maybe-uninitialized -Wno-unused-parameter")
 set(CMAKE_CXX_FLAGS_DEBUG   "-g -Og -Wall -Wextra -Wpedantic -Werror=return-type -Werror=uninitialized -Werror=sign-compare -Werror=maybe-uninitialized -Werror=delete-incomplete -Wnon-virtual-dtor -Wno-unused-parameter")
@@ -51,10 +65,12 @@ set(CMAKE_C_FLAGS_NATIVE "-g -O3 -ffast-math -DNDEBUG -march=native -mtune=nativ
 set(CMAKE_CXX_FLAGS_NATIVE "-g -O3 -ffast-math -DNDEBUG -march=native -mtune=native -fopenmp-simd")
 set(CMAKE_Fortran_FLAGS_NATIVE "-g -O3 -funsafe-math-optimizations -DNDEBUG -march=native -mtune=native -fopenmp-simd")
 
-option(OPENMP "use OpenMP in build" OFF)
+option(AQUILA_OPENMP "use OpenMP in build" Off)
 
-find_package(PkgConfig REQUIRED)
+if (AQUILA_OPENMP)
 find_package(OpenMP)
+endif()
+
 pkg_check_modules(READLINE REQUIRED readline)
 
 include_directories(src_cpp/global)
@@ -82,34 +98,34 @@ file(GLOB_RECURSE AQUILA_SOURCES CONFIGURE_DEPENDS
 
 add_library(aquila SHARED ${AQUILA_SOURCES})
 target_include_directories(aquila PUBLIC src/c_binding)
-target_link_libraries(aquila PUBLIC png_static cfitsio)
+target_link_libraries(aquila PUBLIC png_target cfitsio)
 
-add_library(aquila_static STATIC ${AQUILA_SOURCES})
-target_include_directories(aquila_static PUBLIC src/c_binding)
-target_link_libraries(aquila_static PUBLIC png_static cfitsio)
-
-if (OPENMP)
+if (AQUILA_OPENMP)
     target_link_libraries(aquila PRIVATE OpenMP::OpenMP_Fortran OpenMP::OpenMP_C)
-    target_link_libraries(aquila_static PRIVATE OpenMP::OpenMP_Fortran OpenMP::OpenMP_C)
 endif ()
 
-install(TARGETS aquila aquila_static LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
+install(TARGETS aquila LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
 install(FILES src/c_binding/aquila.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+
+if (AQUILA_BUILD_TESTS)
 
 file(GLOB TEST_CORE_SOURCES CONFIGURE_DEPENDS test_core/*.[fF]90)
 foreach(test_src ${TEST_CORE_SOURCES})
     get_filename_component(test_name ${test_src} NAME_WE)
     add_executable(${test_name} ${test_src})
-    target_link_libraries(${test_name} aquila_static)
+    target_link_libraries(${test_name} aquila)
     add_test(NAME "aquila_core_${test_name}" COMMAND ${test_name})
 endforeach()
 
-add_executable(aqstack app/aqstack.f90)
-target_link_libraries(aqstack PRIVATE aquila_static)
-add_executable(aqlrgb app/aqlrgb.F90)
-target_link_libraries(aqlrgb PRIVATE aquila_static)
+endif()
 
-if (OPENMP)
+add_executable(aqstack app/aqstack.f90)
+target_link_libraries(aqstack PRIVATE aquila)
+
+add_executable(aqlrgb app/aqlrgb.F90)
+target_link_libraries(aqlrgb PRIVATE aquila)
+
+if (AQUILA_OPENMP)
     target_link_libraries(aqstack PRIVATE OpenMP::OpenMP_Fortran)
     target_link_libraries(aqlrgb PRIVATE OpenMP::OpenMP_Fortran)
 endif ()
@@ -120,10 +136,13 @@ file(GLOB_RECURSE aqscript_SOURCES CONFIGURE_DEPENDS
     src_cpp/interpreter/*.cpp
     src_cpp/interpreter/*.hpp
 )
-add_library(aqtask_dispatch STATIC ${aqscript_SOURCES})
+
+add_library(aqtask_dispatch SHARED ${aqscript_SOURCES})
 target_include_directories(aqtask_dispatch PUBLIC src_cpp/interpreter)
 
 install(TARGETS aqtask_dispatch LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
+
+if (AQUILA_BUILD_TESTS)
 
 file(GLOB TEST_TASK_DISPATCH_SOURCES CONFIGURE_DEPENDS test_task_dispatch/*.cpp)
 foreach(test_src ${TEST_TASK_DISPATCH_SOURCES})
@@ -133,46 +152,53 @@ foreach(test_src ${TEST_TASK_DISPATCH_SOURCES})
     add_test(NAME "aquila_task_${test_name}" COMMAND ${test_name})
 endforeach()
 
+endif()
+
 file(GLOB_RECURSE libaq2_SOURCES CONFIGURE_DEPENDS
     src_cpp/lib/*.f90
     src_cpp/lib/*.F90
     src_cpp/lib/*.cpp
     src_cpp/lib/*.hpp
 )
-add_library(aquila2 STATIC ${libaq2_SOURCES})
+
+add_library(aquila2 SHARED ${libaq2_SOURCES})
 target_include_directories(aquila2 PUBLIC 
     src_cpp/lib/buffer src_cpp/lib/io
     src_cpp/lib/operations src_cpp/lib/values src_cpp/lib/utils)
 
-if (OPENMP)
+if (AQUILA_OPENMP)
     target_link_libraries(aquila2 PRIVATE OpenMP::OpenMP_CXX)
 endif ()
 
-target_link_libraries(aquila2 PUBLIC aquila_static)
+target_link_libraries(aquila2 PUBLIC aqtask_dispatch aquila)
 
 install(TARGETS aquila2 LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
 add_executable(aqfindstar src_cpp/app/aqfindstar.cpp)
 target_link_libraries(aqfindstar aquila2)
 
-add_executable(aq2 src_cpp/app/aq2cpp.cpp)
-target_link_libraries(aq2 
-    "-Wl,--whole-archive" aquila2 aqtask_dispatch "-Wl,--no-whole-archive" 
+add_executable(aqcli src_cpp/app/aq2cpp.cpp)
+target_link_libraries(aqcli 
+    -Wl,--no-as-needed aqtask_dispatch aquila2 -Wl,--as-needed 
     ${READLINE_LIBRARIES})
 
-install(TARGETS aqfindstar aq2 RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(TARGETS aqfindstar aqcli RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
-file(GLOB TEST_INTERACTIVE_SOURCES CONFIGURE_DEPENDS test_interactive/*.cpp)
-foreach(test_src ${TEST_INTERACTIVE_SOURCES})
-    get_filename_component(test_name ${test_src} NAME_WE)
-    add_executable(${test_name} ${test_src})
-    target_link_libraries(${test_name} PRIVATE 
-        "-Wl,--whole-archive" aquila2 aqtask_dispatch "-Wl,--no-whole-archive" 
-       screen dom component)
-endforeach()
+if (AQUILA_BUILD_TESTS)
 
-# CPack config
-set(CPACK_GENERATOR "TGZ")
-set(CPACK_PACKAGE_NAME "aquila")
-set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
-include(CPack)
+add_executable(bench_convol test_interactive/bench_convol.F90)
+target_link_libraries(bench_convol PRIVATE aquila)
+
+add_executable(bench_stack test_interactive/bench_stack.f90)
+target_link_libraries(bench_stack PRIVATE aquila)
+
+add_executable(run_from_arg test_interactive/run_from_arg.cpp)
+target_link_libraries(run_from_arg PRIVATE aquila2)
+
+if (AQUILA_TUI)
+    add_executable(parser_console test_interactive/parser_console.cpp)
+    target_link_libraries(parser_console PRIVATE screen dom component
+        -Wl,--no-as-needed aqtask_dispatch aquila2 -Wl,--as-needed) 
+endif()
+
+endif()

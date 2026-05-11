@@ -1,0 +1,48 @@
+name: aquila
+base: core24
+version: git
+summary: snap test
+description: snap test
+
+grade: devel
+confinement: strict
+
+plugs:
+  home:
+    interface: home
+
+parts:
+  build-aquila:
+    plugin: cmake
+    source: .
+    cmake-parameters:
+      - "-DCMAKE_BUILD_TYPE=Release"
+      - "-DAQUILA_OPENMP=On"
+      - "-DAQUILA_TESTS=Off"
+    #build-attributes:
+    #  - enable-patchelf
+    build-packages:
+      - libreadline-dev
+      - pkg-config
+      - zlib1g-dev
+      - cmake
+      - g++
+      - gfortran
+      - gcc
+    stage-packages:
+      - libreadline8
+      - libgfortran5
+      - zlib1g
+      - libgomp1
+
+apps:
+  stack:
+    command: usr/local/bin/aqstack
+    aliases: [ "aqstack" ]
+  lrgb:
+    command: usr/local/bin/aqlrgb
+    aliases: [ "aqlrgb" ]
+  cli:
+    command: usr/local/bin/aqcli
+    aliases: [ "aqcli" ]
+

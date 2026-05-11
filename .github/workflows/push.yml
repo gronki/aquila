@@ -48,7 +48,7 @@ jobs:
           mkdir -p build
           rm -rf build/*
           cd build
-          cmake -DCMAKE_BUILD_TYPE=Debug -DOPENMP=Off ..
+          cmake -DCMAKE_BUILD_TYPE=Debug -DAQUILA_OPENMP=Off ..
           cmake --build .
           cmake --install .
 
@@ -78,7 +78,7 @@ jobs:
           mkdir -p build
           rm -rf build/*
           cd build
-          cmake -DCMAKE_BUILD_TYPE=Release -DOPENMP=Off ..
+          cmake -DCMAKE_BUILD_TYPE=Release -DAQUILA_OPENMP=Off ..
           cmake --build .
           cmake --install .
 
@@ -100,7 +100,7 @@ jobs:
           mkdir -p build
           rm -rf build/*
           cd build
-          cmake -DCMAKE_BUILD_TYPE=Release -DOPENMP=On ..
+          cmake -DCMAKE_BUILD_TYPE=Release -DAQUILA_OPENMP=On ..
           cmake --build .
           cmake --install .
 
@@ -230,7 +230,7 @@ jobs:
           mkdir -p build
           rm -rf build/*
           cd build
-          cmake -DOPENMP=On ..
+          cmake -DAQUILA_OPENMP=On ..
           cmake --build .
           sudo cmake --install .
     
@@ -363,7 +363,7 @@ jobs:
           mkdir -p build
           rm -rf build/*
           cd build
-          cmake -DOPENMP=On ..
+          cmake -DAQUILA_OPENMP=On ..
           cmake --build .
           sudo cmake --install .
 

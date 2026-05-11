@@ -25,7 +25,7 @@ jobs:
         run: |
           sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
           sudo apt-get update -y
-          sudo apt-get install -y cmake make gcc-13 g++-13 gfortran-13 libpng-dev libreadline-dev pkg-config patchelf
+          sudo apt-get install -y cmake make gcc-13 g++-13 gfortran-13 libreadline-dev pkg-config patchelf
 
       - name: Build and install the app
         run: |
@@ -36,7 +36,7 @@ jobs:
             -DCMAKE_C_COMPILER=gcc-13 \
             -DCMAKE_CXX_COMPILER=g++-13 \
             -DCMAKE_Fortran_COMPILER=gfortran-13 \
-            -DCMAKE_BUILD_TYPE=Release -DOPENMP=On \
+            -DCMAKE_BUILD_TYPE=Release -DAQUILA_OPENMP=On \
             -DBUNDLE=On -DSYS_LIBDIR=/lib/x86_64-linux-gnu
           cmake --build .
           cpack .

@@ -5,10 +5,67 @@ on:
     tags:
       - '*'
 
+env:
+  VERBOSE: 1
+
 jobs:
+
+  test:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          - { name: "ubuntu:22.04", install: "apt-get update && apt-get install -y cmake g++ gfortran  libpng-dev libreadline-dev pkg-config binutils" }
+          - { name: "ubuntu:24.04", install: "apt-get update && apt-get install -y cmake g++ gfortran  libpng-dev libreadline-dev pkg-config binutils" }
+          - { name: "debian:trixie", install: "apt-get update && apt-get install -y cmake g++ gfortran  libpng-dev libreadline-dev pkg-config binutils" }
+          - { name: "debian:bookworm", install: "apt-get update && apt-get install -y cmake g++ gfortran  libpng-dev libreadline-dev pkg-config binutils" }
+    container:
+      image: ${{ matrix.image.name }}
+    name: Test on ${{ matrix.image.name }}
+    env:
+      CC: "gcc"
+      CXX: "g++"
+      FC: "gfortran"
+    steps:
+      - name: Install build dependencies
+        run: ${{ matrix.image.install }} wget git curl && gcc --version
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Download test data
+        run: |
+          scripts/get_test_data.sh
+          echo "PATH=$PATH:/opt/aquila/bin" >> "$GITHUB_ENV"
+
+      - name: Build and install the app (release, OpenMP)
+        run: |
+          mkdir -p build
+          rm -rf build/*
+          cd build
+          cmake -DCMAKE_BUILD_TYPE=Release -DAQUILA_OPENMP=On ..
+          cmake --build .
+          cmake --install .
+
+      - name: Run unit tests
+        run: |
+          cd build
+          ctest . --output-on-failure
+
+      - name: Run integration test on example data
+        run: |
+          mkdir testrun
+          cd testrun
+          ln -s ../examples
+          ln -s ../testdata
+          ../scripts/test_routine.sh
 
   build-appimage:
     name: Build AppImage
+    needs: test
     runs-on: ubuntu-24.04
     defaults:
       run:
@@ -33,60 +90,10 @@ jobs:
           name: "aquila-${{ github.ref_name }}-appimage"
           path: aquila-${{ github.ref_name }}-x86_64.AppImage
 
-  test-appimage:
-    name: Test AppImage
-    needs: build-appimage
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        shell: bash
-    strategy:
-      matrix:
-        include:
-          - {os: "ubuntu", osver: "24.04"}
-          - {os: "ubuntu", osver: "22.04"}
-          - {os: "debian", osver: "bookworm"}
-          - {os: "debian", osver: "trixie"}
-    container:
-      image: ${{ matrix.os }}:${{ matrix.osver }}
-
-    steps:
-      - name: Install tools
-        run: apt-get update && apt-get install -y wget git curl gzip tar
-
-      - name: Checkout (with submodules)
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      - name: Download AppImage artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: "aquila-${{ github.ref_name }}-appimage"
-
-      - name: Extract AppImage (no FUSE in container)
-        run: |
-          chmod +x aquila-${{ github.ref_name }}-x86_64.AppImage
-          ./aquila-${{ github.ref_name }}-x86_64.AppImage --appimage-extract > /dev/null
-          echo "PATH=$PWD/squashfs-root/usr/bin:$PATH" >> "$GITHUB_ENV"
-          echo "LD_LIBRARY_PATH=$PWD/squashfs-root/usr/lib:${LD_LIBRARY_PATH:-}" >> "$GITHUB_ENV"
-
-      - name: Download test data
-        run: scripts/get_test_data.sh
-
-      - name: Run integration test on example data
-        run: |
-          mkdir testrun
-          cd testrun
-          ln -s ../examples
-          ln -s ../testdata
-          ../scripts/test_routine.sh
-
   release-appimage:
     name: Release AppImage
     runs-on: ubuntu-latest
-    needs:
-      - test-appimage
+    needs: build-appimage
     env:
       GH_TOKEN: ${{ github.token }}
     steps:

@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 
-project(aquila VERSION "260207" LANGUAGES Fortran C CXX)
+project(aquila VERSION "260512" LANGUAGES Fortran C CXX)
 
 set(CMAKE_CXX_STANDARD 20)       # request C++20
 set(CMAKE_CXX_STANDARD_REQUIRED ON)  # fail if compiler does not support it

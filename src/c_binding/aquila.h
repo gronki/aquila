@@ -9,7 +9,7 @@ extern "C"
 #    include <stdlib.h>
 #endif
 
-#define AQUILA_VERSION "260207"
+#define AQUILA_VERSION "260512"
 
     typedef float real_buf_t;
 

@@ -1,6 +1,7 @@
 name: aquila
 base: core24
 version: git
+icon: assets/aquila.png
 summary: Command-line toolkit for astrophotography stacking and compositing
 description: |
   Aquila is a fast, terminal-native toolkit for reducing and compositing

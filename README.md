@@ -1,6 +1,8 @@
 # Aquila: LRGB astrophotography processor with Fortran heart
 
-**[Click here](https://github.com/gronki/aquila/releases) to download packages for Ubuntu/Debian.**
+![Aquila](assets/aquila.png)
+
+**[Click here](https://github.com/gronki/aquila/releases) to download packages.**
 
 **aquila** is a command-line toolkit for astrophotography data reduction and compositing on Linux.
 While graphical tools exist for this workflow, they rarely integrate well with the terminal — the natural environment for batch-processing hundreds of FITS files, writing reproducible pipelines, and automating nightly runs.

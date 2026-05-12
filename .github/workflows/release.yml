@@ -1,4 +1,4 @@
-name: Make release on tag push and build .deb packages
+name: Build and release AppImage
 
 on:
   push:
@@ -7,9 +7,9 @@ on:
 
 jobs:
 
-  build-tgz:
-    name: Build .tar.gz package
-    runs-on: ubuntu-22.04
+  build-appimage:
+    name: Build AppImage
+    runs-on: ubuntu-24.04
     defaults:
       run:
         shell: bash
@@ -21,36 +21,21 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
-      - name: Setup
-        run: |
-          sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
-          sudo apt-get update -y
-          sudo apt-get install -y cmake make gcc-13 g++-13 gfortran-13 libreadline-dev pkg-config patchelf
+      - name: Build AppImage
+        run: sudo bash scripts/build_appimage.sh
 
-      - name: Build and install the app
-        run: |
-          mkdir -p build
-          rm -rf build/*
-          cd build
-          cmake .. \
-            -DCMAKE_C_COMPILER=gcc-13 \
-            -DCMAKE_CXX_COMPILER=g++-13 \
-            -DCMAKE_Fortran_COMPILER=gfortran-13 \
-            -DCMAKE_BUILD_TYPE=Release -DAQUILA_OPENMP=On \
-            -DBUNDLE=On -DSYS_LIBDIR=/lib/x86_64-linux-gnu
-          cmake --build .
-          cpack .
-          ldd aq2
-  
-      - name: Upload .tar.gz artifact
+      - name: Rename with version tag
+        run: mv aquila-x86_64.AppImage aquila-${{ github.ref_name }}-x86_64.AppImage
+
+      - name: Upload AppImage artifact
         uses: actions/upload-artifact@v4
         with:
-          name: "aquila-${{ github.ref_name }}-Linux-tgz"
-          path: build/aquila-${{ github.ref_name }}-Linux.tar.gz
+          name: "aquila-${{ github.ref_name }}-appimage"
+          path: aquila-${{ github.ref_name }}-x86_64.AppImage
 
-  test-tgz:
-    name: Test .tar.gz package
-    needs: build-tgz
+  test-appimage:
+    name: Test AppImage
+    needs: build-appimage
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -67,25 +52,25 @@ jobs:
 
     steps:
       - name: Install tools
-        run: |
-          apt-get update
-          apt-get install -y wget git curl gzip tar
-          
+        run: apt-get update && apt-get install -y wget git curl gzip tar
+
       - name: Checkout (with submodules)
         uses: actions/checkout@v4
         with:
           submodules: recursive
 
-      - name: Download .tgz artifact
+      - name: Download AppImage artifact
         uses: actions/download-artifact@v4
         with:
-          name: "aquila-${{ github.ref_name }}-Linux-tgz"
+          name: "aquila-${{ github.ref_name }}-appimage"
 
-      - name: Install the package
+      - name: Extract AppImage (no FUSE in container)
         run: |
-          tar xzfv aquila-${{ github.ref_name }}-Linux.tar.gz
-          echo "PATH=$PATH:$PWD/aquila-${{ github.ref_name }}-Linux/bin" >> "$GITHUB_ENV"
-  
+          chmod +x aquila-${{ github.ref_name }}-x86_64.AppImage
+          ./aquila-${{ github.ref_name }}-x86_64.AppImage --appimage-extract > /dev/null
+          echo "PATH=$PWD/squashfs-root/usr/bin:$PATH" >> "$GITHUB_ENV"
+          echo "LD_LIBRARY_PATH=$PWD/squashfs-root/usr/lib:${LD_LIBRARY_PATH:-}" >> "$GITHUB_ENV"
+
       - name: Download test data
         run: scripts/get_test_data.sh
 
@@ -97,15 +82,14 @@ jobs:
           ln -s ../testdata
           ../scripts/test_routine.sh
 
-  release-tgz:
-    name: Automated release
+  release-appimage:
+    name: Release AppImage
     runs-on: ubuntu-latest
-    needs: 
-      - test-tgz
+    needs:
+      - test-appimage
     env:
       GH_TOKEN: ${{ github.token }}
     steps:
-
       - name: Checkout (with submodules)
         uses: actions/checkout@v4
         with:
@@ -113,169 +97,18 @@ jobs:
 
       - uses: actions/download-artifact@v4
         with:
-          name: "aquila-${{ github.ref_name }}-Linux-tgz"
+          name: "aquila-${{ github.ref_name }}-appimage"
 
       - name: Ensure release exists
         run: |
-          # check if release exists
           if ! gh release view ${{ github.ref_name }} >/dev/null 2>&1; then
             gh release create ${{ github.ref_name }} \
-              -t "Aquila v.${{ github.ref_name }}" \
-              -n "Download packages for your Linux distribution or an old trusty tar."
+              -t "Aquila ${{ github.ref_name }}" \
+              -n "Download the AppImage below — it runs on any modern x86_64 Linux without installation."
           fi
 
-      - name: Upload artifact
+      - name: Upload AppImage to release
         run: |
           gh release upload ${{ github.ref_name }} \
-            "aquila-${{ github.ref_name }}-Linux.tar.gz" \
-            --clobber
-            
-  build-deb:
-    name: Build .deb package
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        shell: bash
-    strategy:
-      matrix:
-        include:
-          - {os: "ubuntu", osver: "24.04"}
-          - {os: "ubuntu", osver: "22.04"}
-          - {os: "debian", osver: "bookworm"}
-          - {os: "debian", osver: "trixie"}
-    container:
-      image: ${{ matrix.os }}:${{ matrix.osver }}
-
-    steps:
-      - name: Install tools
-        run: |
-          if [ ${{ matrix.os }} == ubuntu ]; then
-            apt-get update && apt-get install -y git curl wget ca-certificates
-          elif [ ${{ matrix.os }} == debian ]; then
-            apt-get update && apt-get install -y git curl wget ca-certificates
-          else
-            echo "Unknown os"
-            exit 1
-          fi
-
-      - name: Checkout (with submodules)
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-          fetch-depth: 0
-
-      - name: Setup
-        run: |
-          echo "PACKAGE_NAME=aquila-${{ github.ref_name }}-${{ matrix.os }}-${{ matrix.osver }}-amd64" >> "$GITHUB_ENV"
-          echo "PATH=$PATH:/opt/aquila/bin" >> "$GITHUB_ENV"
-          bash packaging/${{ matrix.os }}/setup.sh
-
-      - name: Build and install the app
-        run: |
-          mkdir -p build
-          rm -rf build/*
-          cd build
-          cmake .. \
-            -DCMAKE_INSTALL_PREFIX=${PWD}/deb-package/${PACKAGE_NAME}/usr \
-            -DCMAKE_BUILD_TYPE=Release -DOPENMP=On 
-          cmake --build .
-          cmake --install .
-
-      - name: Create deb package
-        run: |
-          . packaging/${{ matrix.os }}/${{ matrix.osver }}/vars.sh
-          cd build/deb-package
-          cp -r ../../packaging/deb/DEBIAN ${PACKAGE_NAME}/
-          sed -i "s/___VERSION___/${{ github.ref_name }}/g" ${PACKAGE_NAME}/DEBIAN/control
-          sed -i "s/___DEPS___/${DEPS}/g" ${PACKAGE_NAME}/DEBIAN/control
-          sed -i "s/___ARCH___/amd64/g" ${PACKAGE_NAME}/DEBIAN/control
-          dpkg-deb --build ${PACKAGE_NAME}
-  
-      - name: Upload .deb artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: "aquila-${{ github.ref_name }}-${{ matrix.os }}-${{ matrix.osver }}-amd64-deb"
-          path: build/deb-package/aquila-${{ github.ref_name }}-${{ matrix.os }}-${{ matrix.osver }}-amd64.deb
-
-  test-deb:
-    name: Test .deb package
-    needs: build-deb
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        shell: bash
-    strategy:
-      matrix:
-        include:
-          - {os: "ubuntu", osver: "24.04"}
-          - {os: "ubuntu", osver: "22.04"}
-          - {os: "debian", osver: "bookworm"}
-          - {os: "debian", osver: "trixie"}
-    container:
-      image: ${{ matrix.os }}:${{ matrix.osver }}
-
-    steps:
-      - name: Install tools
-        run: |
-          apt-get update
-          apt-get install -y wget git curl gzip tar
-          
-      - name: Checkout (with submodules)
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      - name: Download .deb artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: "aquila-${{ github.ref_name }}-${{ matrix.os }}-${{ matrix.osver }}-amd64-deb"
-
-      - name: Install the package
-        run: |
-          apt update
-          apt-get install -y ./aquila-${{ github.ref_name }}-${{ matrix.os }}-${{ matrix.osver }}-amd64.deb
-          echo "PATH=$PATH:/opt/aquila/bin" >> "$GITHUB_ENV"
-  
-      - name: Download test data
-        run: scripts/get_test_data.sh
-
-      - name: Run integration test on example data
-        run: |
-          mkdir testrun
-          cd testrun
-          ln -s ../examples
-          ln -s ../testdata
-          ../scripts/test_routine.sh
-
-  release-deb:
-    name: Automated release
-    runs-on: ubuntu-latest
-    strategy:
-      max-parallel: 1
-      matrix:
-        include:
-          - {os: "ubuntu", osver: "24.04"}
-          - {os: "ubuntu", osver: "22.04"}
-          - {os: "debian", osver: "bookworm"}
-          - {os: "debian", osver: "trixie"}
-    needs: 
-      - test-deb
-      - release-tgz
-    env:
-      GH_TOKEN: ${{ github.token }}
-    steps:
-
-      - name: Checkout (with submodules)
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: "aquila-${{ github.ref_name }}-${{ matrix.os }}-${{ matrix.osver }}-amd64-deb"
-
-      - name: Upload artifact
-        run: |
-          gh release upload ${{ github.ref_name }} \
-            "aquila-${{ github.ref_name }}-${{ matrix.os }}-${{ matrix.osver }}-amd64.deb" \
+            "aquila-${{ github.ref_name }}-x86_64.AppImage" \
             --clobber

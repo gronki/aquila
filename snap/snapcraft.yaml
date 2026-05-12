@@ -1,8 +1,28 @@
 name: aquila
 base: core24
 version: git
-summary: snap test
-description: snap test
+summary: Command-line toolkit for astrophotography stacking and compositing
+description: |
+  Aquila is a fast, terminal-native toolkit for reducing and compositing
+  astrophotography data on Linux. It is built around a Fortran/C++ core with
+  OpenMP parallelism and is designed to fit naturally into shell scripts and
+  automated pipelines.
+
+  The package includes three programs:
+
+  - aqstack: calibrates and stacks monochromatic CCD frames. Handles bias,
+    dark, and flat subtraction, hot pixel correction, frame alignment, and
+    combining by average, median, or sigma-clipped mean.
+
+  - aqlrgb: composites multi-filter data into colour images. Supports the
+    classic LRGB workflow as well as narrowband palette mixing, white-balance
+    equalisation, background suppression, and nonlinear stretching (asinh,
+    sqrt, log) before writing FITS or PNG output.
+
+  - aqcli: a scripting interpreter for writing end-to-end image processing
+    pipelines. Scripts load frames, run calibration and stacking routines,
+    apply convolution kernels and math operations, and save results — all in
+    a compact, readable domain-specific language.
 
 grade: devel
 confinement: strict
@@ -19,8 +39,6 @@ parts:
       - "-DCMAKE_BUILD_TYPE=Release"
       - "-DAQUILA_OPENMP=On"
       - "-DAQUILA_TESTS=Off"
-    #build-attributes:
-    #  - enable-patchelf
     build-packages:
       - libreadline-dev
       - pkg-config

@@ -2,17 +2,15 @@
 
 **[Click here](https://github.com/gronki/aquila/releases) to download packages for Ubuntu/Debian.**
 
-**aquila** is a package designed to be a minimalist tool for initial steps of astrophotography data processing.
-There is a shortage of easy to use tools for Linux.
-Moreover, most tools in existence do not work well from terminal, which is a natural tool for managing and organizing hundreds of image files during stacking etc.
-Popular tools like IRAF are not friendly for quick use by amateur astronomers.
-**aquila** is intended to fill that void.
+**aquila** is a command-line toolkit for astrophotography data reduction and compositing on Linux.
+While graphical tools exist for this workflow, they rarely integrate well with the terminal — the natural environment for batch-processing hundreds of FITS files, writing reproducible pipelines, and automating nightly runs.
+Aquila is designed to fit into that world: fast, scriptable, and unobtrusive.
 
 Currently, the package consists of following programs:
 
-1. ``aqstack`` for stacking and reduction of monochromatic CCD images
-2. ``aqlrgb`` for compositing images from many filters into one color picture
-3. ``aq2`` -- currently developed interpreter for scripting image processing pipelines
+1. ``aqstack`` — stacking and calibration of monochromatic CCD frames (bias, dark, flat, alignment, sigma-clipping)
+2. ``aqlrgb`` — compositing multi-filter data into colour images with luminance, white-balance, and stretching controls
+3. ``aqcli`` — a scripting interpreter for building full end-to-end image processing pipelines
 
 ## Installation
 
@@ -60,6 +58,8 @@ Use option ``-h`` or ``-help`` to get the information below.
 
 ### aqstack
 
+``aqstack`` handles the calibration and stacking side of the workflow: it subtracts bias, dark, and flat frames, identifies and corrects hot pixels, optionally aligns frames, and combines them using your choice of average, median, or sigma-clipped mean. It is designed to run efficiently even on large frame sets, with temperature filtering to keep only frames from the same thermal session and optional resampling for drizzle-style oversampling.
+
 ```
 usage: aqstack [STRATEGY] [OPTIONS] FILE1 [FILE2 ...] -o OUTPUT
 STRATEGY can be: bias, dark, flat, process, align, final
@@ -98,6 +98,8 @@ STRATEGY can be: bias, dark, flat, process, align, final
 
 ### aqlrgb
 
+``aqlrgb`` takes calibrated, aligned frames from multiple filters and combines them into a colour image. It supports the classic LRGB workflow — using a high-SNR luminance channel to sharpen the colour data — as well as narrowband palette compositing. It can equalise colour balance across channels, suppress background gradients, and apply nonlinear stretches (sqrt, asinh, log) before writing the result to FITS or PNG.
+
 ```
 prepares the aligned images for RGB processing
 usage: aqlrgb [L] R G B [-o FILE] [options]
@@ -118,6 +120,44 @@ R, G, B are color frames and L is optional luminance
                         (boosts star colors but can kill some details)
                -h[elp]  prints help
 ```
+
+## Scripting with aqcli
+
+``aqcli`` is a small domain-specific language for writing image processing pipelines. Rather than stringing together shell commands or writing Python glue code, you can express a full reduction workflow — loading frames, stacking, compositing, stretching, saving — as a readable script that runs top to bottom.
+
+The language is expression-oriented: operations return values that can be assigned to variables or chained with the pipe operator ``%``. Routines accept positional and keyword arguments; arrays of frames flow through pipelines element-wise.
+
+### Example: stacking a luminance sequence
+
+```
+lights = path("lights/L_frame_00{1,2,3,4,5,6,7,8}.fits") % file()
+
+stars      = findstar(lights)
+alignments = register(stars, stars % item(1))
+
+! alignment will be applied here once projection is in place
+
+stack(lights, method: "average") % save("stack_L.fits")
+```
+
+Lines beginning with ``!`` are comments.
+
+### Example: SHO narrowband composite
+
+```
+S = file("stack_S.fits")
+H = file("stack_H.fits")
+O = file("stack_O.fits")
+
+R = mix(H, 0.9, S, 3)
+G = mix(H, 0.9, O, 1, S, -0.8)
+B = mix(O, 3.3)
+
+rgb = lrgb(H, R, G, B)
+rgb % save("sho.fits")
+```
+
+The pipe operator ``%`` passes the result of the left-hand side as the first argument of the right-hand side, making it easy to build readable processing chains without intermediate variables.
 
 ## Changelog
 

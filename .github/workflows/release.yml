@@ -16,11 +16,11 @@ jobs:
       fail-fast: false
       matrix:
         image:
-          - { name: "ubuntu:22.04", install: "apt-get update && apt-get install -y cmake g++ gfortran libreadline-dev pkg-config binutils" }
-          - { name: "ubuntu:24.04", install: "apt-get update && apt-get install -y cmake g++ gfortran libreadline-dev pkg-config binutils" }
-          - { name: "ubuntu:26.04", install: "apt-get update && apt-get install -y cmake g++ gfortran libreadline-dev pkg-config binutils" }
-          - { name: "debian:trixie", install: "apt-get update && apt-get install -y cmake g++ gfortran libreadline-dev pkg-config binutils" }
-          - { name: "debian:bookworm", install: "apt-get update && apt-get install -y cmake g++ gfortran libreadline-dev pkg-config binutils" }
+          - { name: "ubuntu:22.04", install: "apt-get update && apt-get install -y cmake g++ gfortran libreadline-dev zlib1g-dev pkg-config binutils" }
+          - { name: "ubuntu:24.04", install: "apt-get update && apt-get install -y cmake g++ gfortran libreadline-dev zlib1g-dev pkg-config binutils" }
+          - { name: "ubuntu:26.04", install: "apt-get update && apt-get install -y cmake g++ gfortran libreadline-dev zlib1g-dev pkg-config binutils" }
+          - { name: "debian:trixie", install: "apt-get update && apt-get install -y cmake g++ gfortran libreadline-dev zlib1g-dev pkg-config binutils" }
+          - { name: "debian:bookworm", install: "apt-get update && apt-get install -y cmake g++ gfortran libreadline-dev zlib1g-dev pkg-config binutils" }
     container:
       image: ${{ matrix.image.name }}
     name: Test on ${{ matrix.image.name }}

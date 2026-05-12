@@ -7,7 +7,7 @@ cmake make gcc g++ gfortran libpng-dev libreadline-dev pkg-config
 WORKDIR /tmp/aquila
 COPY . .
 WORKDIR /tmp/aquila/build
-RUN cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/opt/aquila -DOPENMP=On \
+RUN cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/opt/aquila -DAQUILA_OPENMP=On \
     && cmake --build . && ctest . && cmake --install .
 
 FROM debian:trixie

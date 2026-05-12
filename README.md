@@ -51,7 +51,7 @@ export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:/opt/aquila/lib"
 The script ``install.sh`` executes something like:
 
 ```sh
-mkdir build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Native -DOPENMP=On -DCMAKE_INSTALL_PREFIX=/opt/aquila && cmake --build . && sudo cmake --install .
+mkdir build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Native -DAQUILA_OPENMP=On -DCMAKE_INSTALL_PREFIX=/opt/aquila && cmake --build . && sudo cmake --install .
 ```
 
 ## Usage

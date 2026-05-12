@@ -4,7 +4,7 @@ set -e
 rm -f *.fits *.png
 which aqstack
 which aqlrgb
-which aq2
+which aqcli
 
 set -x
 

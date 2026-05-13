@@ -136,6 +136,11 @@ jobs:
       - name: Fetch tags
         run: git fetch --tags --force
 
+      - name: Set snap grade and version for release
+        run: |
+          sed -i 's/^grade:.*$/grade: stable/' snap/snapcraft.yaml
+          sed -i 's/^version:.*$/version: "${{ github.ref_name }}"/' snap/snapcraft.yaml
+
       - uses: snapcore/action-build@v1
         id: build
 

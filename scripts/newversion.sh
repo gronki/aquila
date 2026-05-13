@@ -23,9 +23,9 @@ if [ ! -f scripts/newversion.sh ]; then
     exit 1
 fi
 
-sed -Ei "s/define AQUILA_VERSION .*$/define AQUILA_VERSION \"${VERSION_STR}\"/" src/c_binding/aquila.h
-sed -Ei "s/version = .*$/version = \"${VERSION_STR}\"/" src/globals/globals.F90
-sed -Ei "s/aquila VERSION \".*\"/aquila VERSION \"${VERSION_STR}\"/" CMakeLists.txt
+sed -i "s/define AQUILA_VERSION .*$/define AQUILA_VERSION \"${VERSION_STR}\"/" src/c_binding/aquila.h
+sed -i "s/version = .*$/version = \"${VERSION_STR}\"/" src/globals/globals.F90
+sed -i "s/aquila VERSION \".*\"/aquila VERSION \"${VERSION_STR}\"/" CMakeLists.txt
 
 (
     git add .

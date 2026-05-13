@@ -4,7 +4,9 @@
 
 [Click here](https://github.com/gronki/aquila/releases) to download **AppImage**.
 
-**[Aquila is now listed in the Snap store!](https://snapcraft.io/aquila)**
+**[Available as Snap](https://snapcraft.io/aquila)**
+
+[![aquila](https://snapcraft.io/aquila/badge.svg)](https://snapcraft.io/aquila)
 
 ```sh
 sudo snap install aquila

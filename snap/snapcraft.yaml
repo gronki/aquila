@@ -11,16 +11,16 @@ description: |
 
   The package includes three programs:
 
-  - aqstack: calibrates and stacks monochromatic CCD frames. Handles bias,
+  - aqstack (command: aquila.stack): calibrates and stacks monochromatic CCD frames. Handles bias,
     dark, and flat subtraction, hot pixel correction, frame alignment, and
     combining by average, median, or sigma-clipped mean.
 
-  - aqlrgb: composites multi-filter data into colour images. Supports the
+  - aqlrgb (command: aquila.lrgb): composites multi-filter data into colour images. Supports the
     classic LRGB workflow as well as narrowband palette mixing, white-balance
     equalisation, background suppression, and nonlinear stretching (asinh,
     sqrt, log) before writing FITS or PNG output.
 
-  - aqcli: a scripting interpreter for writing end-to-end image processing
+  - aqcli (command: aquila): a scripting interpreter for writing end-to-end image processing
     pipelines. Scripts load frames, run calibration and stacking routines,
     apply convolution kernels and math operations, and save results — all in
     a compact, readable domain-specific language.

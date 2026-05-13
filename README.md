@@ -8,6 +8,8 @@
 
 ```sh
 sudo snap install aquila
+sudo snap alias aquila.lrgb aqlrgb
+sudo snap alias aquila.stack aqstack
 ```
 
 **aquila** is a command-line toolkit for astrophotography data reduction and compositing on Linux.

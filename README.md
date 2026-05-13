@@ -1,6 +1,6 @@
 # Aquila: LRGB astrophotography processor with Fortran heart
 
-![Aquila](assets/aquila.png)
+![Aquila](snap/gui/aquila.png)
 
 **[Click here](https://github.com/gronki/aquila/releases) to download packages.**
 

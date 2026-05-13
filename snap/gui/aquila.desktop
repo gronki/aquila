@@ -1,7 +1,7 @@
 [Desktop Entry]
-Name=Aquila
-Exec=aquila
-Icon=aquila
+Name=aquila
+Exec=aquila.cli
+Icon=${SNAP}/meta/gui/aquila.png
 Type=Application
 Categories=Science;
 Terminal=true

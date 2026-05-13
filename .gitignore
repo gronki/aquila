@@ -16,3 +16,4 @@ aquila-210111
 /Testing
 *.snap
 *.AppImage
+!aquila.png

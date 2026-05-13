@@ -69,7 +69,9 @@ void __cast_single_args<SequenceValue>(const std::vector<const Value *> &args,
 {
     const SequenceValue *maybe_sequence = __cast_safe<SequenceValue>(args[idx]);
     seqs[idx] = nullptr;
+#ifndef NDEBUG
     std::cout << "seq at: " << idx << std::endl;
+#endif
     if (!maybe_sequence)
     {
         throw std::runtime_error(std::string("Sequence expected at position ")

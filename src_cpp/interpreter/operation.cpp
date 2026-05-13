@@ -131,9 +131,9 @@ std::vector<ArgMatch> match_arguments(
     size_t num_positionals = 0;
     bool expect_ellipsis = false;
     check_argspec_integrity(manifest, num_positionals, expect_ellipsis);
-
+#ifndef NDEBUG
     std::cout << "num_positionals =" << num_positionals << std::endl;
-
+#endif
     const size_t n_spec = expect_ellipsis ? manifest.size() - 1 : manifest.size();
     std::vector<ArgMatch> match(n_spec);
 
@@ -225,10 +225,8 @@ std::vector<ArgMatch> match_arguments(
 
     for (size_t imatch = 0; imatch < match.size(); imatch++)
     {
-        match[imatch].convert =
-            manifest[std::min(imatch, manifest.size() - 1)].convert;
-        match[imatch].sequence =
-            manifest[std::min(imatch, manifest.size() - 1)].sequence;
+        match[imatch].convert = manifest[std::min(imatch, manifest.size() - 1)].convert;
+        match[imatch].sequence = manifest[std::min(imatch, manifest.size() - 1)].sequence;
 
         if (match[imatch].matched)
             continue;
@@ -286,9 +284,12 @@ std::string Operation::signature_str() const
         {
             ss << ", ";
         }
-        if (argspec.sequence) {
+        if (argspec.sequence)
+        {
             ss << "[" << argspec.name << ", ...]";
-        } else {
+        }
+        else
+        {
             ss << argspec.name;
         }
         if (argspec.has_default())

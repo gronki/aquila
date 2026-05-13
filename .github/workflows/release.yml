@@ -133,6 +133,9 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
+      - name: Fetch tags
+        run: git fetch --tags --force
+
       - uses: snapcore/action-build@v1
         id: build
 

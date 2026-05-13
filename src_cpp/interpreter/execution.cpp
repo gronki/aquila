@@ -32,6 +32,7 @@ static std::vector<const Value *> make_ith_argument(
 static ValuePtr op_call_with_debug(
     const Operation &op, const std::vector<const Value *> &args)
 {
+#ifndef NDEBUG
     std::cout << "running " << op.name() << "(";
     for (size_t iarg = 0; iarg < args.size(); iarg++)
     {
@@ -40,16 +41,21 @@ static ValuePtr op_call_with_debug(
         std::cout << (args[iarg] ? args[iarg]->str() : "(null)");
     }
     std::cout << ")" << std::endl << "          ---> ";
+#endif
 
     try
     {
         auto result = op.call(args);
+#ifndef NDEBUG
         std::cout << (result ? result->str() : "(null)") << std::endl;
+#endif
         return result;
     }
     catch (const std::exception &e)
     {
+#ifndef NDEBUG
         std::cout << "(error)" << std::endl;
+#endif
         throw;
     }
 }

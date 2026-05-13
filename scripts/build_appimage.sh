@@ -45,8 +45,10 @@ done
 
 # ── AppRun + .desktop ──────────────────────────────────────────────────────
 cp "$SRC_DIR/scripts/AppRun"         "$APPDIR/AppRun"
-cp "$SRC_DIR/assets/aquila.desktop"  "$APPDIR/aquila.desktop"
-cp "$SRC_DIR/assets/aquila.png"      "$APPDIR/aquila.png"
+cp "$SRC_DIR/snap/gui/aquila.desktop"  "$APPDIR/aquila.desktop"
+sed -i 's/^Exec=.*/Exec=aquila/' "$APPDIR/aquila.desktop"
+sed -i 's/^Icon=.*/Icon=aquila/' "$APPDIR/aquila.desktop"
+cp "$SRC_DIR/snap/gui/aquila.png"      "$APPDIR/aquila.png"
 chmod +x "$APPDIR/AppRun"
 
 # ── package ────────────────────────────────────────────────────────────────

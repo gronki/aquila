@@ -120,7 +120,9 @@ TokenResult LazyTokenArray::get_token(std::int64_t abs_pos)
     while (std::int64_t(tokens.size()) < abs_pos + 1)
     {
         auto result = tokenizer.next_token();
+#ifndef NDEBUG
         std::cout << "at pos " << abs_pos << " token " << result.token << std::endl;
+#endif
         tokens.push_back(result.token);
     }
     return tokens[abs_pos];

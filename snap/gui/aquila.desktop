@@ -1,6 +1,6 @@
 [Desktop Entry]
 Name=aquila
-Exec=aquila.cli
+Exec=aquila
 Icon=${SNAP}/meta/gui/aquila.png
 Type=Application
 Categories=Science;

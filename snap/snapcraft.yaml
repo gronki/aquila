@@ -61,7 +61,7 @@ apps:
   lrgb:
     command: usr/local/bin/aqlrgb
     aliases: [ "aqlrgb" ]
-  cli:
+  aquila:
     command: usr/local/bin/aqcli
-    aliases: [ "aqcli" ]
+    aliases: [ "aquila" ]
 

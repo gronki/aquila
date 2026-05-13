@@ -2,7 +2,13 @@
 
 ![Aquila](snap/gui/aquila.png)
 
-**[Click here](https://github.com/gronki/aquila/releases) to download packages.**
+[Click here](https://github.com/gronki/aquila/releases) to download **AppImage**.
+
+**[Aquila is now listed in the Snap store!](https://snapcraft.io/aquila)**
+
+```sh
+sudo snap install aquila
+```
 
 **aquila** is a command-line toolkit for astrophotography data reduction and compositing on Linux.
 While graphical tools exist for this workflow, they rarely integrate well with the terminal — the natural environment for batch-processing hundreds of FITS files, writing reproducible pipelines, and automating nightly runs.
@@ -10,9 +16,9 @@ Aquila is designed to fit into that world: fast, scriptable, and unobtrusive.
 
 Currently, the package consists of following programs:
 
-1. ``aqstack`` — stacking and calibration of monochromatic CCD frames (bias, dark, flat, alignment, sigma-clipping)
-2. ``aqlrgb`` — compositing multi-filter data into colour images with luminance, white-balance, and stretching controls
-3. ``aqcli`` — a scripting interpreter for building full end-to-end image processing pipelines
+1. ``aqstack`` (via snap: ``aquila.stack``) — stacking and calibration of monochromatic CCD frames (bias, dark, flat, alignment, sigma-clipping)
+2. ``aqlrgb`` (via snap: ``aquila.lrgb``) — compositing multi-filter data into colour images with luminance, white-balance, and stretching controls
+3. ``aqcli`` (via snap: ``aquila``) — a scripting interpreter for building full end-to-end image processing pipelines
 
 ## Installation
 

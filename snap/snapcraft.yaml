@@ -1,6 +1,6 @@
 name: aquila
 base: core24
-version: "260512"
+version: git
 license: BSD-3-Clause
 summary: Command-line toolkit for astrophotography stacking and compositing
 description: |
@@ -30,7 +30,7 @@ description: |
     sudo snap alias aquila.stack aqstack
     sudo snap alias aquila.lrgb aqlrgb
 
-grade: stable
+grade: devel
 confinement: strict
 
 plugs:

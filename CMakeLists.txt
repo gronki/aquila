@@ -16,10 +16,6 @@ set(CMAKE_C_FLAGS_RELEASE       "-g1 -O2")
 set(CMAKE_CXX_FLAGS_RELEASE     "-g1 -O2")
 set(CMAKE_Fortran_FLAGS_RELEASE "-g1 -O2")
 
-set(CMAKE_C_FLAGS_NATIVE       "-g1 -O2")
-set(CMAKE_CXX_FLAGS_NATIVE     "-g1 -O2")
-set(CMAKE_Fortran_FLAGS_NATIVE "-g1 -O2")
-
 find_package(PkgConfig REQUIRED)
 
 set(BUILD_SHARED_LIBS ON CACHE BOOL "shared CFITSIO" FORCE)
@@ -60,10 +56,6 @@ set(CMAKE_Fortran_FLAGS_DEBUG   "-g -Og -fcheck=all -Wall -Wextra -Wno-unused-du
 set(CMAKE_C_FLAGS_RELEASE "-g1 -O3 -ffast-math -DNDEBUG -fopenmp-simd")
 set(CMAKE_CXX_FLAGS_RELEASE "-g1 -O3 -ffast-math -DNDEBUG -fopenmp-simd")
 set(CMAKE_Fortran_FLAGS_RELEASE "-g1 -O3 -funsafe-math-optimizations -DNDEBUG -fopenmp-simd")
-
-set(CMAKE_C_FLAGS_NATIVE "-g -O3 -ffast-math -DNDEBUG -march=native -mtune=native -fopenmp-simd")
-set(CMAKE_CXX_FLAGS_NATIVE "-g -O3 -ffast-math -DNDEBUG -march=native -mtune=native -fopenmp-simd")
-set(CMAKE_Fortran_FLAGS_NATIVE "-g -O3 -funsafe-math-optimizations -DNDEBUG -march=native -mtune=native -fopenmp-simd")
 
 option(AQUILA_OPENMP "use OpenMP in build" Off)
 

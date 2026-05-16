@@ -1,18 +1,13 @@
-#include <algorithm>
-#include <optional>
-#include <vector>
 
-#include "path_op.hpp"
-
-namespace aquila::ops
-{
 #include <functional>
 #include <iostream>
 #include <memory>
-#include <optional>
 #include <sstream>
 #include <string>
 #include <vector>
+
+namespace aquila::utils
+{
 
 struct PathElement
 {
@@ -136,17 +131,4 @@ std::vector<std::string> expand_expression(const std::string &str)
     return expanded;
 }
 
-REGISTER(PathOp);
-ValuePtr PathOp::run(const std::string &path) const
-{
-    auto expanded = expand_expression(path);
-    std::vector<std::unique_ptr<Value>> items;
-    items.reserve(expanded.size());
-    for (const auto &s : expanded)
-    {
-        items.push_back(std::make_unique<StrValue>(s));
-    }
-    return std::make_unique<interpreter::SequenceValue>(std::move(items));
-}
-
-} // namespace aquila::ops
+} // namespace aquila::utils

@@ -13,11 +13,11 @@ struct PathOp : public Operation
     ArgManifest arg_manifest() const override
     {
         return ArgManifest{
-            ArgSpec{.name = "path", .help = "Path to expand"},
+            ArgSpec{.name = "path", .default_str = "*", .help = "Path to expand"},
         };
     }
 
-    std::string name() const { return "path"; }
+    std::string name() const { return "ls"; }
     std::string description() const override
     {
         return "Bash-style expansion of paths. For "

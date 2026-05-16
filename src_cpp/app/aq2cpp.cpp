@@ -104,13 +104,14 @@ int main()
 
     std::cout << std::endl << "Aquila Script v. " << AQUILA_VERSION << std::endl;
     std::cout << "Created by DG, inspired by FK" << std::endl << std::endl;
-    std::cout << "Press [TAB] twice to print available commands." << std::endl;
+    std::cout << "Press [TAB] twice to print the available commands" << std::endl
+              << "Type \"exit\" and press [ENTER] to exit" << std::endl;
 
     bool abort_on_failure = !isatty(STDIN_FILENO);
 
     while (true)
     {
-        char *line = readline(">> ");
+        char *line = readline("aq> ");
 
         // Ctrl-D
         if (!line)

@@ -15,7 +15,7 @@ struct ReadFrame : public Operation
     {
         return ArgManifest{ArgSpec{.name = "filename"}};
     }
-    std::string name() const { return "file"; }
+    std::string name() const { return "load"; }
     std::string description() const override { return "Reads a FITS frame"; }
 };
 

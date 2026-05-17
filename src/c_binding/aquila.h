@@ -11,6 +11,17 @@ extern "C"
 
 #define AQUILA_VERSION "260512"
 
+#define AQ_STATUS_OK 0
+#define AQ_STATUS_ERROR 1
+#define AQ_STATUS_ERR_SHAPE_MISMATCH 100
+#define AQ_STATUS_ERR_EMPTY_BUFFER 100
+
+    typedef struct
+    {
+        int status;
+        char message[64];
+    } error_status_t;
+
     typedef float real_buf_t;
 
     typedef struct
@@ -108,7 +119,8 @@ extern "C"
     void stack_frames(const const_buffer_descriptor_t *frames,
         int n_frames,
         const char *method,
-        buffer_descriptor_t frame_out);
+        buffer_descriptor_t frame_out,
+        error_status_t *err);
 
 #ifdef __cplusplus
 } /* extern "C" */

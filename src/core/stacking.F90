@@ -1,130 +1,130 @@
 module stacking
 
-  use globals
-  use aquila_c_binding
-  use, intrinsic :: iso_c_binding
-  use, intrinsic :: ieee_arithmetic, only: ieee_is_normal
-  implicit none (type, external)
+use globals
+use aquila_c_binding
+use, intrinsic :: iso_c_binding
+use, intrinsic :: ieee_arithmetic, only: ieee_is_normal
+implicit none (type, external)
 
 contains
 
 
-  !----------------------------------------------------------------------------!
+ !----------------------------------------------------------------------------!
 
-  pure function check_corners(tx, nx, ny) result(margin)
-    use new_align, only: transform_t
+pure function check_corners(tx, nx, ny) result(margin)
+   use new_align, only: transform_t
 
-    class(transform_t), intent(in) :: tx
-    integer, intent(in) :: nx, ny
-    real(r64_k) :: rx, ry, sx, sy
-    integer :: margin
+   class(transform_t), intent(in) :: tx
+   integer, intent(in) :: nx, ny
+   real(r64_k) :: rx, ry, sx, sy
+   integer :: margin
 
-    rx = 0.5_r64_k * (nx - 1)
-    ry = 0.5_r64_k * (ny - 1)
+   rx = 0.5_r64_k * (nx - 1)
+   ry = 0.5_r64_k * (ny - 1)
 
-    margin = 0
-    call tx % apply(-rx, -ry, sx, sy)
-    margin = max(margin, ceiling(abs(abs(rx) - abs(sx))), ceiling(abs(abs(ry) - abs(sy))))
-    call tx % apply( rx, -ry, sx, sy)
-    margin = max(margin, ceiling(abs(abs(rx) - abs(sx))), ceiling(abs(abs(ry) - abs(sy))))
-    call tx % apply( rx,  ry, sx, sy)
-    margin = max(margin, ceiling(abs(abs(rx) - abs(sx))), ceiling(abs(abs(ry) - abs(sy))))
-    call tx % apply(-rx,  ry, sx, sy)
-    margin = max(margin, ceiling(abs(abs(rx) - abs(sx))), ceiling(abs(abs(ry) - abs(sy))))
-  end function
+   margin = 0
+   call tx % apply(-rx, -ry, sx, sy)
+   margin = max(margin, ceiling(abs(abs(rx) - abs(sx))), ceiling(abs(abs(ry) - abs(sy))))
+   call tx % apply( rx, -ry, sx, sy)
+   margin = max(margin, ceiling(abs(abs(rx) - abs(sx))), ceiling(abs(abs(ry) - abs(sy))))
+   call tx % apply( rx,  ry, sx, sy)
+   margin = max(margin, ceiling(abs(abs(rx) - abs(sx))), ceiling(abs(abs(ry) - abs(sy))))
+   call tx % apply(-rx,  ry, sx, sy)
+   margin = max(margin, ceiling(abs(abs(rx) - abs(sx))), ceiling(abs(abs(ry) - abs(sy))))
+end function
 
-  !----------------------------------------------------------------------------!
+ !----------------------------------------------------------------------------!
 
-  subroutine mask_margins(mask, margin)
-    logical, intent(inout) :: mask(:,:)
-    integer :: margin, i, j, ni, nj
-    if (margin == 0) return
-    if (margin < 0) error stop "margin < 0"
-    ni = size(mask, 1)
-    nj = size(mask, 2)
-    mask(:min(margin, ni), :) = .false.
-    mask(max(ni - margin + 1, 1), :) = .false.
-    mask(:, :min(margin, nj)) = .false.
-    mask(:, max(nj - margin + 1, 1):) = .false.
-  end subroutine
+subroutine mask_margins(mask, margin)
+   logical, intent(inout) :: mask(:,:)
+   integer :: margin, i, j, ni, nj
+   if (margin == 0) return
+   if (margin < 0) error stop "margin < 0"
+   ni = size(mask, 1)
+   nj = size(mask, 2)
+   mask(:min(margin, ni), :) = .false.
+   mask(max(ni - margin + 1, 1), :) = .false.
+   mask(:, :min(margin, nj)) = .false.
+   mask(:, max(nj - margin + 1, 1):) = .false.
+end subroutine
 
-  subroutine mask_margins_c(mask, ni, nj, margin) bind(C, name="mask_margins")
-    logical(c_bool), intent(inout) :: mask(:,:)
-    integer(c_int64_t) :: ni, nj, margin, i, j
-    if (margin == 0) return
-    if (margin < 0) error stop "margin < 0"
-    mask(:min(margin, ni), :) = .false.
-    mask(max(ni - margin + 1, 1), :) = .false.
-    mask(:, :min(margin, nj)) = .false.
-    mask(:, max(nj - margin + 1, 1):) = .false.
-  end subroutine
+subroutine mask_margins_c(mask, ni, nj, margin) bind(C, name="mask_margins")
+   logical(c_bool), intent(inout) :: mask(:,:)
+   integer(c_int64_t) :: ni, nj, margin, i, j
+   if (margin == 0) return
+   if (margin < 0) error stop "margin < 0"
+   mask(:min(margin, ni), :) = .false.
+   mask(max(ni - margin + 1, 1), :) = .false.
+   mask(:, :min(margin, nj)) = .false.
+   mask(:, max(nj - margin + 1, 1):) = .false.
+end subroutine
 
-  !----------------------------------------------------------------------------!
+ !----------------------------------------------------------------------------!
 
-  subroutine normalize_offset_gain(buffer, margin)
-    use statistics, only: linfit, outliers_2d_mask
+subroutine normalize_offset_gain(buffer, margin)
+   use statistics, only: linfit, outliers_2d_mask
 
-    real(buf_k), intent(inout) :: buffer(:,:,:)
-    integer, intent(in) :: margin
-    
-    real(buf_k) :: a, b, av, sd
-    real(buf_k), allocatable :: imref(:,:), xx(:), yy(:)
-    logical, allocatable :: mask(:,:)
-    integer :: i, j, np, sz(3), nstack
+   real(buf_k), intent(inout) :: buffer(:,:,:)
+   integer, intent(in) :: margin
 
-    sz = shape(buffer)
-    nstack = sz(3)
+   real(buf_k) :: a, b, av, sd
+   real(buf_k), allocatable :: imref(:,:), xx(:), yy(:)
+   logical, allocatable :: mask(:,:)
+   integer :: i, j, np, sz(3), nstack
 
-    ! create mean frame to normalize to
-    allocate(imref(sz(1), sz(2)))
-    do concurrent (i = 1:sz(1), j = 1:sz(2))
+   sz = shape(buffer)
+   nstack = sz(3)
+
+   ! create mean frame to normalize to
+   allocate(imref(sz(1), sz(2)))
+   do concurrent (i = 1:sz(1), j = 1:sz(2))
       imref(i,j) = sum(buffer(i, j, :)) / nstack
-    end do
+   end do
 
-    ! create mask which excludes edges and the brigtenst pixels
-    allocate(mask(sz(1), sz(2)), source=.true.)
-    call mask_margins(mask, margin)
-    ! call outliers_2d_mask(imref, mask, 3.0_buf_k, 10, av, sd)
-    mask(:,:) = mask .and. imref < (minval(imref, mask=mask) + maxval(imref, mask=mask)) / 2
-    mask(:,:) = mask .and. ieee_is_normal(imref)
+   ! create mask which excludes edges and the brigtenst pixels
+   allocate(mask(sz(1), sz(2)), source=.true.)
+   call mask_margins(mask, margin)
+   ! call outliers_2d_mask(imref, mask, 3.0_buf_k, 10, av, sd)
+   mask(:,:) = mask .and. imref < (minval(imref, mask=mask) + maxval(imref, mask=mask)) / 2
+   mask(:,:) = mask .and. ieee_is_normal(imref)
 
-    ! pack it into 1-d array
-    np = count(mask)
-    if (np == 0) error stop "zero points for image normalization"
-    allocate(xx(np), yy(np))
-    xx(:) = pack(imref, mask)
-    deallocate(imref)
+   ! pack it into 1-d array
+   np = count(mask)
+   if (np == 0) error stop "zero points for image normalization"
+   allocate(xx(np), yy(np))
+   xx(:) = pack(imref, mask)
+   deallocate(imref)
 
-    do i = 1, nstack
+   do i = 1, nstack
       yy(:) = pack(buffer(:,:,i), mask)
       call linfit(xx, yy, a, b)
       write (stderr, '("NORM frame(",i2,") y = ",f5.3,"x + ",f7.1)') i, a, b
       buffer(:,:,i) = (buffer(:,:,i) - b) / a
-    end do
-  end subroutine
+   end do
+end subroutine
 
-  !----------------------------------------------------------------------------!
+ !----------------------------------------------------------------------------!
 
-  subroutine stack_frames(strategy, method, frames, buffer, frame_out)
-    use framehandling, only: image_frame_t
+subroutine stack_frames(strategy, method, frames, buffer, frame_out)
+   use framehandling, only: image_frame_t
 
-    character(len = *), intent(in) :: strategy, method
-    real(buf_k), intent(in) :: buffer(:,:,:)
-    type(image_frame_t), intent(in) :: frames(:)
-    type(image_frame_t), intent(out) :: frame_out
-    real(real64) :: t1, t2
-    integer :: nstack
+   character(len = *), intent(in) :: strategy, method
+   real(buf_k), intent(in) :: buffer(:,:,:)
+   type(image_frame_t), intent(in) :: frames(:)
+   type(image_frame_t), intent(out) :: frame_out
+   real(real64) :: t1, t2
+   integer :: nstack
 
-    nstack = size(buffer, 3)
+   nstack = size(buffer, 3)
 
-    call frame_out % check_shape(size(buffer, 1), size(buffer, 2))
+   call frame_out % check_shape(size(buffer, 1), size(buffer, 2))
 
-    call cpu_time(t1)
-    call stack_buffer(method, buffer(:, :, 1:nstack), frame_out % data)
-    call cpu_time(t2)
-    print perf_fmt, 'stack', t2 - t1
+   call cpu_time(t1)
+   call stack_buffer(method, buffer(:, :, 1:nstack), frame_out % data)
+   call cpu_time(t2)
+   print perf_fmt, 'stack', t2 - t1
 
-    write_extra_info_hdr: block
+   write_extra_info_hdr: block
 
       call frame_out % hdr % add_int('NSTACK', nstack)
       call frame_out % hdr % add_str('STCKMTD', method)
@@ -135,210 +135,224 @@ contains
 
       frame_out%exptime = sum(frames(1:nstack)%exptime)
 
-    end block write_extra_info_hdr
+   end block write_extra_info_hdr
 
-    if ((strategy == 'bias' .or. strategy == 'dark') .and. nstack > 1) then
+   if ((strategy == 'bias' .or. strategy == 'dark') .and. nstack > 1) then
       estimate_noise: block
-        real(buf_k) :: rms
+         real(buf_k) :: rms
 
-        rms = estimate_differential_noise(buffer)
+         rms = estimate_differential_noise(buffer)
 
-        write (*, '("RMS = ", f10.2)') rms
-        call frame_out % hdr % add_real('RMS', real(rms))
-        call frame_out % hdr % add_real('STACKRMS', real(rms / sqrt(1.0_buf_k * nstack)))
+         write (*, '("RMS = ", f10.2)') rms
+         call frame_out % hdr % add_real('RMS', real(rms))
+         call frame_out % hdr % add_real('STACKRMS', real(rms / sqrt(1.0_buf_k * nstack)))
       end block estimate_noise
-    end if
+   end if
 
-    call frame_out % hdr % add('AQLVER', version)
+   call frame_out % hdr % add('AQLVER', version)
 
-  end subroutine stack_frames
+end subroutine stack_frames
 
-  !----------------------------------------------------------------------------!
-  
-  subroutine stack_frames_c(frames, n_frames, method_, frame_out) &
-      bind(C, name="stack_frames")
-    use framehandling, only: image_frame_t
+ !----------------------------------------------------------------------------!
 
-    character(kind=c_char, len = 1), intent(in) :: method_(*)
-    character(len=32) :: method
-    real(buf_k), allocatable :: buffer(:,:,:)
-    integer(c_int), value :: n_frames
-    type(buffer_descriptor_t), intent(in) :: frames(n_frames)
-    type(buffer_descriptor_t), value :: frame_out
-    real(buf_k), pointer, contiguous :: buf_out(:,:)
-    real(real64) :: t1, t2
-    integer :: nstack
+subroutine stack_frames_c(frames, n_frames, method_, frame_out, err) &
+   bind(C, name="stack_frames")
+   use framehandling, only: image_frame_t
 
-    call c_f_string(method_, method)
-    call collect_dframes_into_buffer(frames, buffer)
+   character(kind=c_char, len = 1), intent(in) :: method_(*)
+   character(len=32) :: method
+   real(buf_k), allocatable :: buffer(:,:,:)
+   integer(c_int), value :: n_frames
+   type(buffer_descriptor_t), intent(in) :: frames(n_frames)
+   type(buffer_descriptor_t), value :: frame_out
+   type(error_status_t) :: err
+   real(buf_k), pointer, contiguous :: buf_out(:,:)
+   real(real64) :: t1, t2
+   integer :: nstack
 
-    if (frame_out%rows /= size(buffer, 1) .or. frame_out%cols /= size(buffer, 2)) &
-      error stop "incorrect size for output frame"
+   call reset_err(err)
 
-    buf_out => from_descriptor(frame_out)
+   call c_f_string(method_, method)
+   call collect_dframes_into_buffer(frames, buffer, err)
+   if (check_err(err)) return
 
-    call cpu_time(t1)
-    call stack_buffer(method, buffer, buf_out)
-    call cpu_time(t2)
+   if (frame_out%rows /= size(buffer, 1) .or. frame_out%cols /= size(buffer, 2)) then
+      call set_err(err, code = status_err_shape_mismatch, msg = "mismatch of frame dimensions")
+      return
+   end if
 
-    print perf_fmt, 'stack', t2 - t1
+   buf_out => from_descriptor(frame_out)
 
-  end subroutine stack_frames_c
+   call cpu_time(t1)
+   call stack_buffer(method, buffer, buf_out)
+   call cpu_time(t2)
 
-  !----------------------------------------------------------------------------!
+   print perf_fmt, 'stack', t2 - t1
 
-  subroutine collect_frames_into_buffer(frames, buffer)
-    use framehandling, only: image_frame_t
+end subroutine stack_frames_c
 
-    class(image_frame_t), intent(in) :: frames(:)
-    real(kind=buf_k), allocatable :: buffer(:,:,:)
-    integer :: n_frames, i, ni, nj
+ !----------------------------------------------------------------------------!
 
-    n_frames = size(frames)
-    do i = 1, n_frames
+subroutine collect_frames_into_buffer(frames, buffer)
+   use framehandling, only: image_frame_t
+
+   class(image_frame_t), intent(in) :: frames(:)
+   real(kind=buf_k), allocatable :: buffer(:,:,:)
+   integer :: n_frames, i, ni, nj
+
+   n_frames = size(frames)
+   do i = 1, n_frames
       if (.not. allocated(frames(i) % data)) &
-        error stop "attempting to collect frames into buffer but one of them is empty"
+         error stop "attempting to collect frames into buffer but one of them is empty"
       if (i == 1) then
-          ni = size(frames(i)%data, 1)
-          nj = size(frames(i)%data, 2)
-          allocate(buffer(ni, nj, n_frames))
+         ni = size(frames(i)%data, 1)
+         nj = size(frames(i)%data, 2)
+         allocate(buffer(ni, nj, n_frames))
       end if
       buffer(:,:,i) = frames(i) % data
-    end do
-  end subroutine
+   end do
+end subroutine
 
-  !----------------------------------------------------------------------------!
+ !----------------------------------------------------------------------------!
 
-  subroutine collect_dframes_into_buffer(frames, buffer)
-    use framehandling, only: image_frame_t
-    use aquila_c_binding
+subroutine collect_dframes_into_buffer(frames, buffer, err)
+   use framehandling, only: image_frame_t
+   use aquila_c_binding
 
-    type(buffer_descriptor_t), intent(in) :: frames(:)
-    real(buf_k), pointer, contiguous :: buf(:,:)
-    real(kind=buf_k), allocatable :: buffer(:,:,:)
-    integer :: n_frames, i, ni, nj
+   type(buffer_descriptor_t), intent(in) :: frames(:)
+   real(buf_k), pointer, contiguous :: buf(:,:)
+   type(error_status_t) :: err
+   real(kind=buf_k), allocatable :: buffer(:,:,:)
+   integer :: n_frames, i, ni, nj
 
-    n_frames = size(frames)
-    do i = 1, n_frames
+   call reset_err(err)
+
+   n_frames = size(frames)
+   do i = 1, n_frames
       buf => from_descriptor(frames(i))
-      if (.not. associated(buf)) &
-        error stop "attempting to collect frames into buffer but one of them is empty"
+      if (.not. associated(buf)) then
+         call set_err(err, code=status_err_empty_buffer, &
+            msg="Empty buffer encountered during stacking")
+         return
+      end if
       if (i == 1) then
-          ni = size(buf, 1)
-          nj = size(buf, 2)
-          allocate(buffer(ni, nj, n_frames))
+         ni = size(buf, 1)
+         nj = size(buf, 2)
+         allocate(buffer(ni, nj, n_frames))
       else
-        if (ni /= size(buf, 1) .or. nj /= size(buf, 2)) then
-          error stop "wrong size of a buffer"
-        end if
+         if (ni /= size(buf, 1) .or. nj /= size(buf, 2)) then
+            call set_err(err, code=status_err_shape_mismatch, &
+               msg="Mismatched shape of input buffers")
+            return
+         end if
       end if
       buffer(:,:,i) = buf
-    end do
-  end subroutine
+   end do
+end subroutine
 
-  !----------------------------------------------------------------------------!
+ !----------------------------------------------------------------------------!
 
-  function select_output_filename(output_fn, strategy) result(output_fn_clean)
-    character(len=*), intent(in) :: output_fn, strategy
-    character(len=:), allocatable :: output_fn_clean
+function select_output_filename(output_fn, strategy) result(output_fn_clean)
+   character(len=*), intent(in) :: output_fn, strategy
+   character(len=:), allocatable :: output_fn_clean
 
-    if (output_fn == "") then
+   if (output_fn == "") then
       if (strategy /= "") then
-        output_fn_clean = trim(strategy) // ".fits"
+         output_fn_clean = trim(strategy) // ".fits"
       else
-        output_fn_clean = "out.fits"
+         output_fn_clean = "out.fits"
       end if
-    else
+   else
       output_fn_clean = output_fn
-    end if
-  end function
+   end if
+end function
 
-  !----------------------------------------------------------------------------!
+ !----------------------------------------------------------------------------!
 
-  subroutine stack_buffer(method, buffer, buffer_out)
-    use statistics, only: quickselect, sigclip2
+subroutine stack_buffer(method, buffer, buffer_out)
+   use statistics, only: quickselect, sigclip2
 
-    real(buf_k), intent(in) :: buffer(:,:,:)
-    real(buf_k), intent(out) :: buffer_out(:,:)
-    character(len = *), intent(in) :: method
-    integer :: i, j, nstack
-    real(buf_k) :: a(size(buffer, 3))
+   real(buf_k), intent(in) :: buffer(:,:,:)
+   real(buf_k), intent(out) :: buffer_out(:,:)
+   character(len = *), intent(in) :: method
+   integer :: i, j, nstack
+   real(buf_k) :: a(size(buffer, 3))
 
-    nstack = size(buffer, 3)
+   nstack = size(buffer, 3)
 
-    select case (method)
-    case ('m', 'median')
+   select case (method)
+   case ('m', 'median')
       !$omp parallel do private(i, j, a)
       do j = 1, size(buffer, 2)
-        do i = 1, size(buffer, 1)
-          a(:) = buffer(i, j, 1:nstack)
-          ! forall (k = 1:nstack) a(k) = frames(k) % data(i, j)
-          buffer_out(i, j) = quickselect(a(:), (nstack + 1) / 2)
-        end do
+         do i = 1, size(buffer, 1)
+            a(:) = buffer(i, j, 1:nstack)
+            ! forall (k = 1:nstack) a(k) = frames(k) % data(i, j)
+            buffer_out(i, j) = quickselect(a(:), (nstack + 1) / 2)
+         end do
       end do
       !$omp end parallel do
-    case ('s', 'sigclip')
+   case ('s', 'sigclip')
       !$omp parallel do private(i, j, a)
       do j = 1, size(buffer, 2)
-        do i = 1, size(buffer, 1)
-          ! forall (k = 1:nstack) a(k) = frames(k) % data(i, j)
-          ! call sigclip2(a(:), frame_out % data(i, j))
-          buffer_out(i, j) = sigclip2(buffer(i, j, 1:nstack), 3._buf_k)
-        end do
+         do i = 1, size(buffer, 1)
+            ! forall (k = 1:nstack) a(k) = frames(k) % data(i, j)
+            ! call sigclip2(a(:), frame_out % data(i, j))
+            buffer_out(i, j) = sigclip2(buffer(i, j, 1:nstack), 3._buf_k)
+         end do
       end do
       !$omp end parallel do
-    case default
+   case default
       do j = 1, size(buffer, 2)
-        do i = 1, size(buffer, 1)
-          buffer_out(i,j) = sum(buffer(i, j, 1:nstack)) / nstack
-        end do
+         do i = 1, size(buffer, 1)
+            buffer_out(i,j) = sum(buffer(i, j, 1:nstack)) / nstack
+         end do
       end do
-    end select
-  end subroutine
+   end select
+end subroutine
 
-  !----------------------------------------------------------------------------!
+ !----------------------------------------------------------------------------!
 
-  subroutine propagate_average_value_real(frames, kw, frame_out, average)
-    use framehandling, only: image_frame_t
+subroutine propagate_average_value_real(frames, kw, frame_out, average)
+   use framehandling, only: image_frame_t
 
-    class(image_frame_t), intent(in) :: frames(:)
-    class(image_frame_t), intent(inout) :: frame_out
-    logical, intent(in) :: average
-    character(len = *) :: kw
-    logical :: m(size(frames))
-    real :: av
-    integer :: i
+   class(image_frame_t), intent(in) :: frames(:)
+   class(image_frame_t), intent(inout) :: frame_out
+   logical, intent(in) :: average
+   character(len = *) :: kw
+   logical :: m(size(frames))
+   real :: av
+   integer :: i
 
-    m(:) = [ (frames(i) % hdr % has_key(kw), i = 1, size(frames)) ]
-    if (count(m) > 0) then
+   m(:) = [ (frames(i) % hdr % has_key(kw), i = 1, size(frames)) ]
+   if (count(m) > 0) then
       av = sum([ (merge(frames(i) % hdr % get_real(kw, 0.0), 0.0, m(i)), &
       &     i = 1, size(frames)) ]) / merge(count(m), 1, average)
       call frame_out % hdr % add_real(kw, av)
-    end if
-  end subroutine
+   end if
+end subroutine
 
-  !----------------------------------------------------------------------------!
+ !----------------------------------------------------------------------------!
 
-  pure function estimate_differential_noise(buffer) result(rms)
-    use iso_fortran_env, only: int64
-    real(buf_k), intent(in) :: buffer(:,:,:)
-    real(buf_k) :: rms, av(size(buffer, 3))
-    integer :: i, n
-    integer(int64) :: nxny
+pure function estimate_differential_noise(buffer) result(rms)
+   use iso_fortran_env, only: int64
+   real(buf_k), intent(in) :: buffer(:,:,:)
+   real(buf_k) :: rms, av(size(buffer, 3))
+   integer :: i, n
+   integer(int64) :: nxny
 
-    nxny = size(buffer, 1, kind = int64) * size(buffer, 2, kind = int64)
-    n = size(buffer, 3)
+   nxny = size(buffer, 1, kind = int64) * size(buffer, 2, kind = int64)
+   n = size(buffer, 3)
 
-    do concurrent (i = 1:n)
+   do concurrent (i = 1:n)
       av(i) = sum(buffer(:,:,i)) / nxny
-    end do
+   end do
 
-    rms = 0
-    do i = 1, n - 1
+   rms = 0
+   do i = 1, n - 1
       rms = rms + sum((buffer(:,:,i) - av(i) - buffer(:,:,i+1) + av(i+1))**2) / (2 * nxny)
-    end do
+   end do
 
-    rms = sqrt(rms / (n - 1))
-  end function
+   rms = sqrt(rms / (n - 1))
+end function
 
 end module stacking

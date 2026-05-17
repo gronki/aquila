@@ -97,12 +97,12 @@ void display_completions(char **matches, int num_matches, int max_length)
 
 int main()
 {
-    Namespace ns; // persistent across commands
+    AquilaInterpreter interp;
 
     rl_attempted_completion_function = completion;
     rl_completion_display_matches_hook = display_completions;
 
-    std::cout << std::endl << "Aquila Script v. " << AQUILA_VERSION << std::endl;
+    std::cout << "Aquila Script v. " << AQUILA_VERSION << std::endl;
     std::cout << "Created by DG, inspired by FK" << std::endl << std::endl;
     std::cout << "Press [TAB] twice to print the available commands" << std::endl
               << "Type \"exit\" and press [ENTER] to exit" << std::endl;
@@ -127,10 +127,7 @@ int main()
 
         try
         {
-            auto exec = build_exectree_from_str(input, ns, global_op_db());
-            if (!exec)
-                continue;
-            auto result = exec->yield();
+            auto result = interp.exec(input);
 
             if (result)
                 std::cout << result->str() << std::endl;

@@ -40,7 +40,7 @@ void update_state(const std::string &command,
     std::string &current_token)
 {
 
-    static Namespace ns;
+    static AquilaInterpreter interp;
 
     command_output = " ";
     current_token = " ";
@@ -68,8 +68,7 @@ void update_state(const std::string &command,
         ss << *ast;
         ast_summ = ss.str();
 
-        auto gen = build_exec_tree(ast, ns, global_op_db());
-        const Value *val = gen->yield();
+        const Value *val = interp.exec(command);
         if (val)
         {
             command_output = val->str();

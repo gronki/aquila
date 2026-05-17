@@ -14,11 +14,12 @@ class Namespace
 
 public:
     Namespace() {}
-    Namespace(const Namespace &global) : global(&global) {}
+    Namespace(const Namespace *global) : global(global) {}
 
     const Value *push(const std::string &name, std::unique_ptr<Value> v);
     const Value &get(const std::string &name) const;
     bool contains(const std::string &name) const;
+    void merge(Namespace other);
 };
 
 } // namespace aquila::interpreter

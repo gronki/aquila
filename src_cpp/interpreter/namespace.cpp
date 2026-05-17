@@ -29,4 +29,12 @@ bool Namespace::contains(const std::string &name) const
     return false;
 }
 
+void Namespace::merge(Namespace other)
+{
+    for (auto &it : other.vault)
+    {
+        vault.insert_or_assign(it.first, std::move(it.second));
+    }
+}
+
 } // namespace aquila::interpreter

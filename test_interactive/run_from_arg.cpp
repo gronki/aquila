@@ -7,17 +7,26 @@ using namespace aquila::interpreter;
 
 int main(int argc, char **argv)
 {
-    if (argc < 2)
-        exit(1);
 
-    static Namespace ns;
-    auto exec = build_exectree_from_str(argv[1], ns, global_op_db());
-    const Value *result = exec->yield();
-    if (!result)
+    static AquilaInterpreter interp;
+    for (int i = 1; i < argc; i++)
     {
-        std::cout << "null" << std::endl;
-        exit(1);
+        try
+        {
+            const Value *result = interp.exec(argv[i]);
+            if (!result)
+            {
+                std::cout << "null" << std::endl;
+            }
+            else
+            {
+                std::cout << "|" << i << "|: " << result->str() << std::endl;
+            }
+        }
+        catch (const std::exception &e)
+        {
+            std::cout << "error |" << i << "|: " << e.what() << std::endl;
+        }
     }
-    std::cout << result->str() << std::endl;
     return 0;
 }

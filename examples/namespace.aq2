@@ -1,0 +1,4 @@
+ls "scratch/{m42_R,test}.fits" % load() % as a, b % add(a, b)
+a
+b
+

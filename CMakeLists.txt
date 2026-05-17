@@ -12,9 +12,9 @@ set(CMAKE_INSTALL_INCLUDEDIR ${CMAKE_INSTALL_INCLUDEDIR}/aquila)
 set(CMAKE_INSTALL_DATADIR ${CMAKE_INSTALL_DATADIR}/aquila)
 set(CMAKE_INSTALL_RPATH "$ORIGIN/../${CMAKE_INSTALL_LIBDIR}:$ORIGIN")
 
-set(CMAKE_C_FLAGS_RELEASE       "-g1 -O2")
-set(CMAKE_CXX_FLAGS_RELEASE     "-g1 -O2")
-set(CMAKE_Fortran_FLAGS_RELEASE "-g1 -O2")
+set(CMAKE_C_FLAGS_RELEASE "-O2 -DNDEBUG -g1")
+set(CMAKE_CXX_FLAGS_RELEASE "-O2 -DNDEBUG -g1")
+set(CMAKE_Fortran_FLAGS_RELEASE "-O2 -DNDEBUG -g1")
 
 find_package(PkgConfig REQUIRED)
 
@@ -49,13 +49,18 @@ if (AQUILA_BUILD_TESTS)
 enable_testing()
 endif()
 
-set(CMAKE_C_FLAGS_DEBUG   "-g -Og -Wall -Wextra -Wpedantic -Werror=return-type -Werror=uninitialized -Werror=sign-compare -Werror=maybe-uninitialized -Wno-unused-parameter")
-set(CMAKE_CXX_FLAGS_DEBUG   "-g -Og -Wall -Wextra -Wpedantic -Werror=return-type -Werror=uninitialized -Werror=sign-compare -Werror=maybe-uninitialized -Werror=delete-incomplete -Wnon-virtual-dtor -Wno-unused-parameter")
-set(CMAKE_Fortran_FLAGS_DEBUG   "-g -Og -fcheck=all -Wall -Wextra -Wno-unused-dummy-argument")
+set(CXX_WARN "-Wall -Wextra -pedantic -Wpedantic -Werror=return-type -Werror=uninitialized -Werror=sign-compare -Werror=maybe-uninitialized -Wno-unused-parameter")
+set(FORT_WARN "-Wall -Wextra -pedantic -Wno-unused-dummy-argument")
+set(CMAKE_C_FLAGS_DEBUG "-g -Og ${CXX_WARN}")
+set(CMAKE_CXX_FLAGS_DEBUG "-g -Og ${CXX_WARN}")
+set(CMAKE_Fortran_FLAGS_DEBUG "-g -Og -fcheck=all ${FORT_WARN}")
 
-set(CMAKE_C_FLAGS_RELEASE "-g1 -O3 -ffast-math -DNDEBUG -fopenmp-simd")
-set(CMAKE_CXX_FLAGS_RELEASE "-g1 -O3 -ffast-math -DNDEBUG -fopenmp-simd")
-set(CMAKE_Fortran_FLAGS_RELEASE "-g1 -O3 -funsafe-math-optimizations -DNDEBUG -fopenmp-simd")
+add_library(fast_math INTERFACE)
+target_compile_options(fast_math INTERFACE
+    $<$<CONFIG:Release>:
+        -O3 $<IF:$<COMPILE_LANGUAGE:Fortran>,-funsafe-math-optimizations,-ffast-math>
+    >
+)
 
 option(AQUILA_OPENMP "use OpenMP in build" Off)
 
@@ -89,6 +94,7 @@ file(GLOB_RECURSE AQUILA_SOURCES CONFIGURE_DEPENDS
 )
 
 add_library(aquila SHARED ${AQUILA_SOURCES})
+target_link_libraries(aquila PRIVATE fast_math)
 target_include_directories(aquila PUBLIC src/c_binding)
 target_link_libraries(aquila PUBLIC png_target cfitsio)
 
@@ -163,6 +169,7 @@ if (AQUILA_OPENMP)
 endif ()
 
 target_link_libraries(aquila2 PUBLIC aqtask_dispatch aquila)
+target_link_libraries(aquila2 PRIVATE fast_math)
 
 install(TARGETS aquila2 LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
@@ -185,7 +192,8 @@ add_executable(bench_stack test_interactive/bench_stack.f90)
 target_link_libraries(bench_stack PRIVATE aquila)
 
 add_executable(run_from_arg test_interactive/run_from_arg.cpp)
-target_link_libraries(run_from_arg PRIVATE aquila2)
+target_link_libraries(run_from_arg PRIVATE
+        -Wl,--no-as-needed aqtask_dispatch aquila2 -Wl,--as-needed) 
 
 if (AQUILA_TUI)
     add_executable(parser_console test_interactive/parser_console.cpp)

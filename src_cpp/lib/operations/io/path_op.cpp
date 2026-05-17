@@ -23,4 +23,17 @@ ValuePtr PathOp::run(const std::string &path) const
     return std::make_unique<interpreter::SequenceValue>(std::move(items));
 }
 
+REGISTER(ChdirOp);
+ValuePtr ChdirOp::run(const std::string &path) const
+{
+    std::filesystem::current_path(path);
+    return std::make_unique<StrValue>(std::filesystem::current_path());
+}
+
+REGISTER(PwdOp);
+ValuePtr PwdOp::run() const
+{
+    return std::make_unique<StrValue>(std::filesystem::current_path());
+}
+
 } // namespace aquila::ops

@@ -17,7 +17,7 @@ struct PathOp : public Operation
         };
     }
 
-    std::string name() const { return "ls"; }
+    std::string name() const { return "find"; }
     std::string description() const override
     {
         return "Bash-style expansion of paths. For "

@@ -35,13 +35,15 @@ description: |
 
   Report an issue/feature request: https://github.com/gronki/aquila/issues
 
+source-code: https://github.com/gronki/aquila
+issues: https://github.com/gronki/aquila/issues
+
 grade: stable
 confinement: strict
 
 platforms:
   amd64:
   arm64:
-  armhf:
 
 plugs:
   home:

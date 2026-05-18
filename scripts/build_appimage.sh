@@ -52,12 +52,13 @@ cp "$SRC_DIR/snap/gui/aquila.png"      "$APPDIR/aquila.png"
 chmod +x "$APPDIR/AppRun"
 
 # ── package ────────────────────────────────────────────────────────────────
+export ARCH=$(uname -m)
 wget -q -O /tmp/appimagetool \
-    https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
+    https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-${ARCH}.AppImage
 chmod +x /tmp/appimagetool
 cd /tmp && /tmp/appimagetool --appimage-extract > /dev/null
 
-ARCH=x86_64 /tmp/squashfs-root/AppRun "$APPDIR" "$OUT_DIR/aquila-x86_64.AppImage"
+/tmp/squashfs-root/AppRun "$APPDIR" "$OUT_DIR/aquila-${ARCH}.AppImage"
 
 echo ""
 echo "Done: $OUT_DIR/aquila-x86_64.AppImage"

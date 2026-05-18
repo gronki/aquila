@@ -5,30 +5,35 @@ license: BSD-3-Clause
 summary: Command-line toolkit for astrophotography stacking and compositing
 description: |
   Aquila is a fast, terminal-native toolkit for reducing and compositing
-  astrophotography data on Linux. It is built around a Fortran/C++ core with
-  OpenMP parallelism and is designed to fit naturally into shell scripts and
-  automated pipelines.
+  astronomical image data on Linux. The image processing heart is written
+  in **Modern Fortran** with OpenMP parallelism. It fits naturally into shell 
+  scripts and automated pipelines.
 
-  The package includes three programs:
+  **Recommended aliases:**
 
-  - aqstack (command: aquila.stack): calibrates and stacks monochromatic CCD frames. Handles bias,
+  `sudo snap alias aquila.lrgb aqlrgb`
+
+  `sudo snap alias aquila.stack aqstack`
+
+  `sudo snap alias aquila.cli aqcli`
+
+  The package includes **three programs**:
+
+  * `aqstack` or `aquila.stack`: calibrates and stacks monochromatic CCD frames. Handles bias,
     dark, and flat subtraction, hot pixel correction, frame alignment, and
     combining by average, median, or sigma-clipped mean.
 
-  - aqlrgb (command: aquila.lrgb): composites multi-filter data into colour images. Supports the
+  * `aqlrgb` or `aquila.lrgb`: composites multi-filter data into colour images. Supports the
     classic LRGB workflow as well as narrowband palette mixing, white-balance
     equalisation, background suppression, and nonlinear stretching (asinh,
     sqrt, log) before writing FITS or PNG output.
 
-  - aqcli (command: aquila): a scripting interpreter for writing end-to-end image processing
+  * `aqcli` or `aquila.cli`: a scripting interpreter for writing end-to-end image processing
     pipelines. Scripts load frames, run calibration and stacking routines,
     apply convolution kernels and math operations, and save results — all in
     a compact, readable domain-specific language.
 
-  To set up short command aliases after installation:
-
-    sudo snap alias aquila.stack aqstack
-    sudo snap alias aquila.lrgb aqlrgb
+  Report an issue/feature request: https://github.com/gronki/aquila/issues
 
 grade: devel
 confinement: strict
@@ -66,7 +71,7 @@ apps:
   lrgb:
     command: usr/local/bin/aqlrgb
     aliases: [ "aqlrgb" ]
-  aquila:
+  cli:
     command: usr/local/bin/aqcli
-    aliases: [ "aquila" ]
+    aliases: [ "aqcli" ]
 

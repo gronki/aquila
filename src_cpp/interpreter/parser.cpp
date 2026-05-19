@@ -110,7 +110,8 @@ static void parse_function_argument_list(LazyTokenArray &tokens,
     std::vector<AstOpNode::OpArg> &node_args,
     parse_flags_t flags)
 {
-
+    bool expect_end = false;
+    bool expect_arg = false;
     while (true)
     {
         Token cur_token = tokens.cur_token();
@@ -122,11 +123,19 @@ static void parse_function_argument_list(LazyTokenArray &tokens,
                 || cur_token == Token(TokenType::DELIM, CHAIN_CALL_DELIM)
                 || cur_token.type == TokenType::END)
             {
+                if (expect_arg)
+                    throw std::runtime_error(
+                        std::string("Argument expected after comma (,) but got: ")
+                        + cur_token.str());
                 return;
             }
         }
         else if (cur_token == Token(TokenType::DELIM, closing_brace))
         {
+            if (expect_arg)
+                throw std::runtime_error(
+                    std::string("Argument expected after comma (,) but got: ")
+                    + cur_token.str());
             tokens.next_token();
             return;
         }
@@ -135,6 +144,10 @@ static void parse_function_argument_list(LazyTokenArray &tokens,
             throw std::runtime_error("unexpected end of input while parsing argument "
                                      "list");
         }
+
+        if (expect_end)
+            throw std::runtime_error(
+                std::string("Missing comma (,) before argument: ") + cur_token.value);
 
         // first we check if perhaps a keyword argument is given, such as key: val
         Token maybe_kv_sep = tokens.peek_token(1);
@@ -169,10 +182,15 @@ static void parse_function_argument_list(LazyTokenArray &tokens,
         node_args.push_back(std::move(arg));
 
         cur_token = tokens.cur_token();
-
+        expect_arg = false;
         if (cur_token == Token(TokenType::DELIM, ","))
         {
             tokens.next_token();
+            expect_arg = true;
+        }
+        else
+        {
+            expect_end = true;
         }
     }
 

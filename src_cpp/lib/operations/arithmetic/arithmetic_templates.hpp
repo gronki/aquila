@@ -1,8 +1,9 @@
 #pragma once
 
-#include "../../../interpreter/value.hpp"
-#include "../../buffer/buffer.hpp"
-#include "../../values/frame.hpp"
+#include <buffer/apply.hpp>
+#include <buffer/buffer.hpp>
+#include <value.hpp>
+#include <values/frame.hpp>
 
 namespace aquila::ops
 {

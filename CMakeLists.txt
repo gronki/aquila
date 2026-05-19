@@ -6,6 +6,12 @@ set(CMAKE_CXX_STANDARD 20)       # request C++20
 set(CMAKE_CXX_STANDARD_REQUIRED ON)  # fail if compiler does not support it
 set(CMAKE_CXX_EXTENSIONS OFF)    # turn off compiler-specific extensions like gnu++20
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+if(CMAKE_BUILD_TYPE STREQUAL "")
+set (CMAKE_BUILD_TYPE "debug")
+endif()
+
 include(GNUInstallDirs)
 set(CMAKE_INSTALL_LIBDIR ${CMAKE_INSTALL_LIBDIR}/aquila)
 set(CMAKE_INSTALL_INCLUDEDIR ${CMAKE_INSTALL_INCLUDEDIR}/aquila)
@@ -58,7 +64,7 @@ set(CMAKE_Fortran_FLAGS_DEBUG "-g -Og -fcheck=all ${FORT_WARN}")
 add_library(fast_math INTERFACE)
 target_compile_options(fast_math INTERFACE
     $<$<CONFIG:Release>:
-        -O3 $<IF:$<COMPILE_LANGUAGE:Fortran>,-funsafe-math-optimizations,-ffast-math>
+        -O3 $<IF:$<COMPILE_LANGUAGE:Fortran>,-funsafe-math-optimizations,-ffast-math> -fopenmp-simd
     >
 )
 
@@ -69,8 +75,6 @@ find_package(OpenMP)
 endif()
 
 pkg_check_modules(READLINE REQUIRED readline)
-
-include_directories(src_cpp/global)
 
 file(GLOB_RECURSE AQUILA_SOURCES CONFIGURE_DEPENDS
     src/core/*.f90
@@ -162,15 +166,14 @@ list(FILTER libaq2_SOURCES EXCLUDE REGEX ".*arithmetic.*")
 
 file(GLOB aq2arith_SOURCES CONFIGURE_DEPENDS src_cpp/lib/operations/arithmetic/*)
 add_library(aquila2_arith OBJECT ${aq2arith_SOURCES})
+target_include_directories(aquila2_arith PRIVATE src_cpp/lib src_cpp/interpreter src/c_binding)
 target_link_libraries(aquila2_arith PRIVATE fast_math)
 set_target_properties(aquila2_arith PROPERTIES
-        POSITION_INDEPENDENT_CODE ON
-    )
+    POSITION_INDEPENDENT_CODE ON
+)
 
 add_library(aquila2 SHARED ${libaq2_SOURCES})
-target_include_directories(aquila2 PUBLIC 
-    src_cpp/lib/buffer src_cpp/lib/io
-    src_cpp/lib/operations src_cpp/lib/values src_cpp/lib/utils)
+target_include_directories(aquila2 PUBLIC src_cpp/lib)
 
 if (AQUILA_OPENMP)
     target_link_libraries(aquila2 PRIVATE OpenMP::OpenMP_CXX)

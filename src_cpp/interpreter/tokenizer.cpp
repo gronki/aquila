@@ -67,10 +67,19 @@ TokenResult Tokenizer::next_token()
     if (ch == COMMENT_START)
         return {Token(TokenType::END, loc)};
 
-    if (is_ident_start(ch))
+    if (is_naked_literal_start(ch))
     {
-        TokenStr ident_val = consume_until(is_ident);
-        return {Token(TokenType::IDENT, ident_val, update_end(loc))};
+        TokenStr literal_val = consume_until(is_naked_literal);
+        TokenType literal_type = TokenType::IDENT;
+        for (TokenChar c : literal_val)
+        {
+            if (!is_ident(c))
+            {
+                literal_type = TokenType::STR_LITERAL;
+                break;
+            }
+        }
+        return {Token(literal_type, literal_val, update_end(loc))};
     }
 
     if (is_str_literal_start(ch))

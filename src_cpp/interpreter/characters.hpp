@@ -11,7 +11,7 @@ static constexpr TokenChar CHAIN_CALL_DELIM = '%';
 static constexpr TokenChar CHAIN_CALL_DELIM = _CHAIN_CALL_DELIM;
 #endif
 static constexpr TokenChar KWARG_DELIM = ':';
-static constexpr TokenChar EXPAND_DELIM = '*';
+static constexpr TokenChar EXPAND_DELIM = '<';
 static constexpr TokenChar CONTRACT_DELIM = '>';
 static constexpr TokenChar COMMENT_START = '#';
 
@@ -42,6 +42,11 @@ inline bool is_ident_start(TokenChar ch)
     return (ch == '_') || (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z');
 }
 
+inline bool is_naked_literal_start(TokenChar ch)
+{
+    return (ch == '/') || (ch == '*') || (ch == '.') || (ch == '\\') || is_ident_start(ch);
+}
+
 inline bool is_digit(TokenChar ch)
 {
     return ch >= '0' && ch <= '9';
@@ -63,9 +68,14 @@ inline bool is_ident(TokenChar ch)
     return is_ident_start(ch) || is_digit(ch);
 }
 
+inline bool is_naked_literal(TokenChar ch)
+{
+    return is_naked_literal_start(ch) || is_number_start(ch);
+}
+
 inline bool is_valid_char(TokenChar ch)
 {
-    return is_whitespace(ch) || is_delim(ch) || is_ident(ch);
+    return is_whitespace(ch) || is_delim(ch) || is_naked_literal(ch);
 }
 
 } // namespace aquila::interpreter

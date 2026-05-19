@@ -17,3 +17,4 @@ aquila-210111
 *.snap
 *.AppImage
 !aquila.png
+.aquila_history

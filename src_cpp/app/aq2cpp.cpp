@@ -1,6 +1,8 @@
+#include <fstream>
 #include <iostream>
 #include <string>
 
+#include <filesystem>
 #include <readline/history.h>
 #include <readline/readline.h>
 #include <unistd.h>
@@ -10,6 +12,38 @@
 
 using namespace aquila;
 using namespace aquila::interpreter;
+
+std::string aquila_history_fn()
+{
+    const char *env_fn = std::getenv("AQUILA_HISTORY_FILE");
+    if (env_fn && *env_fn)
+        return {env_fn};
+    const char *home_path = std::getenv("HOME");
+    if (home_path && *home_path)
+        return std::filesystem::path(home_path) / ".config" / "aquila" / "history.txt";
+    return ".aquila_history";
+}
+
+void aquila_load_history()
+{
+    std::string history_fn = aquila_history_fn();
+    if (!std::filesystem::exists(history_fn))
+        return;
+    read_history(history_fn.c_str());
+}
+
+void aquila_save_history()
+{
+    std::string history_fn = aquila_history_fn();
+    std::filesystem::path history_fn_path(history_fn);
+    if (history_fn_path.has_parent_path())
+        std::filesystem::create_directories(history_fn_path.parent_path());
+    int result = write_history(history_fn.c_str());
+    if (result != 0)
+    {
+        std::cerr << "Warning: Could not save history\n";
+    }
+}
 
 const std::vector<const char *> &get_opnames()
 {
@@ -103,15 +137,17 @@ int main()
     rl_completion_display_matches_hook = display_completions;
 
     std::cout << "Aquila Script v. " << AQUILA_VERSION << std::endl;
-    std::cout << "Created by DG, inspired by FK" << std::endl << std::endl;
+    std::cout << "Created by DG, inspired by FK 🌌" << std::endl << std::endl;
     std::cout << "Press [TAB] twice to print the available commands" << std::endl
               << "Type \"exit\" and press [ENTER] to exit" << std::endl;
 
     bool abort_on_failure = !isatty(STDIN_FILENO);
+    if (!abort_on_failure)
+        aquila_load_history();
 
     while (true)
     {
-        char *line = readline("aq> ");
+        char *line = readline("aq🚀 ");
 
         // Ctrl-D
         if (!line)
@@ -142,6 +178,8 @@ int main()
         }
     }
 
-    std::cout << "bye 👋" << std::endl;
+    if (!abort_on_failure)
+        aquila_save_history();
+    std::cout << "Clear skies! ✨🪐☄️🔭" << std::endl;
     return 0;
 }

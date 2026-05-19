@@ -81,4 +81,6 @@ apps:
   cli:
     command: usr/local/bin/aqcli
     aliases: [ "aqcli" ]
+    environment:
+      AQUILA_HISTORY_FILE: $SNAP_USER_DATA/aquila_history.txt
 

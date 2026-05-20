@@ -159,6 +159,9 @@ int main()
         if (input == "quit" || input == "exit")
             break;
 
+        if (input == "")
+            continue;
+
         if (!abort_on_failure)
         {
             add_history(input.c_str());

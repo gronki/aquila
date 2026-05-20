@@ -19,7 +19,7 @@ extern "C"
     typedef struct
     {
         int status;
-        char message[64];
+        char message[128];
     } error_status_t;
 
     typedef float real_buf_t;
@@ -107,7 +107,7 @@ extern "C"
         const char *align_method,
         const align_params_t *,
         transform_t *,
-        int *);
+        error_status_t *);
 
     void conv2d_smallkernel(const_buffer_descriptor_t x,
         const_buffer_descriptor_t k,

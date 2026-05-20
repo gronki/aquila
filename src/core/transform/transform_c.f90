@@ -19,10 +19,13 @@ end type
 
 contains
 
-subroutine alloc_transform(typ_str, scale, f_tran)
+subroutine alloc_transform(typ_str, scale, f_tran, err)
    character(kind=c_char, len=*), intent(in) :: typ_str
    real(c_double), intent(in) :: scale
    class(transform_t), intent(out), allocatable :: f_tran
+   type(error_status_t) :: err
+
+   call reset_err(err)
 
    select case (typ_str)
    case ("xyr")
@@ -30,30 +33,37 @@ subroutine alloc_transform(typ_str, scale, f_tran)
    case ("affine")
       f_tran = transform_affine_t(scale)
    case default
-      error stop "unknown transform"
+      call set_err(err, msg="unknown transform: " // trim(typ_str))
    end select
 end subroutine
 
-subroutine c_to_f_transform(c_tran, f_tran)
+subroutine c_to_f_transform(c_tran, f_tran, err)
    type(transform_c_t), intent(in) :: c_tran
    class(transform_t), intent(out), allocatable :: f_tran
+   type(error_status_t) :: err
 
    character(kind=c_char, len=15) :: typ_str
    integer :: npar
 
+   call reset_err(err)
+
    call c_f_string(c_tran%type, typ_str)
-   call alloc_transform(typ_str, c_tran%scale, f_tran)
+   call alloc_transform(typ_str, c_tran%scale, f_tran, err)
+   if (check_err(err)) return
 
    npar = f_tran%npar()
-   if (npar /= c_tran % npar) &
-      error stop "wrong number of transform parameters"
+   if (npar /= c_tran % npar) then
+      call set_err(err, msg="wrong number of transform parameters")
+      return
+   end if
    f_tran%vec = c_tran%vec
 
 end subroutine
 
-subroutine f_to_c_transform(f_tran, c_tran)
+subroutine f_to_c_transform(f_tran, c_tran, err)
    class(transform_t), intent(in) :: f_tran
    type(transform_c_t), intent(out) :: c_tran
+   type(error_status_t) :: err
 
    character(kind=c_char, len=15) :: typ_str
 
@@ -63,7 +73,8 @@ subroutine f_to_c_transform(f_tran, c_tran)
    type is (transform_affine_t)
       typ_str = "affine"
    class default
-      error stop "unsupported type"
+      call set_err(err, msg="unsupported transform.")
+      return
    end select
 
    c_tran%type = transfer(trim(typ_str) // achar(0, kind=c_char), c_tran%type)
@@ -73,7 +84,7 @@ subroutine f_to_c_transform(f_tran, c_tran)
 
 end subroutine
 
-subroutine classic_align_c(lst0, n0, lst, n, align_method, params, txc, errno) &
+subroutine classic_align_c(lst0, n0, lst, n, align_method, params, txc, err) &
    bind(C, name="classic_align")
 
    integer(c_size_t), value :: n0, n
@@ -82,12 +93,14 @@ subroutine classic_align_c(lst0, n0, lst, n, align_method, params, txc, errno) &
    type(align_params_t), intent(in) :: params
    character(kind=c_char, len=16) :: align_method_f
    type(transform_c_t), intent(out) :: txc
-   integer(c_int), intent(out) :: errno
+   integer(c_int) :: errno
+   type(error_status_t) :: err
 
    real(c_double) :: scale
    class(transform_t), allocatable :: tx
 
    errno = 0
+   call reset_err(err)
 
    scale = sum((lst0%x)**2 + (lst0%y)**2)
    scale = sqrt(scale / n0)
@@ -95,8 +108,9 @@ subroutine classic_align_c(lst0, n0, lst, n, align_method, params, txc, errno) &
    tx = transform_xyr_t(scale)
 
    call c_f_string(align_method, align_method_f)
-   call classic_align(lst0, lst, align_method_f, params, tx, errno)
-   call f_to_c_transform(tx, txc)
+   call classic_align(lst0, lst, align_method_f, params, tx, err)
+   if (check_err(err)) return
+   call f_to_c_transform(tx, txc, err)
 
 end subroutine
 

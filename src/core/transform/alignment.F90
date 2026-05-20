@@ -40,17 +40,20 @@ end subroutine
 
  !------------------------------------------------------------------------------------!
 
-subroutine classic_align(lst0, lst, align_method, params, tx, errno, verbose)
+subroutine classic_align(lst0, lst, align_method, params, tx, err, verbose)
 
+   use aquila_c_binding
    type(source_t), intent(in) :: lst0(:), lst(:)
    character(len=*), intent(in) :: align_method
    class(transform_t), intent(out), allocatable :: tx
    type(align_params_t), intent(in) :: params
-   integer, intent(out) :: errno
+   type(error_status_t), intent(inout) :: err
    logical, intent(in), optional :: verbose
 
    real(r64_k) :: a
    type(transform_xyr_t), allocatable :: xyr
+
+   call reset_err(err)
 
    xyr = transform_xyr_t(params%scale)
 
@@ -58,7 +61,6 @@ subroutine classic_align(lst0, lst, align_method, params, tx, errno, verbose)
       call align_polygon(lst0, lst, params%poly_stars, params%poly_matches, xyr)
    end if
 
-   errno = 0
    select case (align_method)
 
    case ('polygon')
@@ -89,8 +91,9 @@ subroutine classic_align(lst0, lst, align_method, params, tx, errno, verbose)
       end block
 
    case default
-      print *, 'align: unknown method: ', align_method
-      errno = 1
+      call set_err(err, msg="unknown align method: " // trim(align_method) &
+         // "; currently available: affine, xyr, polygon")
+      return
    end select
 end subroutine
 

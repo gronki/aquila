@@ -17,10 +17,21 @@ static std::unique_ptr<ExecNode> build_op_node(
         keys.push_back(arg.key);
     }
 
-    if (BuiltinOpNode::is_builtin(ast_op_node.opname))
+    if (ast_op_node.opname == "as")
     {
-        return std::make_unique<BuiltinOpNode>(
-            ast_op_node.opname, std::move(args), keys, ns);
+        if (ast_op_node.args.size() < 2)
+            throw std::runtime_error("As operation must have at least one identifier, "
+                                     "for example f() % as x");
+        std::vector<std::string> idents;
+        for (std::size_t i = 1; i < ast_op_node.args.size(); i++)
+        {
+            auto label = ast_op_node.args[i].arg_val->get_ident();
+            if (!label)
+                throw std::runtime_error("Incorrect argument to \"as\".");
+            idents.push_back(*label);
+        }
+        return std::make_unique<InlineAssignmentNode>(
+            build_exec_tree(ast_op_node.args[0].arg_val, ns, opdb), idents, ns);
     }
 
     auto op_it = opdb.find(ast_op_node.opname);

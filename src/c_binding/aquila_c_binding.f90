@@ -11,7 +11,7 @@ end type
 
 type, bind(c) :: error_status_t
    integer(c_int) :: status
-   character(kind=c_char, len=1) :: message(64)
+   character(kind=c_char, len=1) :: message(128)
 end type
 
 integer(c_int), parameter :: status_ok = 0
@@ -35,6 +35,24 @@ subroutine reset_err(status)
    status % message(1) = achar(0, kind=c_char)
 end subroutine
 
+subroutine print_err(status)
+   type(error_status_t) :: status
+   character(len=128) :: err_buf
+
+   call c_f_string(status%message, err_buf)
+
+   select case (status%status)
+   case (status_ok)
+      return
+   case(status_error)
+      write (*, '(a,a)') 'error: ', trim(err_buf)
+      return
+   case default
+      write (*, '(a,i0,a,a)') 'error (code=', status%status, '): ', trim(err_buf)
+      return
+   end select
+end subroutine
+
 subroutine set_err(status, code, msg)
    type(error_status_t) :: status
    integer(c_int), optional :: code
@@ -48,6 +66,8 @@ subroutine set_err(status, code, msg)
 
    if (present(msg)) then
       call f_2c_string(msg, status%message, size(status%message))
+   else
+      status % message(1) = achar(0, kind=c_char)
    end if
 end subroutine
 

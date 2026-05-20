@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <optional>
 #include <ostream>
 #include <vector>
 
@@ -25,6 +26,9 @@ struct AstNode
         node._print(os, 0);
         return os;
     }
+    virtual bool is_ident() const { return false; }
+    virtual std::optional<std::string> get_ident() const { return std::nullopt; }
+    virtual bool is_op() const { return false; }
 };
 
 struct AstValueNode : public AstNode
@@ -100,6 +104,9 @@ struct AstRefNode : public AstNode
             os << "(empty reference node)";
         }
     }
+
+    bool is_ident() const override { return true; }
+    std::optional<std::string> get_ident() const override { return refname; }
 };
 
 struct AstAssignmentNode : public AstNode
@@ -159,6 +166,7 @@ struct AstOpNode : public AstNode
             os << std::endl << padding;
         os << "}";
     }
+    bool is_op() const override { return true; }
 };
 
 } // namespace aquila::interpreter

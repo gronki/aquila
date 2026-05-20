@@ -26,7 +26,7 @@ std::string aquila_history_fn()
 
 void aquila_load_history()
 {
-    std::string history_fn = aquila_history_fn();
+    static std::string history_fn = aquila_history_fn();
     if (!std::filesystem::exists(history_fn))
         return;
     read_history(history_fn.c_str());
@@ -34,7 +34,7 @@ void aquila_load_history()
 
 void aquila_save_history()
 {
-    std::string history_fn = aquila_history_fn();
+    static std::string history_fn = aquila_history_fn();
     std::filesystem::path history_fn_path(history_fn);
     if (history_fn_path.has_parent_path())
         std::filesystem::create_directories(history_fn_path.parent_path());
@@ -159,7 +159,11 @@ int main()
         if (input == "quit" || input == "exit")
             break;
 
-        add_history(input.c_str());
+        if (!abort_on_failure)
+        {
+            add_history(input.c_str());
+            aquila_save_history();
+        }
 
         try
         {
@@ -178,8 +182,6 @@ int main()
         }
     }
 
-    if (!abort_on_failure)
-        aquila_save_history();
     std::cout << "Clear skies! ✨🪐☄️🔭" << std::endl;
     return 0;
 }

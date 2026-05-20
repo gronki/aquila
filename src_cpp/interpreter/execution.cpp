@@ -167,51 +167,29 @@ const Value *OpNode::yield()
     return value.get();
 }
 
-const Value *BuiltinOpNode::yield()
+const Value *InlineAssignmentNode::yield()
 {
     if (value)
         return value.get();
 
-    std::vector<const Value *> arg_results;
-    arg_results.reserve(args.size());
+    const Value *in = arg->yield();
 
-    for (auto &arg : args)
+    if (idents.size() == 1)
     {
-        auto result = arg->yield();
-        arg_results.push_back(result);
+        return ns.push(idents[0], in->clone());
     }
-
-    if (arg_results.size() < 2)
-        throw std::runtime_error("inline assignment requires new name to be assigned");
-
-    try
+    else
     {
-        const Value *in = arg_results[0];
-        if (arg_results.size() == 2)
+        const SequenceValue &sqv = value_cast<SequenceValue>(*in);
+        if (sqv.size() != idents.size())
+            throw std::runtime_error("expected sequence of length "
+                + std::to_string(idents.size()) + ", got: " + std::to_string(sqv.size()));
+        for (std::size_t iarg = 0; iarg < idents.size(); iarg++)
         {
-            const std::string &tgt_name = value_cast<std::string>(*arg_results[1]);
-            return ns.push(tgt_name, in->clone());
+            ns.push(idents[iarg], sqv.items[iarg]->clone());
         }
-        else
-        {
-            const SequenceValue &sqv = value_cast<SequenceValue>(*in);
-            if (sqv.size() != arg_results.size() - 1)
-                throw std::runtime_error("expected sequence of length "
-                    + std::to_string(arg_results.size() - 1)
-                    + ", got: " + std::to_string(sqv.size()));
-            for (std::size_t iarg = 0; iarg < arg_results.size() - 1; iarg++)
-            {
-                const std::string &tgt_name =
-                    value_cast<std::string>(*arg_results[iarg + 1]);
-                ns.push(tgt_name, sqv.items[iarg]->clone());
-            }
 
-            return in;
-        }
-    }
-    catch (const std::runtime_error &e)
-    {
-        throw std::runtime_error(std::string("Error in inline assignment: ") + e.what());
+        return in;
     }
 
     return nullptr;

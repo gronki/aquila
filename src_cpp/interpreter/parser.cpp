@@ -21,6 +21,13 @@ struct parse_flags_t
         in.in_open_syntax = f;
         return in;
     }
+    bool arg_idents_only = false;
+    parse_flags_t set_arg_idents_only(bool f)
+    {
+        auto in = *this;
+        in.arg_idents_only = f;
+        return in;
+    }
 };
 
 /**
@@ -98,7 +105,9 @@ static void parse_basic_expression(
     parse_function_argument_list(tokens,
         opening_brace_after_ident ? ')' : ' ',
         args,
-        flags.set_allow_open_syntax(false).set_in_open_syntax(!opening_brace_after_ident));
+        flags.set_allow_open_syntax(false)
+            .set_in_open_syntax(!opening_brace_after_ident)
+            .set_arg_idents_only(opname == "as"));
     node = std::make_unique<AstOpNode>(opname, std::move(args), loc);
 }
 
@@ -157,27 +166,20 @@ static void parse_function_argument_list(LazyTokenArray &tokens,
         if (cur_token.type == TokenType::IDENT
             && maybe_kv_sep == Token(TokenType::DELIM, KWARG_DELIM))
         {
+            if (flags.arg_idents_only)
+                throw std::runtime_error(
+                    "keywords not allowed in inline assignment %as...");
             arg.has_key = true;
             arg.key = std::move(cur_token.value);
             cur_token = tokens.next_token(2);
         }
 
-        bool expansion = tokens.cur_token() == Token(TokenType::DELIM, EXPAND_DELIM);
-        bool contraction = tokens.cur_token() == Token(TokenType::DELIM, CONTRACT_DELIM);
-
-        if (expansion || contraction)
-            cur_token = tokens.next_token();
-
-        if (expansion && arg.has_key)
-            throw std::runtime_error("Expansion not allowed here.");
-
         std::unique_ptr<AstNode> arg_node;
         parse_expression(tokens, arg_node, flags);
+        if (flags.arg_idents_only && !arg_node->is_ident())
+            throw std::runtime_error(
+                "Only list of simple identifiers (a, b, c, ..) allowed here.");
 
-        if (expansion || contraction)
-            arg_node = std::make_unique<AstExpandNode>(std::move(arg_node),
-                expansion ? AstExpandNode::Kind::EXPANSION : AstExpandNode::Kind::CONTRACTION,
-                cur_token.loc);
         arg.arg_val = std::move(arg_node);
         node_args.push_back(std::move(arg));
 
@@ -215,11 +217,6 @@ static void parse_expression(
         tokens.next_token();
 
         auto cur_token = tokens.cur_token();
-        bool contract_chain = cur_token == Token(TokenType::DELIM, CONTRACT_DELIM);
-        bool expand_chain = cur_token == Token(TokenType::DELIM, EXPAND_DELIM);
-
-        if (contract_chain || expand_chain)
-            tokens.next_token();
 
         std::unique_ptr<AstNode> parent_node;
         parse_basic_expression(tokens, parent_node, flags);
@@ -228,34 +225,14 @@ static void parse_expression(
         {
             // stadard chaining: X % f(Y) -> F(X, Y)
             AstOpNode::OpArg first_arg;
-            first_arg.arg_val = contract_chain || expand_chain
-                ? std::make_unique<AstExpandNode>(std::move(node),
-                      contract_chain ? AstExpandNode::Kind::CONTRACTION
-                                     : AstExpandNode::Kind::EXPANSION,
-                      cur_token.loc)
-                : std::move(node);
+            first_arg.arg_val = std::move(node);
             parent_call_node->args.insert(
                 parent_call_node->args.begin(), std::move(first_arg));
             node = std::move(parent_node);
         }
-        else if (auto *parent_call_node = dynamic_cast<AstRefNode *>(parent_node.get()))
-        {
-            if (contract_chain)
-                throw std::runtime_error("& not allowed here");
-            // param function: X % Y -> param(X, "Y")
-            // used to retrieve some (static) properties from a value
-            // for example, an exposure time from FITS header
-            std::vector<AstOpNode::OpArg> args(2);
-            args[0].arg_val = std::move(node);
-            args[1].arg_val = std::make_unique<AstValueNode>(
-                std::make_unique<StrValue>(parent_call_node->refname),
-                parent_call_node->loc);
-            node = std::make_unique<AstOpNode>(
-                "param", std::move(args), args[0].arg_val->loc);
-        }
         else
         {
-            throw std::runtime_error("incorrect chaining: only identifier X%Y or "
+            throw std::runtime_error("incorrect chaining: only "
                                      "function X%F() allowed");
         }
     }

@@ -1,10 +1,10 @@
 #pragma once
 
-#include <iostream>
-
 #include "namespace.hpp"
 #include "operation.hpp"
 #include "value.hpp"
+#include <iostream>
+#include <optional>
 
 namespace aquila::interpreter
 {
@@ -18,6 +18,7 @@ public:
     ExecNode(Namespace &ns) : ns(ns) {}
     virtual const Value *yield() = 0;
     virtual void clean() {};
+    virtual std::optional<std::string> get_refname() const { return std::nullopt; }
     virtual ~ExecNode() = default;
 };
 
@@ -38,6 +39,8 @@ public:
             return &ns.get(refname);
         return &fallback;
     }
+
+    std::optional<std::string> get_refname() const override { return refname; }
 };
 
 class AssignmentNode : public ExecNode
@@ -95,27 +98,18 @@ public:
     void clean() override { value = nullptr; }
 };
 
-class BuiltinOpNode : public ExecNode
+class InlineAssignmentNode : public ExecNode
 {
-    std::string opname;
     std::unique_ptr<Value> value;
-    std::vector<std::unique_ptr<ExecNode>> args;
-    std::vector<ArgMatch> match;
+    std::unique_ptr<ExecNode> arg;
+    std::vector<std::string> idents;
 
 public:
-    BuiltinOpNode(std::string opname,
-        std::vector<std::unique_ptr<ExecNode>> args,
-        const std::vector<std::string> &keys,
-        Namespace &ns) : ExecNode(ns), opname(std::move(opname)), args(std::move(args))
+    InlineAssignmentNode(
+        std::unique_ptr<ExecNode> arg, std::vector<std::string> idents, Namespace &ns) :
+        ExecNode(ns), arg(std::move(arg)), idents(std::move(idents))
     {
-        const ArgManifest manifest{
-            ArgSpec{.name = "in"},
-            ArgSpec{.name = "..."},
-        };
-        match = match_arguments(manifest, keys);
     }
-
-    static bool is_builtin(const std::string &name) { return name == "as"; }
 
     const Value *yield() override;
 

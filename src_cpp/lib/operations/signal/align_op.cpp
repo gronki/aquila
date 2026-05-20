@@ -11,13 +11,13 @@ ValuePtr AlignOp::run(const values::SourceListValue &lst0,
 {
 
     transform_t trans;
-    int err;
     if (prealign != "yes" && prealign != "no")
         throw std::runtime_error("prealign must be: yes or no");
 
     align_params_t params = default_align_params();
     params.scale = (double(lst0.nx) + double(lst0.ny)) / 3;
     params.prealign_polygon = (prealign == "yes");
+    error_status_t err;
 
     classic_align(lst0.sources.data(),
         lst0.sources.size(),
@@ -27,8 +27,9 @@ ValuePtr AlignOp::run(const values::SourceListValue &lst0,
         &params,
         &trans,
         &err);
-    if (err)
-        throw std::runtime_error("error finding transformation");
+    if (err.status)
+        throw std::runtime_error(
+            std::string("error finding transformation: ") + err.message);
     return std::make_unique<values::TransformValue>(trans);
 }
 

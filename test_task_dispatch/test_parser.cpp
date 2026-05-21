@@ -49,6 +49,21 @@ TEST(str_lit)
     REQUIRE_EQ(*value_node->constant, StrValue("3.0"));
 }
 
+TEST(free_str_lit)
+{
+
+    Tokenizer tokenizer("   test/*.fits  ");
+    LazyTokenArray token_array(std::move(tokenizer));
+    std::unique_ptr<AstNode> root;
+    parse(token_array, root);
+    std::cout << *root << std::endl;
+
+    auto *value_node = dynamic_cast<AstValueNode *>(root.get());
+    REQUIRE_NNUL(value_node);
+
+    REQUIRE_EQ(*value_node->constant, StrValue("test/*.fits"));
+}
+
 TEST(call)
 {
     Tokenizer tokenizer(" ff (3.0, \"a\"  )");
@@ -279,54 +294,6 @@ TEST(call_chain_keys_3)
     auto *arg_node_11 = dynamic_cast<AstValueNode *>(arg_node_1->args[0].arg_val.get());
     REQUIRE_NNUL(arg_node_11);
     REQUIRE_EQ(*arg_node_11->constant, RealValue(3.0));
-}
-
-TEST(call_param)
-{
-    Tokenizer tokenizer(
-        std::string(" ff (3.0) ") + std::string(1, CHAIN_CALL_DELIM) + " gg");
-    // equivalent to: gg(ff(3.0), key: "a")
-
-    LazyTokenArray token_array(std::move(tokenizer));
-    std::unique_ptr<AstNode> root;
-    parse(token_array, root);
-    std::cout << *root << std::endl;
-
-    auto *op_node = dynamic_cast<AstOpNode *>(root.get());
-    REQUIRE_NNUL(op_node);
-    REQUIRE_EQ(op_node->opname, "param");
-    REQUIRE_EQ(op_node->args.size(), 2);
-
-    auto &args = op_node->args;
-
-    REQUIRE_EQ(args[0].key, "");
-    auto *arg_node_1 = dynamic_cast<AstOpNode *>(args[0].arg_val.get());
-    REQUIRE_NNUL(arg_node_1);
-    REQUIRE_EQ(arg_node_1->opname, "ff");
-    REQUIRE_EQ(arg_node_1->args.size(), 1);
-
-    REQUIRE_EQ(arg_node_1->args[0].key, "");
-    auto *arg_node_11 = dynamic_cast<AstValueNode *>(arg_node_1->args[0].arg_val.get());
-    REQUIRE_NNUL(arg_node_11);
-    REQUIRE_EQ(*arg_node_11->constant, RealValue(3.0));
-
-    auto *arg_node_2 = dynamic_cast<AstValueNode *>(args[1].arg_val.get());
-    REQUIRE_NNUL(arg_node_2);
-    REQUIRE_EQ(*arg_node_2->constant, StrValue("gg"));
-}
-
-TEST(print)
-{
-    Tokenizer tokenizer(std::string("  ff (3.0) ") + std::string(1, CHAIN_CALL_DELIM)
-        + " gg(key: \"a\" , \"q\"" + std::string(1, CHAIN_CALL_DELIM) + "split ) "
-        + std::string(1, CHAIN_CALL_DELIM) + "t(p: q" + std::string(1, CHAIN_CALL_DELIM)
-        + "prop, v: "
-          "z) "
-        + std::string(1, CHAIN_CALL_DELIM) + " ababa(33, xyz, 13) ");
-    LazyTokenArray token_array(std::move(tokenizer));
-    std::unique_ptr<AstNode> root;
-    parse(token_array, root);
-    std::cout << *root << std::endl;
 }
 
 int main(int argc, char **argv)

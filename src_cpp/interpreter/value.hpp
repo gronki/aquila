@@ -164,22 +164,26 @@ inline const Value &value_cast<Value>(const Value &other)
     return other;
 }
 
+using Real = double;
+using Str = std::string;
+using Int = std::int64_t;
+
 template <typename T>
 struct __simpleval_typenames;
 template <>
-struct __simpleval_typenames<std::string>
+struct __simpleval_typenames<Str>
 {
     TYPE_NAME("str");
 };
 template <>
-struct __simpleval_typenames<std::int64_t>
+struct __simpleval_typenames<Int>
 {
     TYPE_NAME("int");
 };
 template <>
-struct __simpleval_typenames<double>
+struct __simpleval_typenames<Real>
 {
-    TYPE_NAME("float");
+    TYPE_NAME("real");
 };
 
 template <typename T>
@@ -206,95 +210,95 @@ struct SimpleValue : public ValueBase<SimpleValue<T>>
 };
 
 template <>
-inline void SimpleValue<std::string>::write(std::ostream &os) const
+inline void SimpleValue<Str>::write(std::ostream &os) const
 {
     os << "\"" << value << "\"";
 }
 
-using StrValue = SimpleValue<std::string>;
+using StrValue = SimpleValue<Str>;
 
 template <>
-inline std::string *value_cast<std::string>(Value *other)
+inline Str *value_cast<Str>(Value *other)
 {
-    auto sv = value_cast<SimpleValue<std::string>>(other);
+    auto sv = value_cast<SimpleValue<Str>>(other);
     if (!sv)
         return nullptr;
     return &sv->value;
 }
 template <>
-inline const std::string *value_cast<std::string>(const Value *other)
+inline const Str *value_cast<Str>(const Value *other)
 {
-    auto sv = value_cast<SimpleValue<std::string>>(other);
+    auto sv = value_cast<SimpleValue<Str>>(other);
     if (!sv)
         return nullptr;
     return &sv->value;
 }
 template <>
-inline std::string &value_cast<std::string>(Value &other)
+inline Str &value_cast<Str>(Value &other)
 {
-    return value_cast<SimpleValue<std::string>>(other).value;
+    return value_cast<SimpleValue<Str>>(other).value;
 }
 template <>
-inline const std::string &value_cast<std::string>(const Value &other)
+inline const Str &value_cast<Str>(const Value &other)
 {
-    return value_cast<SimpleValue<std::string>>(other).value;
+    return value_cast<SimpleValue<Str>>(other).value;
 }
 
-using IntValue = SimpleValue<std::int64_t>;
+using IntValue = SimpleValue<Int>;
 
 template <>
-inline std::int64_t *value_cast<std::int64_t>(Value *other)
+inline Int *value_cast<Int>(Value *other)
 {
-    auto sv = value_cast<SimpleValue<std::int64_t>>(other);
+    auto sv = value_cast<SimpleValue<Int>>(other);
     if (!sv)
         return nullptr;
     return &sv->value;
 }
 template <>
-inline const std::int64_t *value_cast<std::int64_t>(const Value *other)
+inline const Int *value_cast<Int>(const Value *other)
 {
-    auto sv = value_cast<SimpleValue<std::int64_t>>(other);
+    auto sv = value_cast<SimpleValue<Int>>(other);
     if (!sv)
         return nullptr;
     return &sv->value;
 }
 template <>
-inline std::int64_t &value_cast<std::int64_t>(Value &other)
+inline Int &value_cast<Int>(Value &other)
 {
-    return value_cast<SimpleValue<std::int64_t>>(other).value;
+    return value_cast<SimpleValue<Int>>(other).value;
 }
 template <>
-inline const std::int64_t &value_cast<std::int64_t>(const Value &other)
+inline const Int &value_cast<Int>(const Value &other)
 {
-    return value_cast<SimpleValue<std::int64_t>>(other).value;
+    return value_cast<SimpleValue<Int>>(other).value;
 }
-using RealValue = SimpleValue<double>;
+using RealValue = SimpleValue<Real>;
 
 template <>
-inline double *value_cast<double>(Value *other)
+inline Real *value_cast<Real>(Value *other)
 {
-    auto sv = value_cast<SimpleValue<double>>(other);
+    auto sv = value_cast<SimpleValue<Real>>(other);
     if (!sv)
         return nullptr;
     return &sv->value;
 }
 template <>
-inline const double *value_cast<double>(const Value *other)
+inline const Real *value_cast<Real>(const Value *other)
 {
-    auto sv = value_cast<SimpleValue<double>>(other);
+    auto sv = value_cast<SimpleValue<Real>>(other);
     if (!sv)
         return nullptr;
     return &sv->value;
 }
 template <>
-inline double &value_cast<double>(Value &other)
+inline Real &value_cast<Real>(Value &other)
 {
-    return value_cast<SimpleValue<double>>(other).value;
+    return value_cast<SimpleValue<Real>>(other).value;
 }
 template <>
-inline const double &value_cast<double>(const Value &other)
+inline const Real &value_cast<Real>(const Value &other)
 {
-    return value_cast<SimpleValue<double>>(other).value;
+    return value_cast<SimpleValue<Real>>(other).value;
 }
 
 using ValuePtr = std::unique_ptr<Value>;
@@ -372,10 +376,16 @@ namespace aquila
 {
 
 // export frequently used names
+
+using interpreter::Int;
+using interpreter::IntValue;
+using interpreter::Real;
 using interpreter::RealValue;
 using interpreter::SequenceValue;
+using interpreter::Str;
 using interpreter::StrValue;
 using interpreter::Value;
+
 using interpreter::value_cast;
 using interpreter::value_type;
 using interpreter::ValueBase;

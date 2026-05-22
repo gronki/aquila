@@ -725,6 +725,12 @@ contains
          'aqstack dark Dark/flatdark_*.fits -o flatdark.fits', &
          'aqstack flat -dark flatdark.fits Flat/*.fits -o flat.fits', &
          'aqstack final -dark dark.fits -flat flat.fits Light/*.fits -o stack.fits'
+
+      print fmtexampl, 'You may use -ref option to align RGB channels', &
+         'aqstack final Light/R/*.fits -ref Light/L/001.fits -o stack_R.fits', &
+         'aqstack final Light/G/*.fits -ref Light/L/001.fits -o stack_G.fits'
+
+      print *
    end subroutine print_help
 
    !----------------------------------------------------------------------------!

@@ -9,6 +9,7 @@
 
 #include "../../src/c_binding/aquila.h"
 #include "../interpreter/interpreter.hpp"
+#include "operation.hpp"
 
 using namespace aquila;
 using namespace aquila::interpreter;
@@ -129,6 +130,42 @@ void display_completions(char **matches, int num_matches, int max_length)
     rl_redisplay();
 }
 
+void print_all_commands()
+{
+    const auto &db = global_op_db();
+    std::cout << "Help is here!" << std::endl;
+    std::cout << "Type \"help <command>\" to see details." << std::endl
+              << "Commands with ... accept any number of arguments." << std::endl
+              << "Commands with [...] expect a list as an input" << std::endl
+              << "Arguments with default:values must be specified with their keyword"
+              << std::endl
+              << std::endl;
+    for (const auto &entry : db)
+    {
+        std::cout << entry.second.signature_str << std::endl;
+    }
+}
+
+void handle_help(std::string input)
+{
+    const auto &db = global_op_db();
+    auto space_pos = input.rfind(' ');
+    if (space_pos == std::string::npos)
+    {
+        print_all_commands();
+        return;
+    }
+    auto topic = input.substr(space_pos + 1);
+    auto it = db.find(topic);
+    if (it == db.end())
+    {
+        print_all_commands();
+        return;
+    }
+    std::cout << it->second.signature_str << std::endl
+              << it->second.description << std::endl;
+}
+
 int main()
 {
     AquilaInterpreter interp;
@@ -136,10 +173,13 @@ int main()
     rl_attempted_completion_function = completion;
     rl_completion_display_matches_hook = display_completions;
 
-    std::cout << "Aquila Script v. " << AQUILA_VERSION << std::endl;
+    std::cout << "aqcli v." << AQUILA_VERSION << " (https://github.com/gronki/aquila)"
+              << std::endl;
     std::cout << "Created by DG, inspired by FK 🌌" << std::endl << std::endl;
-    std::cout << "Press [TAB] twice to print the available commands" << std::endl
-              << "Type \"exit\" and press [ENTER] to exit" << std::endl;
+    std::cout << "Type \"help\" and press [ENTER] to print the available commands"
+              << std::endl
+              << "Type \"exit\" and press [ENTER] to exit" << std::endl
+              << std::endl;
 
     bool abort_on_failure = !isatty(STDIN_FILENO);
     if (!abort_on_failure)
@@ -161,6 +201,11 @@ int main()
 
         if (input == "")
             continue;
+        if (input.substr(0, 4) == "help")
+        {
+            handle_help(input);
+            continue;
+        }
 
         if (!abort_on_failure)
         {

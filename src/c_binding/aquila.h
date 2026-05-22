@@ -122,6 +122,25 @@ extern "C"
         buffer_descriptor_t frame_out,
         error_status_t *err);
 
+    typedef struct
+    {
+        bool background;
+        bool stars;
+        real_buf_t apar;
+        real_buf_t bpar;
+        real_buf_t sigma;
+        real_buf_t sigma_star;
+        int32_t niter;
+        int32_t margin;
+    } bkeq_param_t;
+
+    void equalize_background_init(bkeq_param_t *param);
+
+    void equalize_background(const buffer_descriptor_t *buffers,
+        int32_t nbuf,
+        bkeq_param_t *param,
+        error_status_t *err);
+
 #ifdef __cplusplus
 } /* extern "C" */
 #endif

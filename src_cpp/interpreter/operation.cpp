@@ -131,9 +131,6 @@ std::vector<ArgMatch> match_arguments(
     size_t num_positionals = 0;
     bool expect_ellipsis = false;
     check_argspec_integrity(manifest, num_positionals, expect_ellipsis);
-#ifndef NDEBUG
-    std::cout << "num_positionals =" << num_positionals << std::endl;
-#endif
     const size_t n_spec = expect_ellipsis ? manifest.size() - 1 : manifest.size();
     std::vector<ArgMatch> match(n_spec);
 
@@ -144,33 +141,8 @@ std::vector<ArgMatch> match_arguments(
         argspec_key_positions.insert_or_assign(manifest[ispec].name, ispec);
     }
 
-    for (size_t ikey = 0; ikey < given_keys.size(); ikey++)
-    {
-        const std::string &key = given_keys[ikey];
-
-        if (key.empty())
-            continue;
-
-        auto position_it = argspec_key_positions.find(key);
-        if (position_it == argspec_key_positions.end())
-            throw std::runtime_error(std::string("key: ") + key
-                + " not allowed at position: " + std::to_string(ikey + 1));
-
-        int match_pos = position_it->second;
-
-        if (match[match_pos].matched)
-        {
-            throw std::runtime_error(std::string("key ") + key
-                + " declared twice at position " + std::to_string(ikey + 1));
-        }
-
-        // mark key as visited
-        match[match_pos].matched = true;
-        match[match_pos].pos = ikey;
-    }
-
     bool first_keyword = false;
-    size_t iarg_skip = 0;
+    std::ptrdiff_t pos_shift = 0;
 
     for (size_t iarg = 0; iarg < given_keys.size(); iarg++)
     {
@@ -179,40 +151,61 @@ std::vector<ArgMatch> match_arguments(
             throw std::runtime_error("argument list too long.");
         }
 
-        const bool is_keyword = !given_keys[iarg].empty();
+        const std::string &key = given_keys[iarg];
+        const bool is_explosion = !key.empty() && key == "*";
+        const bool is_keyword = !key.empty() && !is_explosion;
         first_keyword = first_keyword || is_keyword;
 
-        if (first_keyword)
+        if (first_keyword && !is_keyword)
+            throw std::runtime_error("keyword arguments must follow positional"
+                                     " arguments in the list");
+
+        // keyword arguments
+
+        if (is_keyword)
         {
-            if (!is_keyword)
-                throw std::runtime_error("keyword arguments must follow positional"
-                                         " arguments in the list");
-            continue;
-        }
 
-        // positional arguments
+            auto position_it = argspec_key_positions.find(key);
+            if (position_it == argspec_key_positions.end())
+                throw std::runtime_error(std::string("key: ") + key
+                    + " not allowed at position: " + std::to_string(iarg + 1));
 
-        while (iarg + iarg_skip < n_spec && match[iarg + iarg_skip].matched)
-            iarg_skip++;
+            int match_pos = position_it->second;
+            if (!manifest[match_pos].has_default())
+                throw std::runtime_error(std::string("argument ") + key
+                    + " is positional; shall not be defined by key at position "
+                    + std::to_string(iarg + 1));
+            if (match[match_pos].matched)
+            {
+                throw std::runtime_error(std::string("key ") + key
+                    + " declared twice at position " + std::to_string(iarg + 1));
+            }
 
-        const size_t iarg_dest = iarg + iarg_skip;
+            // mark key as visited
+            match[match_pos].matched = true;
+            match[match_pos].pos = iarg;
 
-        if (iarg_dest < n_spec)
-        {
-            // named
-            match[iarg_dest].matched = true;
-            match[iarg_dest].pos = iarg;
-        }
-        else if (expect_ellipsis)
-        {
-            // ellipsis
-            match.push_back(ArgMatch{.matched = true, .pos = iarg});
+            // positional arguments
         }
         else
         {
-            throw std::runtime_error(
-                std::string("Too many positional arguments, maximum allowed: ")
-                + std::to_string(num_positionals));
+            if (iarg < num_positionals)
+            {
+                // named
+                match[iarg].matched = true;
+                match[iarg].pos = iarg;
+            }
+            else if (expect_ellipsis)
+            {
+                // ellipsis
+                match.push_back(ArgMatch{.matched = true, .pos = iarg});
+            }
+            else
+            {
+                throw std::runtime_error(
+                    std::string("Too many positional arguments, maximum allowed: ")
+                    + std::to_string(num_positionals));
+            }
         }
     }
 

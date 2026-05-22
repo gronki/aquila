@@ -12,6 +12,16 @@
 using namespace aquila;
 using namespace aquila::interpreter;
 
+void print_match(const std::vector<ArgMatch> &match)
+{
+    for (const auto &match_item : match)
+    {
+        std::cout << (match_item.matched ? "MATCHED" : "      ")
+                  << "   pos=" << match_item.pos << "    "
+                  << (match_item.deftgt != nullptr ? "DEFAULT" : "") << std::endl;
+    }
+}
+
 TEST(match1)
 {
     std::vector<ArgSpec> manifest{
@@ -20,6 +30,7 @@ TEST(match1)
         ArgSpec{.name = "c", .default_real = 6},
     };
     auto match = match_arguments(manifest, {"", "c"});
+    print_match(match);
 
     REQUIRE_EQ(match.size(), 3);
 
@@ -41,18 +52,7 @@ TEST(match1a)
         ArgSpec{.name = "a"},
         ArgSpec{.name = "b", .default_int = 3},
     };
-    auto match = match_arguments(manifest, {"", ""});
-
-    REQUIRE_EQ(match.size(), 2);
-
-    REQUIRE(match[0].matched);
-    REQUIRE_EQ(match[0].pos, 0);
-    REQUIRE(match[0].deftgt == nullptr);
-
-    REQUIRE(match[1].matched);
-    REQUIRE_EQ(match[1].pos, 1);
-    REQUIRE(match[1].deftgt == nullptr);
-
+    EXPECT_ERROR("many positional", [&]() { match_arguments(manifest, {"", ""}); });
 }
 
 TEST(match2)
@@ -62,20 +62,8 @@ TEST(match2)
         ArgSpec{.name = "b", .default_int = 3},
         ArgSpec{.name = "c", .default_real = 6},
     };
-    auto match = match_arguments(manifest, {"b", "a"});
-
-    REQUIRE_EQ(match.size(), 3);
-
-    REQUIRE(match[0].matched);
-    REQUIRE_EQ(match[0].pos, 1);
-    REQUIRE(match[0].deftgt == nullptr);
-
-    REQUIRE(match[1].matched);
-    REQUIRE_EQ(match[1].pos, 0);
-    REQUIRE(match[1].deftgt == nullptr);
-
-    REQUIRE(!match[2].matched);
-    REQUIRE(match[2].deftgt != nullptr);
+    EXPECT_ERROR(
+        "required but not provided", [&]() { match_arguments(manifest, {"b", "c"}); });
 }
 
 TEST(match_ellip_0)
@@ -84,6 +72,7 @@ TEST(match_ellip_0)
         ArgSpec{.name = "..."},
     };
     auto match = match_arguments(manifest, {"", "", ""});
+    print_match(match);
 
     REQUIRE_EQ(match.size(), 3);
 
@@ -107,6 +96,7 @@ TEST(match_ellip_1)
         ArgSpec{.name = "..."},
     };
     auto match = match_arguments(manifest, {"", "", ""});
+    print_match(match);
 
     REQUIRE_EQ(match.size(), 3);
 
@@ -130,6 +120,7 @@ TEST(match_ellip_1a)
         ArgSpec{.name = "..."},
     };
     auto match = match_arguments(manifest, {"", "", "k"});
+    print_match(match);
 
     REQUIRE_EQ(match.size(), 3);
 
@@ -153,16 +144,20 @@ TEST(match_ellip_1b)
         ArgSpec{.name = "..."},
     };
     auto match = match_arguments(manifest, {"", ""});
+    print_match(match);
 
-    REQUIRE_EQ(match.size(), 2);
+    REQUIRE_EQ(match.size(), 3);
 
-    REQUIRE(match[0].matched);
-    REQUIRE_EQ(match[0].pos, 0);
-    REQUIRE(match[0].deftgt == nullptr);
+    REQUIRE(!match[0].matched);
+    REQUIRE(match[0].deftgt != nullptr);
 
     REQUIRE(match[1].matched);
-    REQUIRE_EQ(match[1].pos, 1);
+    REQUIRE_EQ(match[1].pos, 0);
     REQUIRE(match[1].deftgt == nullptr);
+
+    REQUIRE(match[2].matched);
+    REQUIRE_EQ(match[2].pos, 1);
+    REQUIRE(match[2].deftgt == nullptr);
 }
 
 TEST(match_ellip_3)
@@ -172,25 +167,8 @@ TEST(match_ellip_3)
         ArgSpec{.name = "b", .default_int = 3},
         ArgSpec{.name = "..."},
     };
-    auto match = match_arguments(manifest, {"", "", "b", "a"});
-
-    REQUIRE_EQ(match.size(), 4);
-
-    REQUIRE(match[0].matched);
-    REQUIRE_EQ(match[0].pos, 3);
-    REQUIRE(match[0].deftgt == nullptr);
-
-    REQUIRE(match[1].matched);
-    REQUIRE_EQ(match[1].pos, 2);
-    REQUIRE(match[1].deftgt == nullptr);
-
-    REQUIRE(match[2].matched);
-    REQUIRE_EQ(match[2].pos, 0);
-    REQUIRE(match[2].deftgt == nullptr);
-
-    REQUIRE(match[3].matched);
-    REQUIRE_EQ(match[3].pos, 1);
-    REQUIRE(match[3].deftgt == nullptr);
+    EXPECT_ERROR("shall not be defined by key",
+        [&]() { match_arguments(manifest, {"", "", "b", "a"}); });
 }
 
 TEST(match_e1)
@@ -212,7 +190,7 @@ TEST(match_e2)
         ArgSpec{.name = "c", .default_real = 6},
     };
 
-    EXPECT_ERROR("follow", [&]() { match_arguments(manifest, {"a", ""}); });
+    EXPECT_ERROR("follow", [&]() { match_arguments(manifest, {"b", ""}); });
 }
 
 int main()

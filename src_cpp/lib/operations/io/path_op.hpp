@@ -13,7 +13,7 @@ struct PathOp : public Operation
     ArgManifest arg_manifest() const override
     {
         return ArgManifest{
-            ArgSpec{.name = "path", .default_str = "*", .help = "Path to expand"},
+            ArgSpec{.name = "path", .help = "Path to expand"},
         };
     }
 

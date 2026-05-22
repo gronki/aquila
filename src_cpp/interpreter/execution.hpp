@@ -90,7 +90,15 @@ public:
         const std::vector<std::string> &keys,
         Namespace &ns) : ExecNode(ns), op(std::move(op)), args(std::move(args))
     {
-        match = match_arguments(this->op->arg_manifest(), keys);
+        try
+        {
+            match = match_arguments(this->op->arg_manifest(), keys);
+        }
+        catch (std::exception &e)
+        {
+            throw std::runtime_error(
+                std::string("operation ") + this->op->name() + ": " + e.what());
+        }
     }
 
     const Value *yield() override;

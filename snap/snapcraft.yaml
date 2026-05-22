@@ -54,6 +54,7 @@ parts:
     plugin: cmake
     source: .
     cmake-parameters:
+      - "-DCMAKE_INSTALL_PREFIX=/usr"
       - "-DCMAKE_BUILD_TYPE=Release"
       - "-DAQUILA_OPENMP=On"
       - "-DAQUILA_TESTS=Off"
@@ -73,13 +74,13 @@ parts:
 
 apps:
   stack:
-    command: usr/local/bin/aqstack
+    command: usr/bin/aqstack
     aliases: [ "aqstack" ]
   lrgb:
-    command: usr/local/bin/aqlrgb
+    command: usr/bin/aqlrgb
     aliases: [ "aqlrgb" ]
   cli:
-    command: usr/local/bin/aqcli
+    command: usr/bin/aqcli
     aliases: [ "aqcli" ]
     environment:
       AQUILA_HISTORY_FILE: $SNAP_USER_DATA/aquila_history.txt

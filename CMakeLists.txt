@@ -98,9 +98,9 @@ file(GLOB_RECURSE AQUILA_SOURCES CONFIGURE_DEPENDS
 )
 
 add_library(aquila SHARED ${AQUILA_SOURCES})
-target_link_libraries(aquila PRIVATE fast_math)
 target_include_directories(aquila PUBLIC src/c_binding)
 target_link_libraries(aquila PUBLIC png_target cfitsio)
+target_link_libraries(aquila PRIVATE fast_math)
 
 if (AQUILA_OPENMP)
     target_link_libraries(aquila PRIVATE OpenMP::OpenMP_Fortran OpenMP::OpenMP_C)
@@ -122,10 +122,10 @@ endforeach()
 endif()
 
 add_executable(aqstack app/aqstack.f90)
-target_link_libraries(aqstack PRIVATE aquila)
+target_link_libraries(aqstack PRIVATE aquila fast_math)
 
 add_executable(aqlrgb app/aqlrgb.F90)
-target_link_libraries(aqlrgb PRIVATE aquila)
+target_link_libraries(aqlrgb PRIVATE aquila fast_math)
 
 if (AQUILA_OPENMP)
     target_link_libraries(aqstack PRIVATE OpenMP::OpenMP_Fortran)
@@ -162,15 +162,6 @@ file(GLOB_RECURSE libaq2_SOURCES CONFIGURE_DEPENDS
     src_cpp/lib/*.cpp
     src_cpp/lib/*.hpp
 )
-list(FILTER libaq2_SOURCES EXCLUDE REGEX ".*arithmetic.*")
-
-file(GLOB aq2arith_SOURCES CONFIGURE_DEPENDS src_cpp/lib/operations/arithmetic/*)
-add_library(aquila2_arith OBJECT ${aq2arith_SOURCES})
-target_include_directories(aquila2_arith PRIVATE src_cpp/lib src_cpp/interpreter src/c_binding)
-target_link_libraries(aquila2_arith PRIVATE fast_math)
-set_target_properties(aquila2_arith PROPERTIES
-    POSITION_INDEPENDENT_CODE ON
-)
 
 add_library(aquila2 SHARED ${libaq2_SOURCES})
 target_include_directories(aquila2 PUBLIC src_cpp/lib)
@@ -179,7 +170,7 @@ if (AQUILA_OPENMP)
     target_link_libraries(aquila2 PRIVATE OpenMP::OpenMP_CXX)
 endif ()
 
-target_link_libraries(aquila2 PRIVATE aquila2_arith)
+target_link_libraries(aquila2 PRIVATE fast_math)
 target_link_libraries(aquila2 PUBLIC aqtask_dispatch aquila)
 
 install(TARGETS aquila2 LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})

@@ -14,6 +14,8 @@ integer, parameter :: buf_k = r32_k
 
 character(len = *), parameter :: hlp_fmt = '(a25, 2x, a)', hlp_fmtc = '(27x, a)'
 character(len = *), parameter :: fmthlp = '(a25, 2x, a, :/, *(27x, a, :/))'
+character(len = *), parameter :: fmtwarn = '("Warning: ", a, :/, *(9x, a, :/))'
+character(len = *), parameter :: fmtexampl = '(/, a, :/, /, *(5x, a, :/))'
 
 character(len = *), parameter :: version = "260518"
 
@@ -108,13 +110,13 @@ function requirement(check, errno, fail_code, fail_msg) result(should_quit)
 end function
 
 function forbidden(check, errno, fail_code, fail_msg) result(should_quit)
-  logical, intent(in) :: check
-  integer(c_int), intent(inout), optional :: errno
-  integer(c_int), intent(in) :: fail_code
-  character(len=*), intent(in), optional :: fail_msg
-  logical :: should_quit
+   logical, intent(in) :: check
+   integer(c_int), intent(inout), optional :: errno
+   integer(c_int), intent(in) :: fail_code
+   character(len=*), intent(in), optional :: fail_msg
+   logical :: should_quit
 
-  should_quit = requirement(.not. check, errno, fail_code, fail_msg)
+   should_quit = requirement(.not. check, errno, fail_code, fail_msg)
 end function
 
 end module

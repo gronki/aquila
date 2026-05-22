@@ -27,7 +27,8 @@ program aqstack
    logical :: cfg_normalize = .false.
    logical :: cfg_correct_hot = .true., cfg_correct_hot_only = .false.
    logical :: cfg_dark_optimize = .false.
-   logical :: cfg_dark_is_dirty = .false.
+   logical :: cfg_dark_scaling = .false.
+   logical :: cfg_dark_is_dirty = .true.
    logical :: cfg_resampling = .false.
    logical :: cfg_temperature_filter = .false.
    logical :: cfg_prealign_polygon = .false.
@@ -37,6 +38,7 @@ program aqstack
    real(buf_k) :: hotpixel_threshold_sigma = 5.0, darkopt_sigma = 0.0
    integer :: margin = 10
    real(real64) :: t1, t2
+   character(len=*), parameter :: warning_fmt = "('Warning: ', a, (:,/,9x, a))"
 
    integer :: nframes
 
@@ -199,7 +201,7 @@ program aqstack
                      amax = 10.0
 
                      ! if exposures are given for dark and frame, scale accordingly
-                     if (('EXPTIME' .in. frame_dark % hdr) .and. ('EXPTIME' .in. cur_frame % hdr)) then
+                     if (cfg_dark_scaling .and. ('EXPTIME' .in. frame_dark % hdr) .and. ('EXPTIME' .in. cur_frame % hdr)) then
                         a = cur_frame % hdr % get_real('EXPTIME') / frame_dark % hdr % get_real('EXPTIME')
                         amax = 2 * a
                      endif
@@ -233,6 +235,12 @@ program aqstack
                else
                   ! dark is dirty = no bias was given. subtract without scaling
                   cur_frame % data(:,:) = cur_frame % data(:,:) - frame_dark%data(:,:)
+               end if
+            else ! allocated frame(dark)
+               if (strategy /= "bias" .and. strategy /= "dark") then
+                  if (cfg_dark_scaling .or. cfg_dark_optimize .or. cfg_correct_hot) then
+                     write (*, fmtwarn) "Darkframe not provided, but darkframe-related options were selected."
+                  end if
                end if
             end if
 
@@ -518,6 +526,9 @@ contains
          case ("-prealign-polygon")
             cfg_prealign_polygon = .true.
 
+         case ("-no-prealign-polygon")
+            cfg_prealign_polygon = .false.
+
          case ("-norm", "-normalize")
             cfg_normalize = .true.
 
@@ -614,14 +625,19 @@ contains
          case ("-no-hot-only")
             cfg_correct_hot_only = .false.
 
-         case("-darkopt")
+         case("-darkopt", "-dark-optimize")
             cfg_dark_optimize = .true.
             call get_command_argument(i + 1, buf)
             read (buf, *, iostat = errno) darkopt_sigma
             if (errno == 0) skip = 1
             if (errno /= 0) darkopt_sigma = 5
-         case("-no-darkopt")
+         case("-no-darkopt", "-no-dark-optimize")
             cfg_dark_optimize = .false.
+
+         case ("-dark-scale")
+            cfg_dark_scaling = .true.
+         case ("-no-dark-scale")
+            cfg_dark_scaling = .false.
 
          case ("-dirty-dark")
             cfg_dark_is_dirty = .true.
@@ -678,8 +694,8 @@ contains
       &     'polygon: quadrangle matching -- only rot&transl', &
       &     'xyr: rotation and translation', &
       &     'affine {def.} use poly, then gravity to find affine (linear stretch)'
-      print fmthlp,  '-prealign-polygon', 'prealignment step using polygon matching.', &
-      &     'Use when frames are strongly rotated (meridian flip.)'
+      print fmthlp,  '-[no-]prealign-polygon', 'prealignment step using polygon matching.', &
+      &     'Use when frames are strongly rotated (meridian flip.) {def: off}'
       print fmthlp,  '-ref FILENAME', 'align to this frame rather than first frame'
       print fmthlp,  '-resample [FACTOR=2]', 'resample before stacking (only with -align)', &
       &     'FACTOR is scale to be applied'
@@ -698,9 +714,17 @@ contains
       print fmthlp,  '[-no]-darkopt [SIGMA=5.0]', 'optimize dark to minimize correlation', &
       &     'if sigma is nonzero, only background will be used.', &
       &     'SIGMA=0 forces to use all pixels {def.: OFF}'
-      print fmthlp,  '[-no]-dirty-dark', 'subtract bias from dark (only if not done before!)', &
+      print fmthlp,  '-[no-]dark-scale', 'scale dark proportional to the exposure time', &
       &     '{def.: OFF}'
+      print fmthlp,  '[-no]-dirty-dark', 'notify that the darkframe had not been bias-corrected', &
+      &     '{def.: ON}'
       print fmthlp,  '-verbose', 'verbose output'
+
+      print fmtexampl, 'Typical CMOS workflow (with flatdarks)', &
+         'aqstack dark Dark/dark_*.fits -o dark.fits', &
+         'aqstack dark Dark/flatdark_*.fits -o flatdark.fits', &
+         'aqstack flat -dark flatdark.fits Flat/*.fits -o flat.fits', &
+         'aqstack final -dark dark.fits -flat flat.fits Light/*.fits -o stack.fits'
    end subroutine print_help
 
    !----------------------------------------------------------------------------!

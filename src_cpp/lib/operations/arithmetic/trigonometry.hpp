@@ -34,11 +34,14 @@ struct CosOp : public Operation
 struct AsinhOp : public Operation
 {
     BIND_ARGS(&AsinhOp::run);
-    ValuePtr run(const Value &x) const;
+    ValuePtr run(const Value &, const Real &) const;
 
     ArgManifest arg_manifest() const override
     {
-        return ArgManifest{ArgSpec{.name = "x"}};
+        return ArgManifest{
+            ArgSpec{.name = "x"},
+            ArgSpec{.name = "factor", .default_real = 1, .help = "Compression factor"},
+        };
     }
 
     std::string name() const { return "asinh"; }

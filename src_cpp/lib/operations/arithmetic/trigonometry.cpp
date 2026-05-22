@@ -1,5 +1,6 @@
 #include <cmath>
 
+#include "aquila.h"
 #include "arithmetic_templates.hpp"
 #include "trigonometry.hpp"
 
@@ -19,9 +20,12 @@ ValuePtr CosOp::run(const Value &x) const
 }
 
 REGISTER(AsinhOp);
-ValuePtr AsinhOp::run(const Value &x) const
+ValuePtr AsinhOp::run(const Value &x, const Real &factor) const
 {
-    return apply_unitary(x, [](auto xi) -> auto { return std::asinh(xi); });
+    real_buf_t denom = std::asinh(factor);
+    real_buf_t factor_f = factor;
+    return apply_unitary(x,
+        [denom, factor_f](auto xi) -> auto { return std::asinh(xi * factor_f) / denom; });
 }
 
 } // namespace aquila::ops

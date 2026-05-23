@@ -87,32 +87,13 @@ class OpNode : public ExecNode
     std::vector<std::string> keys;
     manifest_properties_t props;
     std::vector<int> expansion, is_keyword;
+    ArgSpec ellipsis_entry;
 
 public:
     OpNode(std::unique_ptr<Operation> op,
         std::vector<std::unique_ptr<ExecNode>> args,
         std::vector<std::string> keys,
-        Namespace &ns) :
-        ExecNode(ns), op(std::move(op)), args(std::move(args)), keys(std::move(keys))
-    {
-        try
-        {
-            auto manifest = this->op->arg_manifest();
-            props.analyze(manifest);
-            match = match_arguments(manifest, props, this->keys);
-            for (const auto &key : this->keys)
-            {
-                expansion.push_back(key == std::string(1, EXPAND_DELIM));
-                is_keyword.push_back(!key.empty() && !expansion.back());
-            }
-        }
-        catch (std::exception &e)
-        {
-            throw std::runtime_error(
-                std::string("operation ") + this->op->name() + ": " + e.what());
-        }
-    }
-
+        Namespace &ns);
     const Value *yield() override;
 
     void clean() override { value = nullptr; }

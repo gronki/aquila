@@ -1,10 +1,38 @@
 #include <algorithm>
 
 #include "execution.hpp"
+#include "operation.hpp"
 #include "value.hpp"
 
 namespace aquila::interpreter
 {
+OpNode::OpNode(std::unique_ptr<Operation> op,
+    std::vector<std::unique_ptr<ExecNode>> args,
+    std::vector<std::string> keys,
+    Namespace &ns) :
+    ExecNode(ns), op(std::move(op)), args(std::move(args)), keys(std::move(keys))
+{
+    try
+    {
+        auto manifest = this->op->arg_manifest();
+        props.analyze(manifest);
+        if (props.has_ellipsis)
+            ellipsis_entry = {.name = ARG_ELLIPSIS,
+                .sequence = manifest.back().sequence,
+                .convert = manifest.back().convert};
+        match = match_arguments(manifest, props, this->keys);
+        for (const auto &key : this->keys)
+        {
+            expansion.push_back(key == std::string(1, EXPAND_DELIM));
+            is_keyword.push_back(!key.empty() && !expansion.back());
+        }
+    }
+    catch (std::exception &e)
+    {
+        throw std::runtime_error(
+            std::string("operation ") + this->op->name() + ": " + e.what());
+    }
+}
 
 static std::vector<const Value *> make_ith_argument(
     const std::vector<const SequenceValue *> &sequence_args,
@@ -203,12 +231,10 @@ const Value *OpNode::yield()
             ipos_cursor += 1;
         }
     }
-    if (match.size())
-    {
-        auto &back = match.back();
-        while (match.size() < num_expanded)
-            match.push_back({.convert = back.convert, .sequence = back.sequence});
-    }
+    while (match.size() < num_expanded)
+        match.push_back({.pos = 0,
+            .convert = ellipsis_entry.convert,
+            .sequence = ellipsis_entry.sequence});
     try
     {
         value = op_call_with_sequencing(*op, expanded_ptrs, match);

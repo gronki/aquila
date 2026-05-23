@@ -150,8 +150,10 @@ const Value *OpNode::yield()
         auto result = args[iarg]->yield();
         arg_results[iarg] = result;
         seq_results[iarg] = expansion[iarg] ? value_cast<SequenceValue>(result) : nullptr;
-        num_expanded += seq_results[iarg] ? seq_results[iarg]->size() : 1;
+        if (!is_keyword[iarg])
+            num_expanded += seq_results[iarg] ? seq_results[iarg]->size() : 1;
     }
+    num_expanded += props.num_keyword;
     auto orig_ptrs = build_ptrs_from_match(arg_results, match);
     const auto num_match = props.num_positionals + props.num_keyword;
 #ifndef NDEBUG

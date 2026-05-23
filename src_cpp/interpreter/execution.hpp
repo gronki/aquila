@@ -86,7 +86,7 @@ class OpNode : public ExecNode
     std::vector<ArgMatch> match;
     std::vector<std::string> keys;
     manifest_properties_t props;
-    std::vector<int> expansion;
+    std::vector<int> expansion, is_keyword;
 
 public:
     OpNode(std::unique_ptr<Operation> op,
@@ -103,6 +103,7 @@ public:
             for (const auto &key : this->keys)
             {
                 expansion.push_back(key == std::string(1, EXPAND_DELIM));
+                is_keyword.push_back(!key.empty() && !expansion.back());
             }
         }
         catch (std::exception &e)

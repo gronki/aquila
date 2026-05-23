@@ -85,6 +85,7 @@ static void parse_basic_expression(
     Token after_ident = tokens.next_token();
     bool opening_brace_after_ident = after_ident == Token(TokenType::DELIM, "(");
     if (!opening_brace_after_ident && after_ident != Token(TokenType::DELIM, "[")
+        && after_ident != Token(TokenType::DELIM, EXPAND_DELIM)
         && (after_ident.type == TokenType::DELIM || after_ident.type == TokenType::END))
     {
         node = std::make_unique<AstRefNode>(token.value, token.loc);
@@ -158,12 +159,20 @@ static void parse_function_argument_list(LazyTokenArray &tokens,
             throw std::runtime_error(
                 std::string("Missing comma (,) before argument: ") + cur_token.value);
 
-        // first we check if perhaps a keyword argument is given, such as key: val
-        Token maybe_kv_sep = tokens.peek_token(1);
-
         AstOpNode::OpArg arg;
 
-        if (cur_token.type == TokenType::IDENT
+        Token maybe_kv_sep = tokens.peek_token(1);
+        if (cur_token == Token(TokenType::DELIM, EXPAND_DELIM))
+        {
+            if (flags.arg_idents_only)
+                throw std::runtime_error(
+                    "expansion not allowed in inline assignment %as...");
+            arg.has_key = true;
+            arg.key = cur_token.value;
+            cur_token = tokens.next_token();
+        }
+        // we check if perhaps a keyword argument is given, such as key: val
+        else if (cur_token.type == TokenType::IDENT
             && maybe_kv_sep == Token(TokenType::DELIM, KWARG_DELIM))
         {
             if (flags.arg_idents_only)
@@ -214,9 +223,10 @@ static void parse_expression(
             return;
 
         // we might have a chained call here
-        tokens.next_token();
-
-        auto cur_token = tokens.cur_token();
+        auto cur_token = tokens.next_token();
+        bool expand_chain = cur_token == Token(TokenType::DELIM, EXPAND_DELIM);
+        if (expand_chain)
+            cur_token = tokens.next_token();
 
         std::unique_ptr<AstNode> parent_node;
         parse_basic_expression(tokens, parent_node, flags);
@@ -226,6 +236,11 @@ static void parse_expression(
             // stadard chaining: X % f(Y) -> F(X, Y)
             AstOpNode::OpArg first_arg;
             first_arg.arg_val = std::move(node);
+            if (expand_chain)
+            {
+                first_arg.has_key = true;
+                first_arg.key = std::string(1, EXPAND_DELIM);
+            }
             parent_call_node->args.insert(
                 parent_call_node->args.begin(), std::move(first_arg));
             node = std::move(parent_node);

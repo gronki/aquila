@@ -1,5 +1,6 @@
 #pragma once
 
+#include "characters.hpp"
 #include "namespace.hpp"
 #include "operation.hpp"
 #include "value.hpp"
@@ -83,16 +84,26 @@ class OpNode : public ExecNode
     std::unique_ptr<Value> value;
     std::vector<std::unique_ptr<ExecNode>> args;
     std::vector<ArgMatch> match;
+    std::vector<std::string> keys;
+    manifest_properties_t props;
+    std::vector<int> expansion;
 
 public:
     OpNode(std::unique_ptr<Operation> op,
         std::vector<std::unique_ptr<ExecNode>> args,
-        const std::vector<std::string> &keys,
-        Namespace &ns) : ExecNode(ns), op(std::move(op)), args(std::move(args))
+        std::vector<std::string> keys,
+        Namespace &ns) :
+        ExecNode(ns), op(std::move(op)), args(std::move(args)), keys(std::move(keys))
     {
         try
         {
-            match = match_arguments(this->op->arg_manifest(), keys);
+            auto manifest = this->op->arg_manifest();
+            props.analyze(manifest);
+            match = match_arguments(manifest, props, this->keys);
+            for (const auto &key : this->keys)
+            {
+                expansion.push_back(key == std::string(1, EXPAND_DELIM));
+            }
         }
         catch (std::exception &e)
         {

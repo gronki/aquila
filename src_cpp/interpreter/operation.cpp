@@ -1,5 +1,4 @@
 #include <map>
-#include <set>
 #include <sstream>
 
 #include "characters.hpp"
@@ -66,14 +65,14 @@ static bool valid_argspec_key(const std::string &name)
     return true;
 }
 
-static void check_argspec_integrity(
-    const std::vector<ArgSpec> &manifest, size_t &num_positionals, bool &has_ellipsis)
+void manifest_properties_t::analyze(const std::vector<ArgSpec> &manifest)
 {
     bool first_keyword = false;
     has_ellipsis = false;
     int iarg = 1;
 
     num_positionals = 0;
+    num_keyword = 0;
 
     for (const auto &argspec : manifest)
     {
@@ -95,6 +94,9 @@ static void check_argspec_integrity(
 
         if (is_positional)
             num_positionals += 1;
+
+        if (is_keyword)
+            num_keyword += 1;
 
         if (is_ellipsis)
         {
@@ -125,13 +127,11 @@ static void check_argspec_integrity(
     }
 }
 
-std::vector<ArgMatch> match_arguments(
-    const std::vector<ArgSpec> &manifest, const std::vector<std::string> &given_keys)
+std::vector<ArgMatch> match_arguments(const std::vector<ArgSpec> &manifest,
+    const manifest_properties_t &props,
+    const std::vector<std::string> &given_keys)
 {
-    size_t num_positionals = 0;
-    bool expect_ellipsis = false;
-    check_argspec_integrity(manifest, num_positionals, expect_ellipsis);
-    const size_t n_spec = expect_ellipsis ? manifest.size() - 1 : manifest.size();
+    const size_t n_spec = props.has_ellipsis ? manifest.size() - 1 : manifest.size();
     std::vector<ArgMatch> match(n_spec);
 
     std::map<std::string, size_t> argspec_key_positions;
@@ -142,18 +142,22 @@ std::vector<ArgMatch> match_arguments(
     }
 
     bool first_keyword = false;
+    bool any_expansion = false;
     std::ptrdiff_t pos_shift = 0;
 
     for (size_t iarg = 0; iarg < given_keys.size(); iarg++)
     {
-        if (!expect_ellipsis && iarg >= n_spec)
+        if (!props.has_ellipsis && iarg >= n_spec)
         {
             throw std::runtime_error("argument list too long.");
         }
 
         const std::string &key = given_keys[iarg];
-        const bool is_explosion = !key.empty() && key == "*";
-        const bool is_keyword = !key.empty() && !is_explosion;
+        const bool is_expansion = !key.empty() && key == std::string(1, EXPAND_DELIM);
+        if (is_expansion)
+            pos_shift -= 1;
+        any_expansion = any_expansion || is_expansion;
+        const bool is_keyword = !key.empty() && !is_expansion;
         first_keyword = first_keyword || is_keyword;
 
         if (first_keyword && !is_keyword)
@@ -187,24 +191,25 @@ std::vector<ArgMatch> match_arguments(
 
             // positional arguments
         }
-        else
+        else if (!is_expansion)
         {
-            if (iarg < num_positionals)
+            auto iarg_corrected = iarg + pos_shift;
+            if (iarg_corrected < props.num_positionals)
             {
                 // named
-                match[iarg].matched = true;
-                match[iarg].pos = iarg;
+                match[iarg_corrected].matched = true;
+                match[iarg_corrected].pos = iarg;
             }
-            else if (expect_ellipsis)
+            else if (props.has_ellipsis)
             {
                 // ellipsis
-                match.push_back(ArgMatch{.matched = true, .pos = iarg});
+                match.push_back(ArgMatch{.matched = true, .pos = iarg_corrected});
             }
             else
             {
                 throw std::runtime_error(
                     std::string("Too many positional arguments, maximum allowed: ")
-                    + std::to_string(num_positionals));
+                    + std::to_string(props.num_positionals));
             }
         }
     }
@@ -231,8 +236,9 @@ std::vector<ArgMatch> match_arguments(
             continue;
         }
 
-        throw std::runtime_error(std::string("Argument ") + manifest[imatch].name
-            + " required but not provided");
+        if (!any_expansion)
+            throw std::runtime_error(std::string("Argument ") + manifest[imatch].name
+                + " required but not provided");
     }
 
     return match;
@@ -253,8 +259,13 @@ std::vector<const Value *> build_ptrs_from_match(
             args[ispec] = given_args[iarg];
             continue;
         }
-
-        args[ispec] = match[ispec].deftgt.get();
+        if (match[ispec].deftgt)
+        {
+            args[ispec] = match[ispec].deftgt.get();
+            continue;
+        }
+        std::cout << "Warning! empty argument " << ispec << std::endl;
+        args[ispec] = nullptr;
     }
 
     return args;

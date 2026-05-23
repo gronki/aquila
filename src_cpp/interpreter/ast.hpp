@@ -53,37 +53,6 @@ struct AstValueNode : public AstNode
     }
 };
 
-struct AstExpandNode : public AstNode
-{
-
-    enum class Kind
-    {
-        EXPANSION,
-        CONTRACTION
-    };
-
-    std::unique_ptr<AstNode> expandable;
-    Kind kind;
-
-    AstExpandNode(std::unique_ptr<AstNode> expandable, Kind kind, const TokenLoc &loc) :
-        AstNode(loc), expandable(std::move(expandable)), kind(kind)
-    {
-    }
-
-    void _print(std::ostream &os, std::int64_t indent) const override
-    {
-        os << (kind == Kind::EXPANSION ? EXPAND_DELIM : CONTRACT_DELIM);
-        if (expandable)
-        {
-            expandable->_print(os, indent);
-        }
-        else
-        {
-            os << "none";
-        }
-    }
-};
-
 struct AstRefNode : public AstNode
 {
     std::string refname;

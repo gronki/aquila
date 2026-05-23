@@ -37,6 +37,14 @@ struct ArgSpec
 
 using ArgManifest = std::vector<ArgSpec>;
 static const std::string ARG_ELLIPSIS = "...";
+struct manifest_properties_t
+{
+    manifest_properties_t() {}
+    manifest_properties_t(const ArgManifest &m) { analyze(m); }
+    void analyze(const ArgManifest &);
+    size_t num_positionals, num_keyword;
+    bool has_ellipsis;
+};
 
 struct Operation
 {
@@ -66,8 +74,9 @@ struct ArgMatch
     bool sequence = false;
 };
 
-std::vector<ArgMatch> match_arguments(
-    const std::vector<ArgSpec> &manifest, const std::vector<std::string> &given_keys);
+std::vector<ArgMatch> match_arguments(const std::vector<ArgSpec> &manifest,
+    const manifest_properties_t &,
+    const std::vector<std::string> &given_keys);
 
 std::vector<const Value *> build_ptrs_from_match(
     const std::vector<const Value *> &given_args, const std::vector<ArgMatch> &match);

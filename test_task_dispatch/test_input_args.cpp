@@ -1,11 +1,6 @@
-#include <memory>
-#include <sstream>
+#include <operation.hpp>
 #include <string>
-#include <tuple>
-
-#include "../src_cpp/interpreter/bind_args.hpp"
-#include "../src_cpp/interpreter/operation.hpp"
-#include "../src_cpp/interpreter/value.hpp"
+#include <value.hpp>
 
 #include "testmacros.hpp"
 
@@ -29,7 +24,7 @@ TEST(match1)
         ArgSpec{.name = "b", .default_int = 3},
         ArgSpec{.name = "c", .default_real = 6},
     };
-    auto match = match_arguments(manifest, {"", "c"});
+    auto match = match_arguments(manifest, manifest, {"", "c"});
     print_match(match);
 
     REQUIRE_EQ(match.size(), 3);
@@ -52,7 +47,8 @@ TEST(match1a)
         ArgSpec{.name = "a"},
         ArgSpec{.name = "b", .default_int = 3},
     };
-    EXPECT_ERROR("many positional", [&]() { match_arguments(manifest, {"", ""}); });
+    EXPECT_ERROR(
+        "many positional", [&]() { match_arguments(manifest, manifest, {"", ""}); });
 }
 
 TEST(match2)
@@ -62,8 +58,8 @@ TEST(match2)
         ArgSpec{.name = "b", .default_int = 3},
         ArgSpec{.name = "c", .default_real = 6},
     };
-    EXPECT_ERROR(
-        "required but not provided", [&]() { match_arguments(manifest, {"b", "c"}); });
+    EXPECT_ERROR("required but not provided",
+        [&]() { match_arguments(manifest, manifest, {"b", "c"}); });
 }
 
 TEST(match_ellip_0)
@@ -71,7 +67,7 @@ TEST(match_ellip_0)
     std::vector<ArgSpec> manifest{
         ArgSpec{.name = "..."},
     };
-    auto match = match_arguments(manifest, {"", "", ""});
+    auto match = match_arguments(manifest, manifest, {"", "", ""});
     print_match(match);
 
     REQUIRE_EQ(match.size(), 3);
@@ -95,7 +91,7 @@ TEST(match_ellip_1)
         ArgSpec{.name = "a"},
         ArgSpec{.name = "..."},
     };
-    auto match = match_arguments(manifest, {"", "", ""});
+    auto match = match_arguments(manifest, manifest, {"", "", ""});
     print_match(match);
 
     REQUIRE_EQ(match.size(), 3);
@@ -119,7 +115,7 @@ TEST(match_ellip_1a)
         ArgSpec{.name = "k", .default_real = 1},
         ArgSpec{.name = "..."},
     };
-    auto match = match_arguments(manifest, {"", "", "k"});
+    auto match = match_arguments(manifest, manifest, {"", "", "k"});
     print_match(match);
 
     REQUIRE_EQ(match.size(), 3);
@@ -143,7 +139,7 @@ TEST(match_ellip_1b)
         ArgSpec{.name = "k", .default_real = 1},
         ArgSpec{.name = "..."},
     };
-    auto match = match_arguments(manifest, {"", ""});
+    auto match = match_arguments(manifest, manifest, {"", ""});
     print_match(match);
 
     REQUIRE_EQ(match.size(), 3);
@@ -168,7 +164,7 @@ TEST(match_ellip_3)
         ArgSpec{.name = "..."},
     };
     EXPECT_ERROR("shall not be defined by key",
-        [&]() { match_arguments(manifest, {"", "", "b", "a"}); });
+        [&]() { match_arguments(manifest, manifest, {"", "", "b", "a"}); });
 }
 
 TEST(match_e1)
@@ -179,7 +175,7 @@ TEST(match_e1)
         ArgSpec{.name = "c", .default_real = 6},
     };
 
-    EXPECT_ERROR("required", [&]() { match_arguments(manifest, {}); });
+    EXPECT_ERROR("required", [&]() { match_arguments(manifest, manifest, {}); });
 }
 
 TEST(match_e2)
@@ -190,7 +186,7 @@ TEST(match_e2)
         ArgSpec{.name = "c", .default_real = 6},
     };
 
-    EXPECT_ERROR("follow", [&]() { match_arguments(manifest, {"b", ""}); });
+    EXPECT_ERROR("follow", [&]() { match_arguments(manifest, manifest, {"b", ""}); });
 }
 
 int main()

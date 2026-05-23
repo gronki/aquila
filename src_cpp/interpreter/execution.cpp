@@ -139,19 +139,77 @@ const Value *OpNode::yield()
     if (value)
         return value.get();
 
-    std::vector<const Value *> arg_results;
+    std::vector<const Value *> arg_results(args.size());
+    std::vector<const SequenceValue *> seq_results(args.size());
+    std::vector<int> expanded_counts(args.size());
     arg_results.reserve(args.size());
+    size_t num_expanded = 0;
 
-    for (auto &arg : args)
+    for (size_t iarg = 0; iarg < args.size(); iarg++)
     {
-        auto result = arg->yield();
-        arg_results.push_back(result);
+        auto result = args[iarg]->yield();
+        arg_results[iarg] = result;
+        seq_results[iarg] = expansion[iarg] ? value_cast<SequenceValue>(result) : nullptr;
+        num_expanded += seq_results[iarg] ? seq_results[iarg]->size() : 1;
     }
+    auto orig_ptrs = build_ptrs_from_match(arg_results, match);
+    const auto num_match = props.num_positionals + props.num_keyword;
+#ifndef NDEBUG
+    std::cout << "num expanded= " << num_expanded << std::endl;
+#endif
+    if (!props.has_ellipsis && num_expanded != num_match)
+        throw std::runtime_error(
+            std::string("Mismatch in total argument count for function ") + op->name()
+            + std::string("; expected ") + std::to_string(num_match)
+            + std::string(" but got ") + std::to_string(num_expanded));
+    std::vector<const Value *> expanded_ptrs(num_expanded);
+    for (size_t imatch = props.num_positionals; imatch < num_match; imatch++)
+        expanded_ptrs[imatch] = orig_ptrs[imatch];
 
+    size_t ipos_cursor = 0;
+    for (size_t ipos = 0; ipos < args.size(); ipos++)
+    {
+        if (!keys[ipos].empty() && !expansion[ipos])
+            continue;
+#ifndef NDEBUG
+        std::cout << "ipos = " << ipos << "   cursor = " << ipos_cursor << std::endl;
+#endif
+        if (!expansion[ipos] || !seq_results[ipos])
+        {
+            const auto idest = ipos_cursor < props.num_positionals
+                ? ipos_cursor
+                : ipos_cursor + props.num_keyword;
+#ifndef NDEBUG
+            std::cout << "arg @" << ipos << " " << *arg_results[ipos] << " -> expanded "
+                      << idest << std::endl;
+#endif
+            expanded_ptrs[idest] = arg_results[ipos];
+            ipos_cursor += 1;
+            continue;
+        }
+        for (auto &ptr : seq_results[ipos]->items)
+        {
+            const auto idest = ipos_cursor < props.num_positionals
+                ? ipos_cursor
+                : ipos_cursor + props.num_keyword;
+
+#ifndef NDEBUG
+            std::cout << "seq @" << ipos << " " << *seq_results[ipos] << " -> expanded "
+                      << idest << std::endl;
+#endif
+            expanded_ptrs[idest] = ptr.get();
+            ipos_cursor += 1;
+        }
+    }
+    if (match.size())
+    {
+        auto &back = match.back();
+        while (match.size() < num_expanded)
+            match.push_back({.convert = back.convert, .sequence = back.sequence});
+    }
     try
     {
-        value = op_call_with_sequencing(
-            *op, build_ptrs_from_match(arg_results, match), match);
+        value = op_call_with_sequencing(*op, expanded_ptrs, match);
     }
     catch (const std::runtime_error &e)
     {

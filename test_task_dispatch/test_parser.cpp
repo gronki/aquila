@@ -88,6 +88,52 @@ TEST(call)
     REQUIRE_EQ(*arg_node_2->constant, StrValue("a"));
 }
 
+TEST(call_expand)
+{
+    Tokenizer tokenizer(" ff (3.0, >a  )");
+    LazyTokenArray token_array(std::move(tokenizer));
+    std::unique_ptr<AstNode> root;
+    parse(token_array, root);
+    std::cout << *root << std::endl;
+
+    auto *op_node = dynamic_cast<AstOpNode *>(root.get());
+    REQUIRE_NNUL(op_node);
+    REQUIRE_EQ(op_node->opname, "ff");
+    REQUIRE_EQ(op_node->args.size(), 2);
+    REQUIRE_EQ(op_node->args[1].key, ">");
+
+    auto &args = op_node->args;
+
+    auto *arg_node_1 = dynamic_cast<AstValueNode *>(args[0].arg_val.get());
+    REQUIRE_NNUL(arg_node_1);
+    REQUIRE_EQ(*arg_node_1->constant, RealValue(3.0));
+
+    auto *arg_node_2 = dynamic_cast<AstRefNode *>(args[1].arg_val.get());
+    REQUIRE_NNUL(arg_node_2);
+    REQUIRE_EQ(arg_node_2->refname, "a");
+}
+
+TEST(call_expand_noparen)
+{
+    Tokenizer tokenizer(" ff  >a  ");
+    LazyTokenArray token_array(std::move(tokenizer));
+    std::unique_ptr<AstNode> root;
+    parse(token_array, root);
+    std::cout << *root << std::endl;
+
+    auto *op_node = dynamic_cast<AstOpNode *>(root.get());
+    REQUIRE_NNUL(op_node);
+    REQUIRE_EQ(op_node->opname, "ff");
+    REQUIRE_EQ(op_node->args.size(), 1);
+    REQUIRE_EQ(op_node->args[0].key, ">");
+
+    auto &args = op_node->args;
+
+    auto *arg_node_2 = dynamic_cast<AstRefNode *>(args[0].arg_val.get());
+    REQUIRE_NNUL(arg_node_2);
+    REQUIRE_EQ(arg_node_2->refname, "a");
+}
+
 TEST(call_no_paren)
 {
     Tokenizer tokenizer(" ff 3.0, \"a\"  ");

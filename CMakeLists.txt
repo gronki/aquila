@@ -68,9 +68,9 @@ target_compile_options(fast_math INTERFACE
     >
 )
 
-option(AQUILA_OPENMP "use OpenMP in build" Off)
+option(AQUILA_PARALLEL "use OpenMP in build" Off)
 
-if (AQUILA_OPENMP)
+if (AQUILA_PARALLEL)
 find_package(OpenMP)
 endif()
 
@@ -102,8 +102,9 @@ target_include_directories(aquila PUBLIC src/c_binding)
 target_link_libraries(aquila PUBLIC png_target cfitsio)
 target_link_libraries(aquila PRIVATE fast_math)
 
-if (AQUILA_OPENMP)
+if (AQUILA_PARALLEL)
     target_link_libraries(aquila PRIVATE OpenMP::OpenMP_Fortran OpenMP::OpenMP_C)
+    target_compile_definitions(aquila PRIVATE AQUILA_PARALLEL)
 endif ()
 
 install(TARGETS aquila LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
@@ -127,7 +128,7 @@ target_link_libraries(aqstack PRIVATE aquila fast_math)
 add_executable(aqlrgb app/aqlrgb.F90)
 target_link_libraries(aqlrgb PRIVATE aquila fast_math)
 
-if (AQUILA_OPENMP)
+if (AQUILA_PARALLEL)
     target_link_libraries(aqstack PRIVATE OpenMP::OpenMP_Fortran)
     target_link_libraries(aqlrgb PRIVATE OpenMP::OpenMP_Fortran)
 endif ()
@@ -141,6 +142,10 @@ file(GLOB_RECURSE aqscript_SOURCES CONFIGURE_DEPENDS
 
 add_library(aqtask_dispatch SHARED ${aqscript_SOURCES})
 target_include_directories(aqtask_dispatch PUBLIC src_cpp/interpreter)
+
+if (AQUILA_PARALLEL)
+    target_compile_definitions(aqtask_dispatch PRIVATE AQUILA_PARALLEL)
+endif ()
 
 install(TARGETS aqtask_dispatch LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
@@ -166,8 +171,9 @@ file(GLOB_RECURSE libaq2_SOURCES CONFIGURE_DEPENDS
 add_library(aquila2 SHARED ${libaq2_SOURCES})
 target_include_directories(aquila2 PUBLIC src_cpp/lib)
 
-if (AQUILA_OPENMP)
+if (AQUILA_PARALLEL)
     target_link_libraries(aquila2 PRIVATE OpenMP::OpenMP_CXX)
+    target_compile_definitions(aquila2 PRIVATE AQUILA_PARALLEL)
 endif ()
 
 target_link_libraries(aquila2 PRIVATE fast_math)

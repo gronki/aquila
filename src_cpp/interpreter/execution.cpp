@@ -37,18 +37,18 @@ OpNode::OpNode(std::unique_ptr<Operation> op,
     }
 }
 
-static std::vector<const Value *> make_ith_argument(
-    const std::vector<const SequenceValue *> &sequence_args,
-    const std::vector<const Value *> &args,
+static std::vector<const Value *> make_ith_argument(const std::vector<const Value *> &args,
+    const std::vector<int> &is_sequence,
     std::int64_t iseq)
 {
-    std::vector<const Value *> argvec(sequence_args.size());
+    std::vector<const Value *> argvec(args.size());
 
-    for (size_t iarg = 0; iarg < sequence_args.size(); iarg++)
+    for (size_t iarg = 0; iarg < args.size(); iarg++)
     {
-        if (sequence_args[iarg])
+        if (is_sequence[iarg])
         {
-            const Value *ptr = sequence_args[iarg]->items[iseq].get();
+            const SequenceValue *seq_ptr = static_cast<const SequenceValue *>(args[iarg]);
+            const Value *ptr = seq_ptr->items[iseq].get();
             argvec[iarg] = ptr;
         }
         else
@@ -99,7 +99,7 @@ static std::unique_ptr<Value> op_call_with_sequencing(const Operation &op,
     if (args.size() == 0)
         return op_call_with_debug(op, args);
 
-    std::vector<const SequenceValue *> sequence_args(args.size(), nullptr);
+    std::vector<int> is_sequence(args.size(), 0);
 
     constexpr std::int64_t SEQUENCE_NOT_FOUND = -1;
     std::int64_t sequence_len = SEQUENCE_NOT_FOUND;
@@ -112,7 +112,7 @@ static std::unique_ptr<Value> op_call_with_sequencing(const Operation &op,
         // we consider it as a single value instead of expanding it
         auto seq_arg = match[iarg].sequence ? nullptr : value_cast<SequenceValue>(arg);
 
-        sequence_args[iarg] = seq_arg;
+        is_sequence[iarg] = seq_arg != nullptr;
 
         if (!seq_arg)
             continue;
@@ -129,16 +129,23 @@ static std::unique_ptr<Value> op_call_with_sequencing(const Operation &op,
         }
     }
 
+    auto get_sanitized = [&is_sequence, &match](std::vector<ValuePtr> &owner,
+                             std::vector<const Value *> args,
+                             int mask_seq)
+    {
+        for (size_t iarg = 0; iarg < args.size(); iarg++)
+        {
+            if (is_sequence[iarg] != mask_seq || !match[iarg].convert)
+                continue;
+            owner[iarg] = match[iarg].convert(*args[iarg]);
+            if (owner[iarg])
+                args[iarg] = owner[iarg].get();
+        }
+        return args;
+    };
     std::vector<std::unique_ptr<Value>> sanitized(args.size());
     // sanitize non-sequence args
-    for (size_t iarg = 0; iarg < args.size(); iarg++)
-    {
-        if (sequence_args[iarg] || !match[iarg].convert)
-            continue;
-        sanitized[iarg] = match[iarg].convert(*args[iarg]);
-        if (sanitized[iarg])
-            args[iarg] = sanitized[iarg].get();
-    }
+    args = get_sanitized(sanitized, std::move(args), 0);
 
     if (sequence_len == SEQUENCE_NOT_FOUND)
     {
@@ -150,13 +157,22 @@ static std::unique_ptr<Value> op_call_with_sequencing(const Operation &op,
 
     std::vector<std::unique_ptr<Value>> result(sequence_len);
 
+    auto process_seq_item = [&op, &args, &is_sequence, &get_sanitized](int64_t iseq) -> ValuePtr
+    {
+        std::vector<std::unique_ptr<Value>> sanitized_seq(args.size());
+        return op_call_with_debug(op,
+            get_sanitized(sanitized_seq, make_ith_argument(args, is_sequence, iseq), 1));
+    };
+
+#ifdef AQUILA_PARALLEL
+
     const auto ncpu = std::max(1l, (std::int64_t)std::thread::hardware_concurrency());
     const auto num_threads = std::min(ncpu, sequence_len);
     const auto block_size = (sequence_len + num_threads - 1) / num_threads;
-#ifndef NDEBUG
+#    ifndef NDEBUG
     std::cout << op.name() << " threads = " << num_threads << " bs = " << block_size
               << std::endl;
-#endif
+#    endif
 
     std::vector<std::thread> threads;
     threads.reserve(num_threads);
@@ -173,21 +189,11 @@ static std::unique_ptr<Value> op_call_with_sequencing(const Operation &op,
                         iseq < std::min((ithread + 1) * block_size, sequence_len);
                         iseq++)
                     {
-#ifndef NDEBUG
+#    ifndef NDEBUG
                         std::cout << " --- thread = " << ithread << " item = " << iseq
                                   << std::endl;
-#endif
-                        std::vector<std::unique_ptr<Value>> sanitized_seq(args.size());
-                        auto ith_args = make_ith_argument(sequence_args, args, iseq);
-                        for (size_t iarg = 0; iarg < args.size(); iarg++)
-                        {
-                            if (!sequence_args[iarg] || !match[iarg].convert)
-                                continue;
-                            sanitized_seq[iarg] = match[iarg].convert(*ith_args[iarg]);
-                            if (sanitized_seq[iarg])
-                                ith_args[iarg] = sanitized_seq[iarg].get();
-                        }
-                        result[iseq] = op_call_with_debug(op, ith_args);
+#    endif
+                        result[iseq] = process_seq_item(iseq);
                     }
                 }
                 catch (...)
@@ -207,6 +213,13 @@ static std::unique_ptr<Value> op_call_with_sequencing(const Operation &op,
         if (except_ptr)
             std::rethrow_exception(except_ptr);
     }
+
+#else
+    for (std::int64_t iseq = 0; iseq < sequence_len; iseq++)
+    {
+        result[iseq] = process_seq_item(iseq);
+    }
+#endif
 
     return std::make_unique<SequenceValue>(std::move(result));
 }

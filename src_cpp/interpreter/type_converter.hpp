@@ -1,6 +1,6 @@
 #pragma once
 #include "value.hpp"
-#include <iostream>
+#include <functional>
 #include <memory>
 
 namespace aquila::interpreter

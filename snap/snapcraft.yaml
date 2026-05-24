@@ -56,7 +56,7 @@ parts:
     cmake-parameters:
       - "-DCMAKE_INSTALL_PREFIX=/usr"
       - "-DCMAKE_BUILD_TYPE=Release"
-      - "-DAQUILA_OPENMP=On"
+      - "-DAQUILA_PARALLEL=On"
       - "-DAQUILA_TESTS=Off"
     build-packages:
       - libreadline-dev

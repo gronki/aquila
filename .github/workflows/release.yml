@@ -47,7 +47,7 @@ jobs:
           mkdir -p build
           rm -rf build/*
           cd build
-          cmake -DCMAKE_BUILD_TYPE=Release -DAQUILA_OPENMP=On ..
+          cmake -DCMAKE_BUILD_TYPE=Release -DAQUILA_PARALLEL=On ..
           cmake --build .
           cmake --install .
 

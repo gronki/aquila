@@ -27,7 +27,7 @@ mkdir -p "$APPDIR" /tmp/aquila-build
 cd /tmp/aquila-build
 cmake "$SRC_DIR" \
     -DCMAKE_BUILD_TYPE=Release \
-    -DAQUILA_OPENMP=On \
+    -DAQUILA_PARALLEL=On \
     -DAQUILA_TESTS=Off \
     -DCMAKE_INSTALL_PREFIX="$APPDIR/usr"
 cmake --build . -j"$(nproc)"

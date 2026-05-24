@@ -1,4 +1,7 @@
 #include <algorithm>
+#include <cmath>
+#include <exception>
+#include <thread>
 
 #include "execution.hpp"
 #include "operation.hpp"
@@ -82,7 +85,7 @@ static ValuePtr op_call_with_debug(
     catch (const std::exception &e)
     {
 #ifndef NDEBUG
-        std::cout << "(error)" << std::endl;
+        std::cout << "(error) " << e.what() << std::endl;
 #endif
         throw;
     }
@@ -142,21 +145,67 @@ static std::unique_ptr<Value> op_call_with_sequencing(const Operation &op,
         return op_call_with_debug(op, args);
     }
 
+    if (sequence_len == 0)
+        return std::make_unique<SequenceValue>(std::vector<ValuePtr>{});
+
     std::vector<std::unique_ptr<Value>> result(sequence_len);
 
-    for (std::int64_t iseq = 0; iseq < sequence_len; iseq++)
+    const auto ncpu = std::max(1l, (std::int64_t)std::thread::hardware_concurrency());
+    const auto num_threads = std::min(ncpu, sequence_len);
+    const auto block_size = (sequence_len + num_threads - 1) / num_threads;
+#ifndef NDEBUG
+    std::cout << op.name() << " threads = " << num_threads << " bs = " << block_size
+              << std::endl;
+#endif
+
+    std::vector<std::thread> threads;
+    threads.reserve(num_threads);
+    std::vector<std::exception_ptr> exceptions(num_threads);
+
+    for (std::int64_t ithread = 0; ithread < num_threads; ithread++)
     {
-        std::vector<std::unique_ptr<Value>> sanitized_seq(args.size());
-        auto ith_args = make_ith_argument(sequence_args, args, iseq);
-        for (size_t iarg = 0; iarg < args.size(); iarg++)
-        {
-            if (!sequence_args[iarg] || !match[iarg].convert)
-                continue;
-            sanitized_seq[iarg] = match[iarg].convert(*ith_args[iarg]);
-            if (sanitized_seq[iarg])
-                ith_args[iarg] = sanitized_seq[iarg].get();
-        }
-        result[iseq] = op_call_with_debug(op, ith_args);
+        threads.emplace_back(
+            [&, ithread]()
+            {
+                try
+                {
+                    for (std::int64_t iseq = ithread * block_size;
+                        iseq < std::min((ithread + 1) * block_size, sequence_len);
+                        iseq++)
+                    {
+#ifndef NDEBUG
+                        std::cout << " --- thread = " << ithread << " item = " << iseq
+                                  << std::endl;
+#endif
+                        std::vector<std::unique_ptr<Value>> sanitized_seq(args.size());
+                        auto ith_args = make_ith_argument(sequence_args, args, iseq);
+                        for (size_t iarg = 0; iarg < args.size(); iarg++)
+                        {
+                            if (!sequence_args[iarg] || !match[iarg].convert)
+                                continue;
+                            sanitized_seq[iarg] = match[iarg].convert(*ith_args[iarg]);
+                            if (sanitized_seq[iarg])
+                                ith_args[iarg] = sanitized_seq[iarg].get();
+                        }
+                        result[iseq] = op_call_with_debug(op, ith_args);
+                    }
+                }
+                catch (...)
+                {
+                    exceptions[ithread] = std::current_exception();
+                }
+            });
+    }
+
+    for (auto &thread : threads)
+    {
+        thread.join();
+    }
+
+    for (auto &except_ptr : exceptions)
+    {
+        if (except_ptr)
+            std::rethrow_exception(except_ptr);
     }
 
     return std::make_unique<SequenceValue>(std::move(result));
@@ -196,6 +245,13 @@ const Value *OpNode::yield()
     for (size_t imatch = props.num_positionals; imatch < num_match; imatch++)
         expanded_ptrs[imatch] = orig_ptrs[imatch];
 
+    auto idest = [this](size_t ipos_cursor)
+    {
+        return ipos_cursor < this->props.num_positionals
+            ? ipos_cursor
+            : ipos_cursor + this->props.num_keyword;
+    };
+
     size_t ipos_cursor = 0;
     for (size_t ipos = 0; ipos < args.size(); ipos++)
     {
@@ -206,33 +262,27 @@ const Value *OpNode::yield()
 #endif
         if (!expansion[ipos] || !seq_results[ipos])
         {
-            const auto idest = ipos_cursor < props.num_positionals
-                ? ipos_cursor
-                : ipos_cursor + props.num_keyword;
 #ifndef NDEBUG
             std::cout << "arg @" << ipos << " " << *arg_results[ipos] << " -> expanded "
-                      << idest << std::endl;
+                      << idest(ipos_cursor) << std::endl;
 #endif
-            expanded_ptrs[idest] = arg_results[ipos];
+            expanded_ptrs[idest(ipos_cursor)] = arg_results[ipos];
             ipos_cursor += 1;
             continue;
         }
         for (auto &ptr : seq_results[ipos]->items)
         {
-            const auto idest = ipos_cursor < props.num_positionals
-                ? ipos_cursor
-                : ipos_cursor + props.num_keyword;
 
 #ifndef NDEBUG
             std::cout << "seq @" << ipos << " " << *seq_results[ipos] << " -> expanded "
-                      << idest << std::endl;
+                      << idest(ipos_cursor) << std::endl;
 #endif
-            expanded_ptrs[idest] = ptr.get();
+            expanded_ptrs[idest(ipos_cursor)] = ptr.get();
             ipos_cursor += 1;
         }
     }
     while (match.size() < num_expanded)
-        match.push_back({.pos = 0,
+        match.push_back({.pos = match.size(),
             .convert = ellipsis_entry.convert,
             .sequence = ellipsis_entry.sequence});
     try

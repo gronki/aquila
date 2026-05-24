@@ -8,16 +8,16 @@ namespace aquila::ops
 struct PathOp : public Operation
 {
     BIND_ARGS(&PathOp::run);
-    ValuePtr run(const std::string &param) const;
+    ValuePtr run(const std::vector<const Str *> &) const;
 
     ArgManifest arg_manifest() const override
     {
         return ArgManifest{
-            ArgSpec{.name = "path", .help = "Path to expand"},
+            ArgSpec{.name = "...", .help = "Path to expand"},
         };
     }
 
-    std::string name() const { return "find"; }
+    std::string name() const override { return "find"; }
     std::string description() const override
     {
         return "Bash-style expansion of paths. For "
@@ -32,7 +32,7 @@ struct PwdOp : public Operation
 
     ArgManifest arg_manifest() const override { return ArgManifest{}; }
 
-    std::string name() const { return "pwd"; }
+    std::string name() const override { return "pwd"; }
     std::string description() const override
     {
         return "Get current working directory.";
@@ -51,7 +51,7 @@ struct ChdirOp : public Operation
         };
     }
 
-    std::string name() const { return "cd"; }
+    std::string name() const override { return "cd"; }
     std::string description() const override
     {
         return "Change the current working directory";

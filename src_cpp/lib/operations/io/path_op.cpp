@@ -7,19 +7,20 @@ namespace aquila::ops
 {
 
 REGISTER(PathOp);
-ValuePtr PathOp::run(const std::string &path) const
+ValuePtr PathOp::run(const std::vector<const Str *> &paths) const
 {
-    auto wildcarded = utils::expand_path(path);
-    if (wildcarded.size() == 1)
-    {
-        return std::make_unique<StrValue>(wildcarded[0]);
-    }
     std::vector<std::unique_ptr<Value>> items;
-    items.reserve(wildcarded.size());
-    for (const auto &p : wildcarded)
+    for (const Str *path : paths)
     {
-        items.push_back(std::make_unique<StrValue>(p));
+        auto wildcarded = utils::expand_path(*path);
+        for (const auto &p : wildcarded)
+        {
+            items.push_back(std::make_unique<StrValue>(p));
+        }
     }
+    if (items.size() == 1)
+        return std::move(items[0]);
+
     return std::make_unique<interpreter::SequenceValue>(std::move(items));
 }
 

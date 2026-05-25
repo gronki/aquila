@@ -219,10 +219,21 @@ module deconvolutions
 use globals, only: buf_k
 use fastconv
 use convolutions
+use aquila_c_binding
 
 implicit none
 
 contains
+
+subroutine deconvol_lr_c(im1, psf, strength, maxiter, im2, parallel) bind(C, name="deconvol_lr")
+   type(buffer_descriptor_t), value :: im1, psf, im2
+   logical(c_bool), value :: parallel
+   real(buf_k), value :: strength
+   integer(c_int), value :: maxiter
+
+   call deconvol_lr(from_descriptor(im1), from_descriptor(psf), &
+      strength, maxiter, from_descriptor(im2), logical(parallel))
+end subroutine
 
 subroutine deconvol_lr(im1, psf, strength, maxiter, im2, parallel)
    use ieee_arithmetic, only: ieee_is_normal

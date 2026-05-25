@@ -141,6 +141,13 @@ extern "C"
         bkeq_param_t *param,
         error_status_t *err);
 
+    void deconvol_lr(const_buffer_descriptor_t im,
+        const_buffer_descriptor_t krn,
+        real_buf_t strength,
+        int maxiter,
+        buffer_descriptor_t im2,
+        bool parallel);
+
 #ifdef __cplusplus
 } /* extern "C" */
 #endif

@@ -20,4 +20,19 @@ struct ConvolOp : public Operation
     std::string description() const override { return "Convolution"; }
 };
 
+struct DeconvOp : public Operation
+{
+
+    BIND_ARGS(&DeconvOp::run);
+    ValuePtr run(const values::BufferValue &buf,
+            const values::BufferValue& krn,
+            const Real& strength,
+            const Real& niter) const;
+
+    ArgManifest arg_manifest() const override;
+
+    std::string name() const override { return "deconv"; }
+    std::string description() const override { return "DeConvolution"; }
+};
+
 } // namespace aquila::ops

@@ -9,7 +9,7 @@ extern "C"
 #    include <stdlib.h>
 #endif
 
-#define AQUILA_VERSION "260518"
+#define AQUILA_VERSION "260524"
 
 #define AQ_STATUS_OK 0
 #define AQ_STATUS_ERROR 1

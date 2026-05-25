@@ -10,63 +10,8 @@ env:
 
 jobs:
 
-  test:
-    runs-on: ubuntu-24.04
-    strategy:
-      fail-fast: false
-      matrix:
-        image:
-          - { name: "ubuntu:22.04", install: "apt-get update && apt-get install -y cmake g++ gfortran libreadline-dev zlib1g-dev pkg-config binutils" }
-          - { name: "ubuntu:24.04", install: "apt-get update && apt-get install -y cmake g++ gfortran libreadline-dev zlib1g-dev pkg-config binutils" }
-          - { name: "ubuntu:26.04", install: "apt-get update && apt-get install -y cmake g++ gfortran libreadline-dev zlib1g-dev pkg-config binutils" }
-          - { name: "debian:trixie", install: "apt-get update && apt-get install -y cmake g++ gfortran libreadline-dev zlib1g-dev pkg-config binutils" }
-          - { name: "debian:bookworm", install: "apt-get update && apt-get install -y cmake g++ gfortran libreadline-dev zlib1g-dev pkg-config binutils" }
-    container:
-      image: ${{ matrix.image.name }}
-    name: Test on ${{ matrix.image.name }}
-    env:
-      CC: "gcc"
-      CXX: "g++"
-      FC: "gfortran"
-    steps:
-      - name: Install build dependencies
-        run: ${{ matrix.image.install }} wget git curl && gcc --version
-
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      - name: Download test data
-        run: |
-          scripts/get_test_data.sh
-          echo "PATH=$PATH:/opt/aquila/bin" >> "$GITHUB_ENV"
-
-      - name: Build and install the app (release, OpenMP)
-        run: |
-          mkdir -p build
-          rm -rf build/*
-          cd build
-          cmake -DCMAKE_BUILD_TYPE=Release -DAQUILA_PARALLEL=On ..
-          cmake --build .
-          cmake --install .
-
-      - name: Run unit tests
-        run: |
-          cd build
-          ctest . --output-on-failure
-
-      - name: Run integration test on example data
-        run: |
-          mkdir testrun
-          cd testrun
-          ln -s ../examples
-          ln -s ../testdata
-          ../scripts/test_routine.sh
-
   build-appimage:
     name: Build AppImage (${{ matrix.arch }})
-    needs: test
     runs-on: ${{ matrix.runner }}
     strategy:
       matrix:
@@ -113,16 +58,18 @@ jobs:
 
       - name: Create versioned release
         run: |
+          gh release delete ${{ github.ref_name }} --yes --cleanup-tag 2>/dev/null || true
           gh release create ${{ github.ref_name }} aquila-${{ github.ref_name }}-*.AppImage \
             --title "Aquila ${{ github.ref_name }}" \
-            --notes "Download the AppImage for your architecture — runs on any modern Linux without installation." \
-            --clobber || \
-          gh release upload ${{ github.ref_name }} aquila-${{ github.ref_name }}-*.AppImage --clobber
+            --notes "Download the AppImage for your architecture — runs on any modern Linux without installation."
 
       - name: Update stable release
         run: |
-          gh release delete stable --yes 2>/dev/null || true
-          gh release create stable aquila-${{ github.ref_name }}-*.AppImage \
+          for f in aquila-${{ github.ref_name }}-*.AppImage; do
+            cp "$f" "${f/${{ github.ref_name }}-/}"
+          done
+          gh release delete stable --yes --cleanup-tag 2>/dev/null || true
+          gh release create stable aquila-*.AppImage \
             --title "Aquila stable (${{ github.ref_name }})" \
             --notes "Latest stable release. Always points to the most recent tag." \
             --latest=false

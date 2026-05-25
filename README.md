@@ -10,8 +10,11 @@
 [Click here](https://github.com/gronki/aquila/releases) to see all **AppImage** releases.
 
 ```sh
-curl -L https://github.com/gronki/aquila/releases/download/stable/aquila-$(uname -m).AppImage -o aquila.AppImage
-sudo install aquila.AppImage /usr/local/bin/aquila
+curl -L https://github.com/gronki/aquila/releases/download/stable/aquila-$(uname -m).AppImage -o aquila
+chmod +x aquila
+# test
+./aquila
+sudo install aquila /usr/local/bin/aquila
 ```
 
 **Snap**
@@ -36,18 +39,6 @@ Currently, the package consists of following programs:
 2. ``aqlrgb`` (via snap: ``aquila.lrgb``) — compositing multi-filter data into colour images with luminance, white-balance, and stretching controls
 3. ``aqcli`` (via snap: ``aquila.cli``) — a scripting interpreter for building full end-to-end image processing pipelines
 
-## Installation
-
-### Simple methods
-
-**[Click here](https://github.com/gronki/aquila/releases) to download packages for Ubuntu/Debian.**. This is the recommended method for most users.
-
-You can also quickly build ready-to-use Aquila Docker image (~200 MB):
-
-```
-docker build -t aquila https://github.com/gronki/aquila.git
-docker run -it aquila
-```
 
 ### Build from source
 

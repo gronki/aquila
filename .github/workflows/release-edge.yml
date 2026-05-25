@@ -10,7 +10,52 @@ env:
 
 jobs:
 
+  test:
+    runs-on: ubuntu-24.04
+    container:
+      image: ubuntu:24.04
+    name: Test (ubuntu:24.04, release, OpenMP)
+    env:
+      CC: gcc
+      CXX: g++
+      FC: gfortran
+    steps:
+      - name: Install build dependencies
+        run: apt-get update && apt-get install -y cmake g++ gfortran libpng-dev libreadline-dev pkg-config binutils wget git curl
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Download test data
+        run: |
+          scripts/get_test_data.sh
+          echo "PATH=$PATH:/opt/aquila/bin" >> "$GITHUB_ENV"
+
+      - name: Build and install the app (release, OpenMP)
+        run: |
+          mkdir -p build && rm -rf build/*
+          cd build
+          cmake -DCMAKE_BUILD_TYPE=Release -DAQUILA_PARALLEL=On ..
+          cmake --build .
+          cmake --install .
+
+      - name: Run unit tests
+        run: |
+          cd build
+          ctest . --output-on-failure
+
+      - name: Run integration test on example data
+        run: |
+          mkdir testrun
+          cd testrun
+          ln -s ../examples
+          ln -s ../testdata
+          ../scripts/test_routine.sh
+
   build-appimage:
+    needs: test
     name: Build AppImage (${{ matrix.arch }})
     runs-on: ${{ matrix.runner }}
     strategy:

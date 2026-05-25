@@ -1,9 +1,9 @@
 #include "fits.hpp"
+#include <cstdint>
 #include <fitsio.h>
 #include <sstream>
 #include <stdexcept>
 #include <vector>
-#include <cstdint>
 
 using namespace aquila;
 

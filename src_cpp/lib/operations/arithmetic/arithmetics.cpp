@@ -27,6 +27,8 @@ ArgManifest AddOp::arg_manifest() const
 REGISTER(SubOp);
 std::unique_ptr<Value> SubOp::call(const std::vector<const Value *> &args) const
 {
+    if (args.size() < 1)
+        throw std::runtime_error(name() + " expects at least one argument!");
     ValuePtr result = args[0]->clone();
     for (std::size_t iarg = 1; iarg < args.size(); iarg++)
     {
@@ -61,6 +63,26 @@ ArgManifest MulOp::arg_manifest() const
     };
 }
 
+REGISTER(DivOp);
+std::unique_ptr<Value> DivOp::call(const std::vector<const Value *> &args) const
+{
+    if (args.size() < 1)
+        throw std::runtime_error(name() + " expects at least one argument!");
+    ValuePtr result = args[0]->clone();
+    for (std::size_t iarg = 1; iarg < args.size(); iarg++)
+    {
+        result = apply_binary(*result, *args[iarg], [](auto a, auto b) { return a / b; });
+    }
+    return result;
+}
+
+ArgManifest DivOp::arg_manifest() const
+{
+    return ArgManifest{
+        ArgSpec{.name = "x", .convert = guard(convert::loadFrame)},
+        ArgSpec{.name = "...", .convert = guard(convert::loadFrame)},
+    };
+}
 REGISTER(MixOp);
 std::unique_ptr<Value> MixOp::call(const std::vector<const Value *> &args) const
 {

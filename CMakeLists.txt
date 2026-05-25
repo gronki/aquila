@@ -8,10 +8,6 @@ set(CMAKE_CXX_EXTENSIONS OFF)    # turn off compiler-specific extensions like gn
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-if(CMAKE_BUILD_TYPE STREQUAL "")
-set (CMAKE_BUILD_TYPE "debug")
-endif()
-
 include(GNUInstallDirs)
 set(CMAKE_INSTALL_LIBDIR ${CMAKE_INSTALL_LIBDIR}/aquila)
 set(CMAKE_INSTALL_INCLUDEDIR ${CMAKE_INSTALL_INCLUDEDIR}/aquila)
@@ -57,8 +53,8 @@ endif()
 
 set(CXX_WARN "-Wall -Wextra -pedantic -Wpedantic -Werror=return-type -Werror=uninitialized -Werror=sign-compare -Werror=maybe-uninitialized -Wno-unused-parameter")
 set(FORT_WARN "-Wall -Wextra -pedantic -Wno-unused-dummy-argument")
-set(CMAKE_C_FLAGS_DEBUG "-g -Og ${CXX_WARN}")
-set(CMAKE_CXX_FLAGS_DEBUG "-g -Og ${CXX_WARN}")
+set(CMAKE_C_FLAGS_DEBUG "-g -Og -fsanitize=address ${CXX_WARN}")
+set(CMAKE_CXX_FLAGS_DEBUG "-g -Og -fsanitize=address ${CXX_WARN}")
 set(CMAKE_Fortran_FLAGS_DEBUG "-g -Og -fcheck=all ${FORT_WARN}")
 
 add_library(fast_math INTERFACE)

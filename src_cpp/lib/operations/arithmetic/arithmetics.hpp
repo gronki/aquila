@@ -40,6 +40,18 @@ struct MulOp : public Operation
     }
 };
 
+struct DivOp : public Operation
+{
+    std::unique_ptr<Value> call(const std::vector<const Value *> &) const;
+
+    ArgManifest arg_manifest() const override;
+    std::string name() const { return "div"; }
+    std::string description() const override
+    {
+        return "Divide frames. div(A,B,C...) computes A / (B * C * ...)";
+    }
+};
+
 struct MixOp : public Operation
 {
     std::unique_ptr<Value> call(const std::vector<const Value *> &) const;
@@ -54,7 +66,7 @@ struct MixOp : public Operation
 struct LrgbOp : public Operation
 {
     std::unique_ptr<Value> call(const std::vector<const Value *> &) const;
-    
+
     ArgManifest arg_manifest() const override;
     std::string name() const { return "lrgb"; }
     std::string description() const override
@@ -81,7 +93,10 @@ struct SqrtOp : public Operation
 
     ArgManifest arg_manifest() const override;
     std::string name() const { return "sqrt"; }
-    std::string description() const override { return "Square root of a scalar/buffer."; }
+    std::string description() const override
+    {
+        return "Square root of a scalar/buffer.";
+    }
 };
 
 } // namespace aquila::ops

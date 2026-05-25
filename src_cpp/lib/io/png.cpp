@@ -42,22 +42,19 @@ void collect_row(
 }
 
 template <typename T>
-int bitdepth_of_type()
+struct __bit_prop
 {
-
-    if constexpr (std::is_same_v<T, png16pix_t>)
-    {
-        return 16;
-    }
-    else if constexpr (std::is_same_v<T, png8pix_t>)
-    {
-        return 8;
-    }
-    else
-    {
-        throw std::logic_error("Impossible");
-    }
-}
+};
+template <>
+struct __bit_prop<png16pix_t>
+{
+    static constexpr int bitdepth = 16;
+};
+template <>
+struct __bit_prop<png8pix_t>
+{
+    static constexpr int bitdepth = 8;
+};
 
 template <PngPixT T>
 void PngWriteWrapper::write(View<T> data)
@@ -69,7 +66,7 @@ void PngWriteWrapper::write(View<T> data)
         info_ptr,
         nx,
         ny,
-        bitdepth_of_type<T>(),
+        __bit_prop<T>::bitdepth,
         PNG_COLOR_TYPE_GRAY,
         PNG_INTERLACE_NONE,
         PNG_COMPRESSION_TYPE_DEFAULT,
@@ -105,7 +102,7 @@ void PngWriteWrapper::write_rgb(View<T> data_r, View<T> data_g, View<T> data_b)
         info_ptr,
         nx,
         ny,
-        bitdepth_of_type<T>(),
+        __bit_prop<T>::bitdepth,
         PNG_COLOR_TYPE_RGB,
         PNG_INTERLACE_NONE,
         PNG_COMPRESSION_TYPE_DEFAULT,

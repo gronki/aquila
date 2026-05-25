@@ -50,8 +50,8 @@ if (AQUILA_TUI)
 add_subdirectory(deps/FTXUI)
 endif()
 
-option(AQUILA_BUILD_TESTS "build tests and examples" On)
-if (AQUILA_BUILD_TESTS)
+option(AQUILA_TESTS "build tests and examples" On)
+if (AQUILA_TESTS)
 enable_testing()
 endif()
 
@@ -110,7 +110,7 @@ endif ()
 install(TARGETS aquila LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
 install(FILES src/c_binding/aquila.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
-if (AQUILA_BUILD_TESTS)
+if (AQUILA_TESTS)
 
 file(GLOB TEST_CORE_SOURCES CONFIGURE_DEPENDS test_core/*.[fF]90)
 foreach(test_src ${TEST_CORE_SOURCES})
@@ -149,7 +149,7 @@ endif ()
 
 install(TARGETS aqtask_dispatch LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
-if (AQUILA_BUILD_TESTS)
+if (AQUILA_TESTS)
 
 file(GLOB TEST_TASK_DISPATCH_SOURCES CONFIGURE_DEPENDS test_task_dispatch/*.cpp)
 foreach(test_src ${TEST_TASK_DISPATCH_SOURCES})
@@ -191,7 +191,7 @@ target_link_libraries(aqcli
 
 install(TARGETS aqfindstar aqcli RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
-if (AQUILA_BUILD_TESTS)
+if (AQUILA_TESTS)
 
 add_executable(bench_convol test_interactive/bench_convol.F90)
 target_link_libraries(bench_convol PRIVATE aquila)

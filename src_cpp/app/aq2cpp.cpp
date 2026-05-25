@@ -134,15 +134,48 @@ void print_all_commands()
 {
     const auto &db = global_op_db();
     std::cout << "Help is here!" << std::endl;
-    std::cout << "Type \"help <command>\" to see details." << std::endl
-              << "Commands with ... accept any number of arguments." << std::endl
-              << "Commands with [...] expect a list as an input" << std::endl
-              << "Arguments with default:values must be specified with their keyword"
-              << std::endl
+    std::cout << R"EOF(
+Type "help <command>" to see details.
+
+Commands with ... accept any number of arguments. For example,
+
+   add 1, 2, 3, 4  -->  10
+
+You may create sequences using [] syntax. For example:
+
+   myseq = [ 1, 2, 3 ]
+
+Operations iterate on sequences by default. For example:
+
+   add myseq, 1  --> [ 1 + 1, 2 + 1, 3 + 1 ] = [ 2, 3, 4 ]
+
+To collect a sequence when passing it into operation, use >:
+
+   add >myseq, 1  -->  1 + 2 + 3 + 1 = 11
+
+Operation can be chained using |. The result of previous operation
+is passed as the first argument for the next. For example:
+
+   add 1, 2 | mul 3  -->  mul( add(1,2), 3 ) = 9
+
+Operators | and > may be used together as |>. For example:
+
+   myseq | add 1   --> add( myseq, 1)  =  [ 2, 3, 4 ]
+   myseq |> add 1  --> add( >myseq, 1) =  11
+)EOF" << std::endl
+              << "AVAILABLE COMMANDS: " << std::endl
               << std::endl;
+
     for (const auto &entry : db)
     {
-        std::cout << entry.second.signature_str << std::endl;
+        std::cout << std::setw(24) << entry.second.signature_str << std::setw(0);
+        if (entry.second.description != "")
+        {
+            if (entry.second.signature_str.size() > 24)
+                std::cout << std::endl << "                        ";
+            std::cout << " -- " << entry.second.description;
+        }
+        std::cout << std::endl;
     }
 }
 

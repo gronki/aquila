@@ -1,17 +1,17 @@
 #include "stack_op.hpp"
-#include "../../values/frame.hpp"
+#include <operation.hpp>
+#include <values/frame.hpp>
 
 namespace aquila::ops
 {
 
 REGISTER(StackOp);
-ValuePtr StackOp::run(const SequenceValue &data, const std::string &method) const
+ValuePtr StackOp::run(const std::string &method,
+    const std::vector<const values::BufferValue *> &buf_vals) const
 {
 
-    if (data.size() == 0)
+    if (buf_vals.size() == 0)
         return nullptr;
-
-    auto buf_vals = data.items_as<values::BufferValue>();
 
     std::vector<const_buffer_descriptor_t> inputs;
     std::int64_t out_cols = 0, out_rows = 0;
@@ -36,8 +36,10 @@ ValuePtr StackOp::run(const SequenceValue &data, const std::string &method) cons
 ArgManifest StackOp::arg_manifest() const
 {
     return ArgManifest{
-        ArgSpec{.name = "data", .sequence = true},
         ArgSpec{.name = "method", .default_str = "average"},
+        ArgSpec{.name = "...",
+            .help = "buffers to stack",
+            .convert = guard(convert::loadFrame)},
     };
 }
 

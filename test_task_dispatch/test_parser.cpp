@@ -176,7 +176,7 @@ TEST(call_no_paren_array_literal)
     // First argument: array(1, 2)
     auto *arg_node_1 = dynamic_cast<AstOpNode *>(args[0].arg_val.get());
     REQUIRE_NNUL(arg_node_1);
-    REQUIRE_EQ(arg_node_1->opname, "array");
+    REQUIRE_EQ(arg_node_1->opname, "seq");
     REQUIRE_EQ(arg_node_1->args.size(), 2);
 
     auto *arr_arg_1 = dynamic_cast<AstValueNode *>(arg_node_1->args[0].arg_val.get());

@@ -72,7 +72,7 @@ static void parse_basic_expression(
         tokens.next_token();
         std::vector<AstOpNode::OpArg> args;
         parse_function_argument_list(tokens, ']', args, flags.set_allow_open_syntax(false));
-        node = std::make_unique<AstOpNode>("array", std::move(args), token.loc);
+        node = std::make_unique<AstOpNode>("seq", std::move(args), token.loc);
         return;
     }
 

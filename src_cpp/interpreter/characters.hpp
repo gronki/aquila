@@ -6,7 +6,7 @@ namespace aquila::interpreter
 {
 
 #ifndef _CHAIN_CALL_DELIM
-static constexpr TokenChar CHAIN_CALL_DELIM = '%';
+static constexpr TokenChar CHAIN_CALL_DELIM = '|';
 #else
 static constexpr TokenChar CHAIN_CALL_DELIM = _CHAIN_CALL_DELIM;
 #endif

@@ -7,7 +7,7 @@ CMD="${1:-}"
 case "$CMD" in
     stack)  shift; exec "$HERE/usr/bin/aqstack" "$@" ;;
     lrgb)   shift; exec "$HERE/usr/bin/aqlrgb"  "$@" ;;
-    script) shift; exec "$HERE/usr/bin/aqcli"   "$@" ;;
+    cli)    shift; exec "$HERE/usr/bin/aqcli"   "$@" ;;
     *)
         echo "Aquila - astrophotography data processing toolkit"
         echo ""
@@ -16,7 +16,7 @@ case "$CMD" in
         echo "Commands:"
         echo "  stack    Stack and calibrate CCD frames (aqstack)"
         echo "  lrgb     Composite multi-filter colour images (aqlrgb)"
-        echo "  script   Run an aqcli processing script (aqcli)"
+        echo "  cli      Run an aqcli processing script (aqcli)"
         echo ""
         echo "Pass -h after a command for its own help."
         exit 1

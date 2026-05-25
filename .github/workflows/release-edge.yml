@@ -1,0 +1,66 @@
+name: Build and release edge AppImage
+
+on:
+  push:
+    branches:
+      - master
+
+env:
+  VERBOSE: 1
+
+jobs:
+
+  build-appimage:
+    name: Build AppImage (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      matrix:
+        include:
+          - arch: x86_64
+            runner: ubuntu-24.04
+          - arch: aarch64
+            runner: ubuntu-24.04-arm
+    steps:
+      - name: Checkout (with submodules)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Build AppImage
+        env:
+          VERSION: edge
+          ARCH: ${{ matrix.arch }}
+        run: |
+          sudo bash scripts/build_appimage.sh
+          mv aquila-${{ matrix.arch }}.AppImage aquila-edge-${{ matrix.arch }}.AppImage
+
+      - name: Upload AppImage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: "aquila-edge-${{ matrix.arch }}"
+          path: aquila-edge-${{ matrix.arch }}.AppImage
+
+  release-edge:
+    name: Release edge AppImage
+    runs-on: ubuntu-latest
+    needs: build-appimage
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: "aquila-edge-*"
+          merge-multiple: true
+
+      - name: Update edge release
+        run: |
+          gh release delete edge --yes --cleanup-tag 2>/dev/null || true
+          gh release create edge aquila-edge-*.AppImage \
+            --title "Aquila edge (${{ github.sha }})" \
+            --notes "Latest build from master. May be unstable." \
+            --prerelease \
+            --latest=false

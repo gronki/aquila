@@ -1,10 +1,5 @@
 name: Build and release edge AppImage
 
-on:
-  push:
-    branches:
-      - master
-
 env:
   VERBOSE: 1
 

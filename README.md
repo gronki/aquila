@@ -5,7 +5,6 @@
 **AppImage**
 
 * Download Stable [x86_64 / PC](https://github.com/gronki/aquila/releases/download/stable/aquila-x86_64.AppImage) and [ARM64 / Rpi / Mac](https://github.com/gronki/aquila/releases/download/stable/aquila-aarch64.AppImage)
-* Download Testing [x86_64 / PC](https://github.com/gronki/aquila/releases/download/edge/aquila-edge-x86_64.AppImage) and [ARM64 / RPi / Mac](https://github.com/gronki/aquila/releases/download/edge/aquila-edge-aarch64.AppImage)
 
 [Click here](https://github.com/gronki/aquila/releases) to see all **AppImage** releases.
 

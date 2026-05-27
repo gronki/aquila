@@ -157,14 +157,10 @@ jobs:
       - name: Build and install the app
         run: |
           source /opt/intel/oneapi/setvars.sh
-          export CFLAGS="-O0 -g"
-          export CXXFLAGS="-O0 -g"
-          export FFLAGS="-O0 -g -check all -heap-arrays"
-
           mkdir -p build
           rm -rf build/*
           cd build
-          cmake -DCMAKE_BUILD_TYPE=None ..
+          cmake -DCMAKE_BUILD_TYPE=Debug ..
           cmake --build .
           sudo cmake --install .
   
@@ -186,14 +182,10 @@ jobs:
       - name: Build and install the app (release, no OpenMP)
         run: |
           source /opt/intel/oneapi/setvars.sh
-          export CFLAGS="-O3 -fp-model=fast -g1 -DNDEBUG"
-          export CXXFLAGS="-O3 -fp-model=fast -g1 -DNDEBUG"
-          export FFLAGS="-O3 -fp-model=fast -g1 -traceback -heap-arrays -DNDEBUG"
-
           mkdir -p build
           rm -rf build/*
           cd build
-          cmake -DCMAKE_BUILD_TYPE=None ..
+          cmake -DCMAKE_BUILD_TYPE=Release ..
           cmake --build .
           sudo cmake --install .
     
@@ -215,14 +207,10 @@ jobs:
       - name: Build and install the app (release, OpenMP)
         run: |
           source /opt/intel/oneapi/setvars.sh
-          export CFLAGS="-O3 -fp-model=fast -g1 -DNDEBUG"
-          export CXXFLAGS="-O3 -fp-model=fast -g1 -DNDEBUG"
-          export FFLAGS="-O3 -fp-model=fast -g1 -traceback -heap-arrays -DNDEBUG"
-
           mkdir -p build
           rm -rf build/*
           cd build
-          cmake -DCMAKE_BUILD_TYPE=None -DAQUILA_PARALLEL=On ..
+          cmake -DCMAKE_BUILD_TYPE=Release -DAQUILA_PARALLEL=On ..
           cmake --build .
           sudo cmake --install .
     
@@ -254,7 +242,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        llvm-ver: [20]
+        llvm-ver: [19, 20, 21]
 
     name: flang ${{ matrix.llvm-ver }}
     env:
@@ -272,17 +260,10 @@ jobs:
         run: |
           export DEBIAN_FRONTEND=noninteractive
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            gnupg \
-            lsb-release \
-            ca-certificates \
-            curl \
-            gnupg2 \
-            apt-transport-https cmake
-          curl -fsSL https://apt.llvm.org/llvm-snapshot.gpg.key | sudo tee /etc/apt/trusted.gpg.d/llvm.asc >/dev/null
-          echo "deb [signed-by=/etc/apt/trusted.gpg.d/llvm.asc] http://apt.llvm.org/noble/ llvm-toolchain-noble-${{ matrix.llvm-ver }} main" \
-            | sudo tee /etc/apt/sources.list.d/llvm.list >/dev/null
-          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends wget ca-certificates cmake
+          wget -qO /tmp/llvm.sh https://apt.llvm.org/llvm.sh
+          chmod +x /tmp/llvm.sh
+          sudo /tmp/llvm.sh ${{ matrix.llvm-ver }}
           sudo apt-get install -y clang-${{ matrix.llvm-ver }} flang-${{ matrix.llvm-ver }} \
             libomp-${{ matrix.llvm-ver }}-dev
 
@@ -296,14 +277,10 @@ jobs:
 
       - name: Build and install the app
         run: |
-          export CFLAGS="-O0 -g"
-          export CXXFLAGS="-O0 -g"
-          export FFLAGS="-O0 -g"
-
           mkdir -p build
           rm -rf build/*
           cd build
-          cmake -DCMAKE_BUILD_TYPE=None ..
+          cmake -DCMAKE_BUILD_TYPE=Debug ..
           cmake --build .
           sudo cmake --install .
 
@@ -322,14 +299,10 @@ jobs:
 
       - name: Build and install the app (release, no OpenMP)
         run: |
-          export CFLAGS="-O3 -ffast-math -g1 -DNDEBUG"
-          export CXXFLAGS="-O3 -ffast-math -g1 -DNDEBUG"
-          export FFLAGS="-O3 -ffast-math -g1 -DNDEBUG"
-
           mkdir -p build
           rm -rf build/*
           cd build
-          cmake -DCMAKE_BUILD_TYPE=None ..
+          cmake -DCMAKE_BUILD_TYPE=Release ..
           cmake --build .
           sudo cmake --install .
   
@@ -348,14 +321,10 @@ jobs:
 
       - name: Build and install the app (release, OpenMP)
         run: |
-          export CFLAGS="-O3 -ffast-math -g1 -DNDEBUG"
-          export CXXFLAGS="-O3 -ffast-math -g1 -DNDEBUG"
-          export FFLAGS="-O3 -ffast-math -g1 -DNDEBUG"
-
           mkdir -p build
           rm -rf build/*
           cd build
-          cmake -DCMAKE_BUILD_TYPE=None -DAQUILA_PARALLEL=On ..
+          cmake -DCMAKE_BUILD_TYPE=Release -DAQUILA_PARALLEL=On ..
           cmake --build .
           sudo cmake --install .
 

@@ -38,7 +38,6 @@ ValuePtr BinOp::run(const values::BufferValue &in, const Real &scale) const
     switch (scale_i)
     {
     case 1:
-
         return std::make_unique<values::BufferValue>(in.buffer);
     case 2:
         return std::make_unique<values::BufferValue>(bin<2>(in.buffer));

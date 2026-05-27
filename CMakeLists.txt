@@ -14,9 +14,25 @@ set(CMAKE_INSTALL_INCLUDEDIR ${CMAKE_INSTALL_INCLUDEDIR}/aquila)
 set(CMAKE_INSTALL_DATADIR ${CMAKE_INSTALL_DATADIR}/aquila)
 set(CMAKE_INSTALL_RPATH "$ORIGIN/../${CMAKE_INSTALL_LIBDIR}:$ORIGIN")
 
-set(CMAKE_C_FLAGS_RELEASE "-O2 -DNDEBUG -g1")
-set(CMAKE_CXX_FLAGS_RELEASE "-O2 -DNDEBUG -g1")
-set(CMAKE_Fortran_FLAGS_RELEASE "-O2 -DNDEBUG -g1")
+set (CMAKE_C_FLAGS_DEBUG "-g -Og")
+set (CMAKE_CXX_FLAGS_DEBUG "-g -Og")
+set (CMAKE_Fortran_FLAGS_DEBUG "-g -Og")
+set (CMAKE_C_FLAGS_RELEASE "-g -O2")
+set (CMAKE_CXX_FLAGS_RELEASE "-g -O2")
+set (CMAKE_Fortran_FLAGS_RELEASE "-g -O2")
+
+if (CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64")
+    if(NOT DEFINED AQUILA_MARCH OR AQUILA_MARCH STREQUAL "")
+        set(AQUILA_MARCH "-march=x86-64-v2")
+    endif()
+endif()
+
+add_compile_options(${AQUILA_MARCH})
+
+add_compile_options($<$<AND:$<CONFIG:Debug>,$<COMPILE_LANG_AND_ID:Fortran,GNU>>:SHELL:-fcheck=all>)
+add_compile_options("$<$<AND:$<CONFIG:Debug>,$<COMPILE_LANG_AND_ID:Fortran,Intel>>:SHELL:-check all,no-uninit>")
+add_compile_options($<$<COMPILE_LANG_AND_ID:Fortran,Intel>:-heap-arrays>)
+add_compile_options($<$<NOT:$<CONFIG:DEBUG>>:-DNDEBUG>)
 
 find_package(PkgConfig REQUIRED)
 
@@ -53,16 +69,12 @@ endif()
 
 set(CXX_WARN "-Wall -Wextra -pedantic -Wpedantic -Werror=return-type -Werror=uninitialized -Werror=sign-compare -Werror=maybe-uninitialized -Wno-unused-parameter")
 set(FORT_WARN "-Wall -Wextra -pedantic -Wno-unused-dummy-argument")
-set(CMAKE_C_FLAGS_DEBUG "-g -Og -fsanitize=address ${CXX_WARN}")
-set(CMAKE_CXX_FLAGS_DEBUG "-g -Og -fsanitize=address ${CXX_WARN}")
-set(CMAKE_Fortran_FLAGS_DEBUG "-g -Og -fcheck=all ${FORT_WARN}")
-
-add_library(fast_math INTERFACE)
-target_compile_options(fast_math INTERFACE
-    $<$<CONFIG:Release>:
-        -O3 $<IF:$<COMPILE_LANGUAGE:Fortran>,-funsafe-math-optimizations,-ffast-math> -fopenmp-simd
-    >
-)
+add_compile_options("$<$<AND:$<CONFIG:Debug>,$<COMPILE_LANG_AND_ID:Fortran,GNU>>:SHELL:${FORT_WARN}>")
+add_compile_options("$<$<AND:$<CONFIG:Debug>,$<COMPILE_LANG_AND_ID:CXX,GNU>>:SHELL:${CXX_WARN}>")
+add_compile_options($<$<AND:$<CONFIG:Debug>,$<NOT:$<COMPILE_LANGUAGE:Fortran>>>:-fsanitize=address>)
+add_link_options($<$<AND:$<CONFIG:Debug>,$<NOT:$<COMPILE_LANGUAGE:Fortran>>>:-fsanitize=address>)
+add_compile_options($<$<CONFIG:RELEASE>:-fno-math-errno>)
+add_compile_options($<$<CONFIG:RELEASE>:-funsafe-math-optimizations>)
 
 option(AQUILA_PARALLEL "use OpenMP in build" Off)
 
@@ -95,8 +107,8 @@ file(GLOB_RECURSE AQUILA_SOURCES CONFIGURE_DEPENDS
 
 add_library(aquila SHARED ${AQUILA_SOURCES})
 target_include_directories(aquila PUBLIC src/c_binding)
+target_compile_options(aquila PRIVATE $<$<CONFIG:RELEASE>:-O3>)
 target_link_libraries(aquila PUBLIC png_target cfitsio)
-target_link_libraries(aquila PRIVATE fast_math)
 
 if (AQUILA_PARALLEL)
     target_link_libraries(aquila PRIVATE OpenMP::OpenMP_Fortran OpenMP::OpenMP_C)
@@ -119,10 +131,12 @@ endforeach()
 endif()
 
 add_executable(aqstack app/aqstack.f90)
-target_link_libraries(aqstack PRIVATE aquila fast_math)
+target_link_libraries(aqstack PRIVATE aquila)
+target_compile_options(aqstack PRIVATE $<$<CONFIG:RELEASE>:-O3>)
 
 add_executable(aqlrgb app/aqlrgb.F90)
-target_link_libraries(aqlrgb PRIVATE aquila fast_math)
+target_link_libraries(aqlrgb PRIVATE aquila)
+target_compile_options(aqlrgb PRIVATE $<$<CONFIG:RELEASE>:-O3>)
 
 if (AQUILA_PARALLEL)
     target_link_libraries(aqstack PRIVATE OpenMP::OpenMP_Fortran)
@@ -166,13 +180,13 @@ file(GLOB_RECURSE libaq2_SOURCES CONFIGURE_DEPENDS
 
 add_library(aquila2 SHARED ${libaq2_SOURCES})
 target_include_directories(aquila2 PUBLIC src_cpp/lib)
+target_compile_options(aquila2 PRIVATE $<$<CONFIG:RELEASE>:-O3>)
 
 if (AQUILA_PARALLEL)
     target_link_libraries(aquila2 PRIVATE OpenMP::OpenMP_CXX)
     target_compile_definitions(aquila2 PRIVATE AQUILA_PARALLEL)
 endif ()
 
-target_link_libraries(aquila2 PRIVATE fast_math)
 target_link_libraries(aquila2 PUBLIC aqtask_dispatch aquila)
 
 install(TARGETS aquila2 LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})

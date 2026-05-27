@@ -29,9 +29,7 @@ endif()
 
 add_compile_options(${AQUILA_MARCH})
 
-add_compile_options($<$<AND:$<CONFIG:Debug>,$<COMPILE_LANG_AND_ID:Fortran,GNU>>:SHELL:-fcheck=all>)
-add_compile_options("$<$<AND:$<CONFIG:Debug>,$<COMPILE_LANG_AND_ID:Fortran,Intel>>:SHELL:-check all,no-uninit>")
-add_compile_options($<$<COMPILE_LANG_AND_ID:Fortran,Intel>:-heap-arrays>)
+add_compile_options($<$<COMPILE_LANG_AND_ID:Fortran,IntelLLVM>:-heap-arrays>)
 add_compile_options($<$<NOT:$<CONFIG:DEBUG>>:-DNDEBUG>)
 
 find_package(PkgConfig REQUIRED)
@@ -69,10 +67,12 @@ endif()
 
 set(CXX_WARN "-Wall -Wextra -pedantic -Wpedantic -Werror=return-type -Werror=uninitialized -Werror=sign-compare -Werror=maybe-uninitialized -Wno-unused-parameter")
 set(FORT_WARN "-Wall -Wextra -pedantic -Wno-unused-dummy-argument")
-add_compile_options("$<$<AND:$<CONFIG:Debug>,$<COMPILE_LANG_AND_ID:Fortran,GNU>>:SHELL:${FORT_WARN}>")
+add_compile_options("$<$<AND:$<CONFIG:Debug>,$<COMPILE_LANG_AND_ID:Fortran,GNU>>:SHELL:-fcheck=all ${FORT_WARN}>")
 add_compile_options("$<$<AND:$<CONFIG:Debug>,$<COMPILE_LANG_AND_ID:CXX,GNU>>:SHELL:${CXX_WARN}>")
-add_compile_options($<$<AND:$<CONFIG:Debug>,$<NOT:$<COMPILE_LANGUAGE:Fortran>>>:-fsanitize=address>)
-add_link_options($<$<AND:$<CONFIG:Debug>,$<NOT:$<COMPILE_LANGUAGE:Fortran>>>:-fsanitize=address>)
+add_compile_options("$<$<AND:$<CONFIG:Debug>,$<COMPILE_LANG_AND_ID:Fortran,IntelLLVM>>:SHELL:-check all,no-uninit -warn all>")
+add_compile_options("$<$<AND:$<CONFIG:Debug>,$<COMPILE_LANG_AND_ID:CXX,IntelLLVM>>:SHELL:-warn all>")
+#add_compile_options($<$<AND:$<CONFIG:Debug>,$<NOT:$<COMPILE_LANGUAGE:Fortran>>>:-fsanitize=address>)
+#add_link_options($<$<AND:$<CONFIG:Debug>,$<NOT:$<COMPILE_LANGUAGE:Fortran>>>:-fsanitize=address>)
 add_compile_options($<$<CONFIG:RELEASE>:-fno-math-errno>)
 add_compile_options($<$<CONFIG:RELEASE>:-funsafe-math-optimizations>)
 

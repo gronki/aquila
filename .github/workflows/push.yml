@@ -16,12 +16,13 @@ jobs:
       fail-fast: false
       matrix:
         image:
-          - { name: "ubuntu:22.04", install: "apt-get update && apt-get install -y cmake g++ gfortran  libpng-dev libreadline-dev pkg-config binutils" }
-          - { name: "ubuntu:24.04", install: "apt-get update && apt-get install -y cmake g++ gfortran  libpng-dev libreadline-dev pkg-config binutils" }
-          - { name: "debian:trixie", install: "apt-get update && apt-get install -y cmake g++ gfortran  libpng-dev libreadline-dev pkg-config binutils" }
-          - { name: "debian:bookworm", install: "apt-get update && apt-get install -y cmake g++ gfortran  libpng-dev libreadline-dev pkg-config binutils" }
-          - { name: "fedora:43", install: "dnf install -y dnf install cmake g++ gfortran libpng-devel readline-devel pkg-config which binutils" }
-          - { name: "fedora:44", install: "dnf install -y dnf install cmake g++ gfortran libpng-devel readline-devel pkg-config which binutils" }
+          - { name: "ubuntu:22.04", install: "apt-get update && apt-get install -y cmake g++ gfortran   libreadline-dev pkg-config binutils" }
+          - { name: "ubuntu:24.04", install: "apt-get update && apt-get install -y cmake g++ gfortran   libreadline-dev pkg-config binutils" }
+          - { name: "ubuntu:26.04", install: "apt-get update && apt-get install -y cmake g++ gfortran   libreadline-dev pkg-config binutils" }
+          - { name: "debian:trixie", install: "apt-get update && apt-get install -y cmake g++ gfortran   libreadline-dev pkg-config binutils" }
+          - { name: "debian:bookworm", install: "apt-get update && apt-get install -y cmake g++ gfortran   libreadline-dev pkg-config binutils" }
+          - { name: "fedora:43", install: "dnf install -y dnf install cmake g++ gfortran  readline-devel pkg-config which binutils" }
+          - { name: "fedora:44", install: "dnf install -y dnf install cmake g++ gfortran  readline-devel pkg-config which binutils" }
     container:
       image: ${{ matrix.image.name }}
     name: Build on ${{ matrix.image.name }}
@@ -147,7 +148,7 @@ jobs:
             intel-oneapi-compiler-dpcpp-cpp-${{ matrix.oneapi-ver }} 
 
       - name: Install build dependencies
-        run: sudo apt-get install -y  libpng-dev libgnutls30 libreadline-dev
+        run: sudo apt-get install -y   libgnutls30 libreadline-dev
 
       - name: Download test data
         run: |
@@ -268,7 +269,7 @@ jobs:
             libomp-${{ matrix.llvm-ver }}-dev
 
       - name: Install build dependencies
-        run: sudo apt-get install -y  libpng-dev libgnutls30 libreadline-dev
+        run: sudo apt-get install -y   libgnutls30 libreadline-dev
 
       - name: Download test data
         run: |

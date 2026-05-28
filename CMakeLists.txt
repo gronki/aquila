@@ -78,7 +78,7 @@ add_compile_options("$<$<AND:$<CONFIG:Debug>,$<COMPILE_LANG_AND_ID:Fortran,Intel
 add_compile_options("$<$<AND:$<CONFIG:Debug>,$<COMPILE_LANG_AND_ID:CXX,IntelLLVM>>:SHELL:-Wall>")
 #add_compile_options($<$<AND:$<CONFIG:Debug>,$<NOT:$<COMPILE_LANGUAGE:Fortran>>>:-fsanitize=address>)
 #add_link_options($<$<AND:$<CONFIG:Debug>,$<NOT:$<COMPILE_LANGUAGE:Fortran>>>:-fsanitize=address>)
-add_compile_options("$<$<AND:$<CONFIG:RELEASE>,$<CXX_COMPILER_ID:GNU>>:SHELL:-no-math-errno -funsafe-math-optimizations>")
+add_compile_options("$<$<AND:$<CONFIG:RELEASE>,$<CXX_COMPILER_ID:GNU>>:SHELL:-fno-math-errno -funsafe-math-optimizations>")
 add_compile_options("$<$<AND:$<CONFIG:RELEASE>,$<CXX_COMPILER_ID:IntelLLVM>>:SHELL:-fp-model fast=1>")
 
 option(AQUILA_PARALLEL "use OpenMP in build" Off)

@@ -242,7 +242,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        llvm-ver: [19, 20, 21]
+        llvm-ver: [20, 21]
 
     name: flang ${{ matrix.llvm-ver }}
     env:

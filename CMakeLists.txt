@@ -74,12 +74,12 @@ set(CXX_WARN "-Wall -Wextra -pedantic -Wpedantic -Werror=return-type -Werror=uni
 set(FORT_WARN "-Wall -Wextra -pedantic -Wno-unused-dummy-argument")
 add_compile_options("$<$<AND:$<CONFIG:Debug>,$<COMPILE_LANG_AND_ID:Fortran,GNU>>:SHELL:-fcheck=all ${FORT_WARN}>")
 add_compile_options("$<$<AND:$<CONFIG:Debug>,$<COMPILE_LANG_AND_ID:CXX,GNU>>:SHELL:${CXX_WARN}>")
-add_compile_options("$<$<AND:$<CONFIG:Debug>,$<COMPILE_LANG_AND_ID:Fortran,IntelLLVM>>:SHELL:-check all -warn all>")
-add_compile_options("$<$<AND:$<CONFIG:Debug>,$<COMPILE_LANG_AND_ID:CXX,IntelLLVM>>:SHELL:-warn all>")
+add_compile_options("$<$<AND:$<CONFIG:Debug>,$<COMPILE_LANG_AND_ID:Fortran,IntelLLVM>>:SHELL:-check all -Wall>")
+add_compile_options("$<$<AND:$<CONFIG:Debug>,$<COMPILE_LANG_AND_ID:CXX,IntelLLVM>>:SHELL:-Wall>")
 #add_compile_options($<$<AND:$<CONFIG:Debug>,$<NOT:$<COMPILE_LANGUAGE:Fortran>>>:-fsanitize=address>)
 #add_link_options($<$<AND:$<CONFIG:Debug>,$<NOT:$<COMPILE_LANGUAGE:Fortran>>>:-fsanitize=address>)
-add_compile_options($<$<CONFIG:RELEASE>:-fno-math-errno>)
-add_compile_options($<$<CONFIG:RELEASE>:-funsafe-math-optimizations>)
+add_compile_options("$<$<AND:$<CONFIG:RELEASE>,$<CXX_COMPILER_ID:GNU>>:SHELL:-no-math-errno -funsafe-math-optimizations>")
+add_compile_options("$<$<AND:$<CONFIG:RELEASE>,$<CXX_COMPILER_ID:IntelLLVM>>:SHELL:-fp-model fast=1>")
 
 option(AQUILA_PARALLEL "use OpenMP in build" Off)
 

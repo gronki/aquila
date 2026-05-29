@@ -16,13 +16,12 @@ jobs:
       fail-fast: false
       matrix:
         image:
-          - { name: "ubuntu:22.04", install: "apt-get update && apt-get install -y cmake g++ gfortran   libreadline-dev pkg-config binutils" }
-          - { name: "ubuntu:24.04", install: "apt-get update && apt-get install -y cmake g++ gfortran   libreadline-dev pkg-config binutils" }
-          - { name: "ubuntu:26.04", install: "apt-get update && apt-get install -y cmake g++ gfortran   libreadline-dev pkg-config binutils" }
-          - { name: "debian:trixie", install: "apt-get update && apt-get install -y cmake g++ gfortran   libreadline-dev pkg-config binutils" }
-          - { name: "debian:bookworm", install: "apt-get update && apt-get install -y cmake g++ gfortran   libreadline-dev pkg-config binutils" }
-          - { name: "fedora:43", install: "dnf install -y dnf install cmake g++ gfortran  readline-devel pkg-config which binutils" }
-          - { name: "fedora:44", install: "dnf install -y dnf install cmake g++ gfortran  readline-devel pkg-config which binutils" }
+          - { name: "ubuntu:22.04", install: "apt-get update && apt-get install -y cmake g++ gfortran zlib1g-dev libreadline-dev pkg-config binutils" }
+          - { name: "ubuntu:24.04", install: "apt-get update && apt-get install -y cmake g++ gfortran  zlib1g-dev libreadline-dev pkg-config binutils" }
+          - { name: "ubuntu:26.04", install: "apt-get update && apt-get install -y cmake g++ gfortran  zlib1g-dev libreadline-dev pkg-config binutils" }
+          - { name: "debian:trixie", install: "apt-get update && apt-get install -y cmake g++ gfortran  zlib1g-dev libreadline-dev pkg-config binutils" }
+          - { name: "fedora:43", install: "dnf install -y dnf install cmake g++ gfortran zlib-ng-compat-devel readline-devel pkg-config which binutils" }
+          - { name: "fedora:44", install: "dnf install -y dnf install cmake g++ gfortran  zlib-ng-compat-devel readline-devel pkg-config which binutils" }
     container:
       image: ${{ matrix.image.name }}
     name: Build on ${{ matrix.image.name }}

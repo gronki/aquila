@@ -122,6 +122,12 @@ extern "C"
         buffer_descriptor_t frame_out,
         error_status_t *err);
 
+    void project_bilinear(const transform_t *vc,
+        const_buffer_descriptor_t im0,
+        buffer_descriptor_t im,
+        double resample,
+        error_status_t *err);
+
     typedef struct
     {
         bool background;

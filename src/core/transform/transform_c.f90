@@ -1,7 +1,6 @@
 module transform_c_binding
 
 use transform_m
-use projection_m
 use transform_xyr_m
 use transform_affine_m
 use alignment_m

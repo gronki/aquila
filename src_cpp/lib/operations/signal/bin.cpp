@@ -28,7 +28,7 @@ Buffer<real_buf_t> bin(const Buffer<real_buf_t> &in)
             bin_row<scale>(in.vec(ivec + isub), newbuf.vec(idst), nvec);
         }
     }
-    return std::move(newbuf);
+    return newbuf;
 }
 
 REGISTER(BinOp);

@@ -140,7 +140,8 @@ extern "C"
         int32_t margin;
     } bkeq_param_t;
 
-    void equalize_background_init(bkeq_param_t *param);
+    bkeq_param_t default_bkeq_params();
+
 
     void equalize_background(const buffer_descriptor_t *buffers,
         int32_t nbuf,

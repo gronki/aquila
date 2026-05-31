@@ -14,11 +14,10 @@ end type
 
 contains
 
-subroutine equalize_background_init(param) bind(C)
-   type(bkeq_param_t) :: param
+function default_bkeq_params() bind(C)
+   type(bkeq_param_t) :: default_bkeq_params
+end function
 
-   param = bkeq_param_t()
-end subroutine
 
 subroutine equalize_background(buffers, nbuf, param, err) bind(C)
    type(buffer_descriptor_t) :: buffers(nbuf)

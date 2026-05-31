@@ -142,7 +142,6 @@ extern "C"
 
     bkeq_param_t default_bkeq_params();
 
-
     void equalize_background(const buffer_descriptor_t *buffers,
         int32_t nbuf,
         bkeq_param_t *param,
@@ -154,6 +153,12 @@ extern "C"
         int maxiter,
         buffer_descriptor_t im2,
         bool parallel);
+
+    void normalize_offset_gain(const const_buffer_descriptor_t *buffers,
+        const buffer_descriptor_t *buffers_out,
+        int n_buf,
+        int margin,
+        error_status_t *err);
 
 #ifdef __cplusplus
 } /* extern "C" */

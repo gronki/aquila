@@ -59,6 +59,68 @@ subroutine mask_margins_c(mask, ni, nj, margin) bind(C, name="mask_margins")
    mask(:, max(nj - margin + 1, 1):) = .false.
 end subroutine
 
+
+ !----------------------------------------------------------------------------!
+
+subroutine normalize_offset_gain_c(buffers, buffers_out, n_buf, margin, err) &
+   bind(C, name="normalize_offset_gain")
+   use statistics, only: linfit, outliers_2d_mask
+   use aquila_c_binding
+
+   integer(c_int), value :: n_buf, margin
+   type(buffer_descriptor_t) :: buffers(n_buf), buffers_out(n_buf)
+   type(error_status_t) :: err
+
+   real(buf_k) :: a, b, av, sd
+   real(buf_k), allocatable :: imref(:,:), xx(:), yy(:)
+   real(buf_k), pointer, CONTIGUOUS :: ptr(:,:), ptr_out(:,:)
+   logical, allocatable :: mask(:,:)
+   integer :: i, j, np, sz(2), nstack
+
+   call reset_err(err)
+
+   do i = 1, n_buf
+      ptr => from_descriptor(buffers(i))
+      if (i == 1) then
+         allocate(imref, source=ptr)
+      else
+         if (any(shape(imref) /= shape(ptr))) then
+            call set_err(err, msg="buffer shape mismatch")
+            return
+         end if
+         imref(:,:) = imref + ptr
+      end if
+   end do
+   imref(:,:) = imref / n_buf
+   sz = shape(imref)
+
+   ! create mask which excludes edges and the brigtenst pixels
+   allocate(mask(sz(1), sz(2)), source=.true.)
+   call mask_margins(mask, margin)
+   ! call outliers_2d_mask(imref, mask, 3.0_buf_k, 10, av, sd)
+   mask(:,:) = mask .and. imref < (minval(imref, mask=mask) + maxval(imref, mask=mask)) / 2
+   mask(:,:) = mask .and. ieee_is_normal(imref)
+
+   ! pack it into 1-d array
+   np = count(mask)
+   if (np == 0) then
+      call set_err(err, msg="no points eligible for normalization")
+      return
+   end if
+   allocate(xx(np), yy(np))
+   xx(:) = pack(imref, mask)
+   deallocate(imref)
+
+   do i = 1, n_buf
+      ptr => from_descriptor(buffers(i))
+      ptr_out => from_descriptor(buffers_out(i))
+      yy(:) = pack(ptr(:,:), mask)
+      call linfit(xx, yy, a, b)
+      write (stderr, '("NORM frame(",i2,") y = ",f5.3,"x + ",f7.1)') i, a, b
+      ptr_out(:,:) = (ptr(:,:) - b) / a
+   end do
+end subroutine
+
  !----------------------------------------------------------------------------!
 
 subroutine normalize_offset_gain(buffer, margin)

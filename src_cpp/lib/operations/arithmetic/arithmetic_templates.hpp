@@ -20,7 +20,7 @@ ValuePtr apply_unitary(const Value &a, F op, Args &&...args)
 
     if (buffer_ptr)
         return std::make_unique<values::BufferValue>(
-            apply(buffer_ptr->buffer.view(), op), args...);
+            apply(buffer_ptr->buffer.view(), op), buffer_ptr->info, args...);
 
     throw std::runtime_error(
         std::string("Value not suitable for arithmetic operation: ") + a.str());

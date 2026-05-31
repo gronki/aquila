@@ -8,7 +8,8 @@ namespace aquila::ops
 REGISTER(ReadFrame);
 ValuePtr ReadFrame::run(const std::string &fn) const
 {
-    return std::make_unique<values::BufferValue>(read_fits(fn));
+    return std::make_unique<values::BufferValue>(
+        read_fits(fn), values::FrameInfo{.fn_origin = fn});
 }
 
 REGISTER(WriteFrame);

@@ -18,7 +18,7 @@ ValuePtr ConvolOp::run(const values::BufferValue &buf,
         &err);
     if (err)
         throw std::runtime_error("Convolution failed.");
-    return std::make_unique<values::BufferValue>(std::move(result));
+    return std::make_unique<values::BufferValue>(std::move(result), buf.info);
 }
 
 ArgManifest ConvolOp::arg_manifest() const
@@ -44,7 +44,7 @@ ValuePtr DeconvOp::run(const values::BufferValue &buf,
         (int)niter,
         c_buf(result),
         false);
-    return std::make_unique<values::BufferValue>(std::move(result));
+    return std::make_unique<values::BufferValue>(std::move(result), buf.info);
 }
 
 ArgManifest DeconvOp::arg_manifest() const

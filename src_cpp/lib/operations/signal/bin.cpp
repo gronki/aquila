@@ -38,21 +38,21 @@ ValuePtr BinOp::run(const values::BufferValue &in, const Real &scale) const
     switch (scale_i)
     {
     case 1:
-        return std::make_unique<values::BufferValue>(in.buffer);
+        return std::make_unique<values::BufferValue>(in.buffer, in.info);
     case 2:
-        return std::make_unique<values::BufferValue>(bin<2>(in.buffer));
+        return std::make_unique<values::BufferValue>(bin<2>(in.buffer), in.info);
     case 3:
-        return std::make_unique<values::BufferValue>(bin<3>(in.buffer));
+        return std::make_unique<values::BufferValue>(bin<3>(in.buffer), in.info);
     case 4:
-        return std::make_unique<values::BufferValue>(bin<4>(in.buffer));
+        return std::make_unique<values::BufferValue>(bin<4>(in.buffer), in.info);
     case 5:
-        return std::make_unique<values::BufferValue>(bin<5>(in.buffer));
+        return std::make_unique<values::BufferValue>(bin<5>(in.buffer), in.info);
     case 6:
-        return std::make_unique<values::BufferValue>(bin<6>(in.buffer));
+        return std::make_unique<values::BufferValue>(bin<6>(in.buffer), in.info);
     case 7:
-        return std::make_unique<values::BufferValue>(bin<7>(in.buffer));
+        return std::make_unique<values::BufferValue>(bin<7>(in.buffer), in.info);
     case 8:
-        return std::make_unique<values::BufferValue>(bin<8>(in.buffer));
+        return std::make_unique<values::BufferValue>(bin<8>(in.buffer), in.info);
     default:
         throw std::runtime_error("unsupported bin scale!");
     }

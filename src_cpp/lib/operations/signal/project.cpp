@@ -22,7 +22,7 @@ ValuePtr ProjectOp::run(const values::TransformValue &trans,
     project_bilinear(&trans.transform, c_const_buf(buf), c_buf(buf_out), resample, &err);
     if (err.status)
         throw std::runtime_error(std::string(err.message));
-    return std::make_unique<values::BufferValue>(buf_out);
+    return std::make_unique<values::BufferValue>(buf_out, bufval.info);
 }
 
 ArgManifest ProjectOp::arg_manifest() const

@@ -1,183 +1,205 @@
 module hotpixels
 
-  use globals
-  implicit none
+use globals
+implicit none
 
 contains
 
-  !----------------------------------------------------------------------------!
+ !----------------------------------------------------------------------------!
 
-  subroutine find_hot(im, sigma_max, hot_mask)
-    use statistics, only: outliers, avsd
+subroutine find_hot(im, sigma_max, hot_mask)
+   use statistics, only: outliers, avsd
 
-    real(buf_k), contiguous, intent(in) :: im(:,:)
-    real(buf_k), intent(in) :: sigma_max
-    logical, contiguous, intent(out) :: hot_mask(:,:)
-    real(buf_k) :: av, sd, sg
-    integer :: i
+   real(buf_k), contiguous, intent(in) :: im(:,:)
+   real(buf_k), intent(in) :: sigma_max
+   logical, contiguous, intent(out) :: hot_mask(:,:)
+   real(buf_k) :: av, sd, sg
+   integer :: i
 
-    hot_mask(:,:) = .true.
-    call outliers(im, hot_mask, 3.0_buf_k, 4, av, sd)
+   hot_mask(:,:) = .true.
+   call outliers(im, hot_mask, 3.0_buf_k, 4, av, sd)
 
-if (cfg_verbose) then
-    write (*, '("#", a5, a8)') 'kap', 'nhot'
-    do i = 0, 12
-      sg = i * 1.0_buf_k
-      hot_mask = im > av + sg * sd
-      write (*, '(f6.1, i8)') sg, count(hot_mask)
-    end do
-end if
-
-    sg = sigma_max
-    hot_mask = im > av + sg * sd
-  end subroutine
-
-  !----------------------------------------------------------------------------!
-
-  pure subroutine fix_hot(im, hot_mask)
-    ! use statistics, only: quickselect
-    real(buf_k), contiguous, intent(inout) :: im(:,:)
-    logical, intent(in) :: hot_mask(:,:)
-    logical, allocatable :: not_hot_mask(:,:)
-    integer :: i, j, n, ilo, ihi, jlo, jhi
-    integer, parameter :: r = 3
-    real(buf_k) :: a((2 * r + 1)**2)
-
-    not_hot_mask = .not. hot_mask
-
-    do j = 1, size(im, 2)
-      do i = 1, size(im, 1)
-        if (not_hot_mask(i,j)) cycle
-
-        ilo = max(i - r, 1)
-        ihi = min(i + r, size(im, 1))
-        jlo = max(j - r, 1)
-        jhi = min(j + r, size(im, 2))
-
-        associate (imc => im(ilo:ihi, jlo:jhi), msc => not_hot_mask(ilo:ihi, jlo:jhi))
-          ! trzeba zrobic pure quickselect
-          ! n = count(msc)
-          ! a(1:n) = pack(imc, msc)
-          ! im(i, j) = quickselect(a(1:n), (n + 1) / 2)
-          im(i, j) = sum(imc, msc) / count(msc)
-        end associate
+   if (cfg_verbose) then
+      write (*, '("#", a5, a8)') 'kap', 'nhot'
+      do i = 0, 12
+         sg = i * 1.0_buf_k
+         hot_mask = im > av + sg * sd
+         write (*, '(f6.1, i8)') sg, count(hot_mask)
       end do
-    end do
-  end subroutine
+   end if
 
-  !----------------------------------------------------------------------------!
+   sg = sigma_max
+   hot_mask = im > av + sg * sd
+end subroutine
 
-  subroutine optimize_dark_frame(light, dark, xlo0, xhi0, xm, msk)
-    real(buf_k), intent(IN) :: light(:,:), dark(:,:)
-    logical, intent(in), optional :: msk(:,:)
-    real(buf_k), intent(in) :: xlo0, xhi0
-    ! logical, intent(IN) :: is_log
-    real(buf_k), intent(out) :: xm
-    real(buf_k) :: xlo, xhi, ylo, yhi, ym
-    real(buf_k) :: dark_norm(size(light,1), size(light,2))
-    integer :: it
+subroutine find_hot_c (im, sigma, hot_mask) bind(C, name="find_hot")
+   use aquila_c_binding
+   type(buffer_descriptor_t), value :: im, hot_mask
+   real(buf_k), value :: sigma
+   logical, allocatable :: logical_mask(:,:)
+   real(buf_k), pointer, CONTIGUOUS :: ptr_mask(:,:)
 
-    dark_norm(:,:) = dark
-    call normalize(dark_norm)
+   ptr_mask => from_descriptor(hot_mask)
+   allocate(logical_mask(size(ptr_mask,1), size(ptr_mask,2)))
+   call find_hot(from_descriptor(im), sigma, logical_mask)
+   ptr_mask(:,:) = merge(1._buf_k, 0._buf_k, logical_mask)
+end subroutine
 
-    xlo = xlo0
-    xhi = xhi0
-    ylo = F(xlo0)
-    yhi = F(xhi0)
+ !----------------------------------------------------------------------------!
 
-    do it = 1, 16
+pure subroutine fix_hot(im, hot_mask)
+   ! use statistics, only: quickselect
+   real(buf_k), contiguous, intent(inout) :: im(:,:)
+   logical, intent(in) :: hot_mask(:,:)
+   logical, allocatable :: not_hot_mask(:,:)
+   integer :: i, j, n, ilo, ihi, jlo, jhi
+   integer, parameter :: r = 3
+   real(buf_k) :: a((2 * r + 1)**2)
+
+   not_hot_mask = .not. hot_mask
+
+   do j = 1, size(im, 2)
+      do i = 1, size(im, 1)
+         if (not_hot_mask(i,j)) cycle
+
+         ilo = max(i - r, 1)
+         ihi = min(i + r, size(im, 1))
+         jlo = max(j - r, 1)
+         jhi = min(j + r, size(im, 2))
+
+         associate (imc => im(ilo:ihi, jlo:jhi), msc => not_hot_mask(ilo:ihi, jlo:jhi))
+            ! trzeba zrobic pure quickselect
+            ! n = count(msc)
+            ! a(1:n) = pack(imc, msc)
+            ! im(i, j) = quickselect(a(1:n), (n + 1) / 2)
+            im(i, j) = sum(imc, msc) / count(msc)
+         end associate
+      end do
+   end do
+end subroutine
+
+subroutine fix_hot_c (im, hot_mask) bind(C, name="fix_hot")
+   use aquila_c_binding
+   type(buffer_descriptor_t), value :: im, hot_mask
+   call fix_hot(from_descriptor(im), from_descriptor(hot_mask) > 0._buf_k)
+end subroutine
+ !----------------------------------------------------------------------------!
+
+subroutine optimize_dark_frame(light, dark, xlo0, xhi0, xm, msk)
+   real(buf_k), intent(IN) :: light(:,:), dark(:,:)
+   logical, intent(in), optional :: msk(:,:)
+   real(buf_k), intent(in) :: xlo0, xhi0
+   ! logical, intent(IN) :: is_log
+   real(buf_k), intent(out) :: xm
+   real(buf_k) :: xlo, xhi, ylo, yhi, ym
+   real(buf_k) :: dark_norm(size(light,1), size(light,2))
+   integer :: it
+
+   dark_norm(:,:) = dark
+   call normalize(dark_norm)
+
+   xlo = xlo0
+   xhi = xhi0
+   ylo = F(xlo0)
+   yhi = F(xhi0)
+
+   do it = 1, 16
 
       ! if both ends have the same sign, just assume the
       ! boundary of the interval as a result
       if (ylo * yhi > 0) then
-        if (abs(ylo) < abs(yhi)) then
-          xm = xlo
-        else
-          xm = xhi
-        end if
-        exit
+         if (abs(ylo) < abs(yhi)) then
+            xm = xlo
+         else
+            xm = xhi
+         end if
+         exit
       end if
 
       xm = (xlo + xhi) / 2
       ym = F(xm)
 
-if (cfg_verbose) then
-      print '(a, 3(f12.4,e11.3))', 'darkopt', xlo, ylo, xm, ym, xhi, yhi
-endif
+      if (cfg_verbose) then
+         print '(a, 3(f12.4,e11.3))', 'darkopt', xlo, ylo, xm, ym, xhi, yhi
+      endif
 
       if (ylo * ym <= 0) then
-        xhi = xm
-        yhi = ym
+         xhi = xm
+         yhi = ym
       end if
 
       if (yhi * ym <= 0) then
-        xlo = xm
-        ylo = ym
+         xlo = xm
+         ylo = ym
       end if
 
-    end do
+   end do
 
-    contains
+contains
 
-      pure subroutine normalize(x)
-        use statistics, only: avsd
-        real(buf_k), intent(inout) :: x(:,:)
-        real(buf_k) :: av, sd
-        if (present(msk)) then
-          call avsd(x, msk, av, sd)
-        else
-          call avsd(x, av, sd)
-        end if
-        x(:,:) = (x - av) / sd
-      end subroutine
-    
-      pure function F(x)
-        real(buf_k), intent(in) :: x
-        real(buf_k) :: f
-        real(buf_k) :: light_norm(size(light,1), size(light,2))
+   pure subroutine normalize(x)
+      use statistics, only: avsd
+      real(buf_k), intent(inout) :: x(:,:)
+      real(buf_k) :: av, sd
+      if (present(msk)) then
+         call avsd(x, msk, av, sd)
+      else
+         call avsd(x, av, sd)
+      end if
+      x(:,:) = (x - av) / sd
+   end subroutine
 
-        light_norm = light - x * dark
-        call normalize(light_norm)
+   pure function F(x)
+      real(buf_k), intent(in) :: x
+      real(buf_k) :: f
+      real(buf_k) :: light_norm(size(light,1), size(light,2))
 
-        f = sum(light_norm * dark_norm, msk)
-      end function
+      light_norm = light - x * dark
+      call normalize(light_norm)
 
-  end subroutine
-  
-  !----------------------------------------------------------------------------!
+      f = sum(light_norm * dark_norm, msk)
+   end function
 
-  pure subroutine optimize_dark_frame_fast(light, dark, a, msk)
-    use iso_fortran_env, only: int64
-    real(buf_k), intent(IN) :: light(:,:), dark(:,:)
-    logical, intent(in), optional :: msk(:,:)
-    ! logical, intent(IN) :: is_log
-    real(buf_k), intent(out) :: a
-    integer(int64) :: n
-    real(buf_k) :: light_av, dark_av
+end subroutine
 
-    n = size(light)
-    if (present(msk)) n = count(msk)
+ !----------------------------------------------------------------------------!
 
-    light_av = sum(light, msk) / n
-    dark_av = sum(dark, msk) / n
+pure subroutine optimize_dark_frame_fast(light, dark, a, msk)
+   use iso_fortran_env, only: int64
+   real(buf_k), intent(IN) :: light(:,:), dark(:,:)
+   logical, intent(in), optional :: msk(:,:)
+   ! logical, intent(IN) :: is_log
+   real(buf_k), intent(out) :: a
+   integer(int64) :: n
+   real(buf_k) :: light_av, dark_av
 
-    a = sum((light - light_av) * (dark - dark_av), msk) / sum((dark - dark_av)**2, msk)
-  end subroutine
+   n = size(light)
+   if (present(msk)) n = count(msk)
 
-  !----------------------------------------------------------------------------!
+   light_av = sum(light, msk) / n
+   dark_av = sum(dark, msk) / n
 
-  subroutine fix_hot_median(im, im2)
-    real(buf_k) :: im(:,:), im2(:,:)
-    real(buf_k) :: av, sd
-    integer :: i, j, i1, i2, j1, j2, n1, n2
+   a = sum((light - light_av) * (dark - dark_av), msk) / sum((dark - dark_av)**2, msk)
+end subroutine
 
-    n1 = size(im, 1)
-    n2 = size(im, 2)
+ !----------------------------------------------------------------------------!
 
-    do concurrent(i = 1:n1, j=1:n2)
+subroutine fix_hot_median(im, im2, sigma)
+   real(buf_k) :: im(:,:), im2(:,:)
+   real(buf_k) :: av, sd, sigma_
+   real(buf_k), optional :: sigma
+   integer :: i, j, i1, i2, j1, j2, n1, n2
+
+   sigma_ = 3
+   if (present(sigma)) sigma_ = sigma
+
+   n1 = size(im, 1)
+   n2 = size(im, 2)
+
+   do concurrent(i = 1:n1, j=1:n2)
       if (i == 1 .or. i == n1 .or. j == 1 .or. j == n2) then
-        im2(i,j) = im(i,j)
-        cycle
+         im2(i,j) = im(i,j)
+         cycle
       end if
       av = im(i-1, j-1) + im(i, j-1)  + im(i+1, j-1) &
       &  + im(i-1, j  )               + im(i+1, j  ) &
@@ -187,9 +209,17 @@ endif
       &  + im(i-1, j  )**2                  + im(i+1, j  )**2 &
       &  + im(i-1, j+1)**2 + im(i, j+1)**2  + im(i+1, j+1)**2
       sd = sd / 8
-      sd = sqrt(max(0._buf_k, sd - av * av)) 
-      im2(i,j) = merge(im(i, j), av, im(i,j) < av + 3 * sd)
-    end do
-  end subroutine
+      sd = sqrt(max(0._buf_k, sd - av * av))
+      im2(i,j) = merge(im(i, j), av, im(i,j) < av + sigma_ * sd)
+   end do
+end subroutine
+
+subroutine fix_hot_light(im, sigma, im_out) bind(C)
+   use aquila_c_binding
+   type(buffer_descriptor_t), value :: im, im_out
+   real(buf_k), value :: sigma
+   call fix_hot_median(from_descriptor(im), from_descriptor(im_out), sigma)
+end subroutine
+
 
 end module

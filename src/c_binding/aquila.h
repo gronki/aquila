@@ -160,6 +160,12 @@ extern "C"
         int margin,
         error_status_t *err);
 
+    void find_hot(
+        const_buffer_descriptor_t buf, real_buf_t sigma, buffer_descriptor_t mask_out);
+    void fix_hot(buffer_descriptor_t im, const_buffer_descriptor_t mask);
+    void fix_hot_light(
+        const_buffer_descriptor_t in, real_buf_t sigma, buffer_descriptor_t out);
+
 #ifdef __cplusplus
 } /* extern "C" */
 #endif

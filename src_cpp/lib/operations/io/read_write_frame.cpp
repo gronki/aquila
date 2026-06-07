@@ -1,6 +1,7 @@
 #include "read_write_frame.hpp"
 #include "../../io/fits.hpp"
-#include "../../utils/file_utils.hpp"
+#include <filesystem>
+#include <utils/file_utils.hpp>
 
 namespace aquila::ops
 {
@@ -15,7 +16,9 @@ ValuePtr ReadFrame::run(const std::string &fn) const
 REGISTER(WriteFrame);
 ValuePtr WriteFrame::run(const values::BufferValue &frame, const std::string &fn) const
 {
-    write_fits(utils::free_filename(fn), frame.buffer);
+    if (std::filesystem::exists(fn))
+        std::filesystem::remove(fn);
+    write_fits(fn, frame.buffer);
     return nullptr;
 }
 

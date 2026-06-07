@@ -16,7 +16,7 @@ ValuePtr HotFindOp::run(const values::BufferValue &im, const Real &sigma) const
 ArgManifest HotFindOp::arg_manifest() const
 {
     return ArgManifest{
-        ArgSpec{.name = "im"},
+        ArgSpec{.name = "im", .convert = guard(convert::loadFrame)},
         ArgSpec{.name = "sigma", .default_real = 3.},
     };
 }
@@ -36,8 +36,8 @@ ValuePtr HotFixOp::run(const values::BufferValue &im, const values::BufferValue 
 ArgManifest HotFixOp::arg_manifest() const
 {
     return ArgManifest{
-        ArgSpec{.name = "im"},
-        ArgSpec{.name = "mask"},
+        ArgSpec{.name = "im", .convert = guard(convert::loadFrame)},
+        ArgSpec{.name = "mask", .convert = guard(convert::loadFrame)},
     };
 }
 
@@ -57,7 +57,7 @@ ValuePtr HotFixLightOp::run(const values::BufferValue &im, const Real &sigma) co
 ArgManifest HotFixLightOp::arg_manifest() const
 {
     return ArgManifest{
-        ArgSpec{.name = "im"},
+        ArgSpec{.name = "im", .convert = guard(convert::loadFrame)},
         ArgSpec{.name = "sigma", .default_real = 3.},
     };
 }

@@ -68,6 +68,11 @@ if (AQUILA_TUI)
 add_subdirectory(deps/FTXUI)
 endif()
 
+option (AQUILA_WINDOW "enable window" Off)
+if (AQUILA_WINDOW)
+    find_package(SDL2)
+endif()
+
 option(AQUILA_TESTS "build tests and examples" On)
 if (AQUILA_TESTS)
 enable_testing()
@@ -88,6 +93,7 @@ option(AQUILA_PARALLEL "use OpenMP in build" Off)
 if (AQUILA_PARALLEL)
 find_package(OpenMP)
 endif()
+
 
 pkg_check_modules(READLINE REQUIRED readline)
 
@@ -201,10 +207,21 @@ install(TARGETS aquila2 LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
 add_executable(aqfindstar src_cpp/app/aqfindstar.cpp)
 target_link_libraries(aqfindstar aquila2)
 
-add_executable(aqcli src_cpp/app/aq2cpp.cpp)
+
+set (APP_SOURCES src_cpp/app/aq2cpp.cpp)
+if (AQUILA_WINDOW)
+    set (APP_SOURCES ${APP_SOURCES} src_cpp/app/preview.cpp)
+endif()
+message(${APP_SOURCES})
+add_executable(aqcli ${APP_SOURCES})
+
 target_link_libraries(aqcli 
     -Wl,--no-as-needed aqtask_dispatch aquila2 -Wl,--as-needed 
     ${READLINE_LIBRARIES})
+
+if (AQUILA_WINDOW)
+    target_compile_definitions(aqcli PRIVATE AQUILA_WINDOW)
+endif()
 
 install(TARGETS aqfindstar aqcli RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 

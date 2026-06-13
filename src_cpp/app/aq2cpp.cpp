@@ -5,7 +5,12 @@
 #include <filesystem>
 #include <readline/history.h>
 #include <readline/readline.h>
+#include <thread>
 #include <unistd.h>
+
+#if AQUILA_WINDOW
+#    include "preview.hpp"
+#endif
 
 #include "../../src/c_binding/aquila.h"
 #include "../interpreter/interpreter.hpp"
@@ -201,6 +206,9 @@ void handle_help(std::string input)
 
 int main()
 {
+#if AQUILA_WINDOW
+    app::AquilaDisplayManager dmgr;
+#endif
     AquilaInterpreter interp;
 
     rl_attempted_completion_function = completion;
@@ -217,8 +225,9 @@ int main()
     bool abort_on_failure = !isatty(STDIN_FILENO);
     if (!abort_on_failure)
         aquila_load_history();
+    int failure = 0;
 
-    while (true)
+    while (!failure)
     {
         char *line = readline("aq🚀 ");
 
@@ -251,7 +260,12 @@ int main()
             auto result = interp.exec(input);
 
             if (result)
+            {
                 std::cout << result->str() << std::endl;
+#if AQUILA_WINDOW
+                dmgr.update("0", result);
+#endif
+            }
             else
                 std::cout << "(null)" << std::endl;
         }
@@ -259,10 +273,14 @@ int main()
         {
             std::cerr << "error: " << e.what() << std::endl;
             if (abort_on_failure)
-                exit(1);
+            {
+                failure = 1;
+                break;
+            }
         }
     }
 
     std::cout << "Clear skies! ✨🪐☄️🔭" << std::endl;
-    return 0;
+
+    return failure;
 }

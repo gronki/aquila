@@ -169,7 +169,7 @@ Token LazyTokenArray::next_token(std::int64_t offset)
 {
     Token t = peek_token(offset);
     pos += offset;
-    return std::move(t);
+    return t;
 }
 
 } // namespace aquila::interpreter

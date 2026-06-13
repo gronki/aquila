@@ -1,5 +1,6 @@
 #pragma once
 
+#include <concepts>
 #include <cstdint>
 #include <iostream>
 #include <memory>
@@ -163,6 +164,88 @@ inline const Value &value_cast<Value>(const Value &other)
 {
     return other;
 }
+
+template <typename T>
+concept ValueConcept = std::derived_from<T, Value>;
+
+template <ValueConcept T>
+class Ptr
+{
+    std::unique_ptr<T> owned;
+    const T *ref;
+
+public:
+    template <ValueConcept U>
+    friend class Ptr;
+
+    Ptr() : owned(nullptr), ref(nullptr) {};
+    Ptr(const std::nullptr_t &) : owned(nullptr), ref(nullptr) {};
+
+    template <ValueConcept U>
+        requires std::derived_from<U, T>
+    Ptr(const U *ref) : owned(nullptr), ref(ref)
+    {
+    }
+
+    template <ValueConcept U>
+        requires std::derived_from<U, T>
+    Ptr(std::unique_ptr<U> owned) : owned(std::move(owned)), ref(nullptr)
+    {
+    }
+
+    template <ValueConcept U>
+        requires std::derived_from<U, T>
+    Ptr(Ptr<U> &&other) : owned(std::move(other.owned)), ref(other.ref)
+    {
+    }
+
+    template <ValueConcept U>
+        requires std::derived_from<U, T>
+    Ptr &operator=(Ptr<U> &&other)
+    {
+        ref = std::move(other.ref);
+        owned = std::move(other.owned);
+        return *this;
+    }
+
+    Ptr &operator=(const std::nullptr_t &)
+    {
+        ref = nullptr;
+        owned = nullptr;
+        return *this;
+    }
+
+    std::unique_ptr<T> own()
+    {
+        if (owned)
+            return std::move(owned);
+        if (!ref)
+            throw std::runtime_error("trying to dereferenc empty pointer!");
+        std::unique_ptr<Value> cloned = ref->clone();
+        return std::unique_ptr<T>(static_cast<T *>(cloned.release()));
+    }
+
+    bool is_owned() const noexcept { return (bool)owned; }
+
+    const T &operator*() const
+    {
+        if (owned)
+            return *owned;
+        if (!ref)
+            throw std::runtime_error("trying to dereferenc empty pointer!");
+        return *ref;
+    }
+
+    template <typename... Args>
+    static Ptr make(Args &&...args)
+    {
+        return std::make_unique<T>(std::forward<Args>(args)...);
+    }
+
+    const T *operator->() const noexcept { return owned ? owned.get() : ref; }
+    const T *get() const noexcept { return owned ? owned.get() : ref; }
+    explicit operator bool() const noexcept { return owned || ref; }
+};
 
 using Real = double;
 using Str = std::string;

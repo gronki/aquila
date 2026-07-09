@@ -6,8 +6,8 @@ namespace aquila::ops
 {
 
 REGISTER(StackOp);
-ValuePtr StackOp::run(const std::string &method,
-    const std::vector<const values::BufferValue *> &buf_vals) const
+ValuePtr StackOp::run(
+    const std::string &method, std::vector<const values::BufferValue *> buf_vals) const
 {
 
     if (buf_vals.size() == 0)

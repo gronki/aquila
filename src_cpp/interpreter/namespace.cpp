@@ -3,17 +3,18 @@
 namespace aquila::interpreter
 {
 
-const Value *Namespace::push(const std::string &name, std::unique_ptr<Value> v)
+const Value &Namespace::push(const std::string &name, std::unique_ptr<Value> v)
 {
+    v->materialize();
     auto [it, replaced] = vault.insert_or_assign(name, std::move(v));
-    return it->second.get();
+    return *it->second;
 }
 
-const Value &Namespace::get(const std::string &name) const
+ValuePtr Namespace::get(const std::string &name) const
 {
     auto it = vault.find(name);
     if (it != vault.end())
-        return *it->second;
+        return it->second->shallow();
     if (global && global->contains(name))
         return global->get(name);
     throw std::runtime_error(std::string("No reference to ") + name + " found");

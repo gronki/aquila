@@ -8,7 +8,8 @@ namespace aquila::ops
 
 struct AddOp : public Operation
 {
-    std::unique_ptr<Value> call(const std::vector<const Value *> &) const;
+    BIND_ARGS(&AddOp::run);
+    Ptr<Value> run(std::vector<const Value *> args) const;
     ArgManifest arg_manifest() const override;
     std::string name() const { return "add"; }
     std::string description() const override
@@ -19,7 +20,8 @@ struct AddOp : public Operation
 
 struct SubOp : public Operation
 {
-    std::unique_ptr<Value> call(const std::vector<const Value *> &) const;
+    BIND_ARGS(&SubOp::run);
+    Ptr<Value> run(Ptr<Value> first, std::vector<const Value *> args) const;
 
     ArgManifest arg_manifest() const override;
     std::string name() const { return "sub"; }
@@ -31,7 +33,8 @@ struct SubOp : public Operation
 
 struct MulOp : public Operation
 {
-    std::unique_ptr<Value> call(const std::vector<const Value *> &) const;
+    BIND_ARGS(&MulOp::run);
+    Ptr<Value> run(std::vector<const Value *> args) const;
     ArgManifest arg_manifest() const override;
     std::string name() const { return "mul"; }
     std::string description() const override
@@ -42,7 +45,8 @@ struct MulOp : public Operation
 
 struct DivOp : public Operation
 {
-    std::unique_ptr<Value> call(const std::vector<const Value *> &) const;
+    BIND_ARGS(&DivOp::run);
+    Ptr<Value> run(Ptr<Value> first, std::vector<const Value *> args) const;
 
     ArgManifest arg_manifest() const override;
     std::string name() const { return "div"; }
@@ -54,18 +58,20 @@ struct DivOp : public Operation
 
 struct MixOp : public Operation
 {
-    std::unique_ptr<Value> call(const std::vector<const Value *> &) const;
+    BIND_ARGS(&MixOp::run);
+    Ptr<Value> run(std::vector<const Value *> args) const;
     ArgManifest arg_manifest() const override;
     std::string name() const { return "mix"; }
     std::string description() const override
     {
-        return "mix(a,b,c,d,...) will compute a*b + c*d + ...";
+        return "mix(a,b,c,d,.) will compute a*b + c*d + ...";
     }
 };
 
 struct LrgbOp : public Operation
 {
-    std::unique_ptr<Value> call(const std::vector<const Value *> &) const;
+    BIND_ARGS(&LrgbOp::run);
+    Ptr<Value> run(Ptr<Value> lum, std::vector<const Value *> args) const;
 
     ArgManifest arg_manifest() const override;
     std::string name() const { return "lrgb"; }

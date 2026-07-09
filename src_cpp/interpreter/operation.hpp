@@ -52,7 +52,7 @@ struct Operation
     {
         return ArgManifest{ArgSpec{.name = ARG_ELLIPSIS}};
     }
-    virtual std::unique_ptr<Value> call(const std::vector<const Value *> &) const = 0;
+    virtual ValuePtr call(std::vector<ValuePtr>) const = 0;
     virtual std::string name() const = 0;
     virtual std::string description() const { return ""; }
     std::string signature_str() const;
@@ -60,7 +60,7 @@ struct Operation
 };
 
 #define BIND_ARGS(proc)                                                                \
-    std::unique_ptr<Value> call(const std::vector<const Value *> &args) const override \
+    ValuePtr call(std::vector<ValuePtr> args) const override                           \
     {                                                                                  \
         return bind_args(this, (proc), args);                                          \
     }
@@ -78,8 +78,8 @@ std::vector<ArgMatch> match_arguments(const std::vector<ArgSpec> &manifest,
     const manifest_properties_t &,
     const std::vector<std::string> &given_keys);
 
-std::vector<const Value *> build_ptrs_from_match(
-    const std::vector<const Value *> &given_args, const std::vector<ArgMatch> &match);
+std::vector<ValuePtr> build_ptrs_from_match(
+    std::vector<ValuePtr> &given_args, std::vector<ArgMatch> &match);
 
 using OpFactory = std::unique_ptr<Operation> (*)();
 

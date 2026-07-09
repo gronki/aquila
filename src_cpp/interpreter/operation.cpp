@@ -244,28 +244,27 @@ std::vector<ArgMatch> match_arguments(const std::vector<ArgSpec> &manifest,
     return match;
 }
 
-std::vector<const Value *> build_ptrs_from_match(
-    const std::vector<const Value *> &given_args, const std::vector<ArgMatch> &match)
+std::vector<ValuePtr> build_ptrs_from_match(
+    std::vector<ValuePtr> &given_args, std::vector<ArgMatch> &match)
 {
     const size_t n_args = match.size();
 
-    std::vector<const Value *> args(n_args);
+    std::vector<ValuePtr> args(n_args);
 
     for (size_t ispec = 0; ispec < n_args; ispec++)
     {
         if (match[ispec].matched)
         {
             auto iarg = match[ispec].pos;
-            args[ispec] = given_args[iarg];
+            args[ispec] = std::move(given_args[iarg]);
             continue;
         }
         if (match[ispec].deftgt)
         {
-            args[ispec] = match[ispec].deftgt.get();
+            args[ispec] = std::move(match[ispec].deftgt);
             continue;
         }
         std::cout << "Warning! empty argument " << ispec << std::endl;
-        args[ispec] = nullptr;
     }
 
     return args;

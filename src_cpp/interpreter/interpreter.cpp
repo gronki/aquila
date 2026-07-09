@@ -17,13 +17,13 @@ std::unique_ptr<ExecNode> build_exectree_from_str(
     return build_exec_tree(root, ns, opdb);
 }
 
-const Value *AquilaInterpreter::exec(const std::string &command)
+Ptr<Value> AquilaInterpreter::exec(const std::string &command)
 {
     Namespace sub_ns{&ns};
     exectree = build_exectree_from_str(command, sub_ns, global_op_db());
     if (!exectree)
         return nullptr;
-    const Value *result = exectree->yield();
+    auto result = exectree->yield();
     ns.merge(std::move(sub_ns));
     return result;
 }

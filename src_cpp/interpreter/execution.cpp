@@ -5,6 +5,7 @@
 
 #include "execution.hpp"
 #include "operation.hpp"
+#include "type_converter.hpp"
 #include "value.hpp"
 
 namespace aquila::interpreter
@@ -17,17 +18,12 @@ OpNode::OpNode(std::unique_ptr<Operation> op,
 {
     try
     {
-        auto manifest = this->op->arg_manifest();
-        props.analyze(manifest);
-        if (props.has_ellipsis)
-            ellipsis_entry = {.name = ARG_ELLIPSIS,
-                .sequence = manifest.back().sequence,
-                .convert = manifest.back().convert};
-        match = match_arguments(manifest, props, this->keys);
         for (const auto &key : this->keys)
         {
-            expansion.push_back(key == std::string(1, EXPAND_DELIM));
-            is_keyword.push_back(!key.empty() && !expansion.back());
+            bool is_expansion = key == std::string(1, EXPAND_DELIM);
+            expansion.push_back(is_expansion);
+            is_keyword.push_back(!key.empty() && !is_expansion);
+            any_expansion = any_expansion || is_expansion;
         }
     }
     catch (std::exception &e)
@@ -37,31 +33,36 @@ OpNode::OpNode(std::unique_ptr<Operation> op,
     }
 }
 
-static std::vector<const Value *> make_ith_argument(const std::vector<const Value *> &args,
-    const std::vector<int> &is_sequence,
+static std::vector<Ptr<Value>> make_ith_argument(const std::vector<Ptr<Value>> &args,
+    std::vector<Ptr<SequenceValue>> &sequences,
     std::int64_t iseq)
 {
-    std::vector<const Value *> argvec(args.size());
+    std::vector<Ptr<Value>> argvec(args.size());
 
     for (size_t iarg = 0; iarg < args.size(); iarg++)
     {
-        if (is_sequence[iarg])
+        auto &seq = sequences[iarg];
+        if (seq)
         {
-            const SequenceValue *seq_ptr = static_cast<const SequenceValue *>(args[iarg]);
-            const Value *ptr = seq_ptr->items[iseq].get();
-            argvec[iarg] = ptr;
+            if (seq.is_owned())
+            {
+                argvec[iarg] = seq.own_item(iseq);
+            }
+            else
+            {
+                argvec[iarg] = seq->items[iseq].get();
+            }
         }
         else
         {
-            argvec[iarg] = args[iarg];
+            argvec[iarg] = args[iarg].get();
         }
     }
 
     return argvec;
 }
 
-static ValuePtr op_call_with_debug(
-    const Operation &op, const std::vector<const Value *> &args)
+static ValuePtr op_call_with_debug(const Operation &op, std::vector<Ptr<Value>> args)
 {
 #ifndef NDEBUG
     std::cout << "running " << op.name() << "(";
@@ -76,7 +77,7 @@ static ValuePtr op_call_with_debug(
 
     try
     {
-        auto result = op.call(args);
+        auto result = op.call(std::move(args));
 #ifndef NDEBUG
         std::cout << (result ? result->str() : "(null)") << std::endl;
 #endif
@@ -91,31 +92,38 @@ static ValuePtr op_call_with_debug(
     }
 }
 
-static std::unique_ptr<Value> op_call_with_sequencing(const Operation &op,
-    std::vector<const Value *> args,
-    const std::vector<ArgMatch> &match)
+static Ptr<Value> run_sanitizer(Ptr<Value> arg, const ConvertFun &conv)
+{
+    if (!arg)
+        return {nullptr};
+    auto converted = conv(*arg);
+    if (converted)
+        return converted;
+    return arg;
+}
+
+static constexpr int64_t SEQUENCE_NOT_FOUND = -1;
+
+static std::vector<Ptr<SequenceValue>> pick_sequences(
+    std::vector<ValuePtr> &args, const std::vector<ArgMatch> &match, int64_t &sequence_len)
 {
 
-    if (args.size() == 0)
-        return op_call_with_debug(op, args);
+    std::vector<Ptr<SequenceValue>> sequences(args.size());
 
-    std::vector<int> is_sequence(args.size(), 0);
-
-    constexpr std::int64_t SEQUENCE_NOT_FOUND = -1;
-    std::int64_t sequence_len = SEQUENCE_NOT_FOUND;
+    sequence_len = SEQUENCE_NOT_FOUND;
 
     for (size_t iarg = 0; iarg < args.size(); iarg++)
     {
-        const Value *arg = args[iarg];
+        auto &arg = args[iarg];
 
-        // confusing, but if an argument is expected to be a sequence,
-        // we consider it as a single value instead of expanding it
-        auto seq_arg = match[iarg].sequence ? nullptr : value_cast<SequenceValue>(arg);
-
-        is_sequence[iarg] = seq_arg != nullptr;
-
-        if (!seq_arg)
+        if (!arg)
             continue;
+
+        if (match[iarg].sequence || !arg->is_sequence())
+            continue;
+
+        sequences[iarg] = std::move(arg);
+        auto &seq_arg = sequences[iarg];
 
         if (sequence_len == SEQUENCE_NOT_FOUND)
         {
@@ -128,40 +136,50 @@ static std::unique_ptr<Value> op_call_with_sequencing(const Operation &op,
                 + std::to_string(seq_arg->size()) + " != " + std::to_string(sequence_len));
         }
     }
+    return sequences;
+}
 
-    auto get_sanitized = [&is_sequence, &match](std::vector<ValuePtr> &owner,
-                             std::vector<const Value *> args,
-                             int mask_seq)
-    {
-        for (size_t iarg = 0; iarg < args.size(); iarg++)
-        {
-            if (is_sequence[iarg] != mask_seq || !match[iarg].convert)
-                continue;
-            owner[iarg] = match[iarg].convert(*args[iarg]);
-            if (owner[iarg])
-                args[iarg] = owner[iarg].get();
-        }
-        return args;
-    };
-    std::vector<std::unique_ptr<Value>> sanitized(args.size());
+static ValuePtr op_call_with_sequencing(
+    const Operation &op, std::vector<ValuePtr> args, const std::vector<ArgMatch> &match)
+{
+
+    if (args.size() == 0)
+        return op_call_with_debug(op, {});
+
+    int64_t sequence_len;
+    auto sequences = pick_sequences(args, match, sequence_len);
+
     // sanitize non-sequence args
-    args = get_sanitized(sanitized, std::move(args), 0);
+    for (size_t iarg = 0; iarg < args.size(); iarg++)
+    {
+        if (!args[iarg] || !match[iarg].convert)
+            continue;
+        args[iarg] = run_sanitizer(std::move(args[iarg]), match[iarg].convert);
+    }
 
     if (sequence_len == SEQUENCE_NOT_FOUND)
     {
-        return op_call_with_debug(op, args);
+        return op_call_with_debug(op, std::move(args));
     }
 
     if (sequence_len == 0)
-        return std::make_unique<SequenceValue>(std::vector<ValuePtr>{});
+        return Ptr<SequenceValue>::make(std::vector<ValuePtr>{});
 
-    std::vector<std::unique_ptr<Value>> result(sequence_len);
+    std::vector<ValuePtr> result(sequence_len);
 
-    auto process_seq_item = [&op, &args, &is_sequence, &get_sanitized](int64_t iseq) -> ValuePtr
+    auto process_seq_item = [&op, &args, &sequences, &match](int64_t iseq) -> ValuePtr
     {
-        std::vector<std::unique_ptr<Value>> sanitized_seq(args.size());
-        return op_call_with_debug(op,
-            get_sanitized(sanitized_seq, make_ith_argument(args, is_sequence, iseq), 1));
+        std::vector<ValuePtr> sanitized_seq(args.size());
+        auto ith_vector = make_ith_argument(args, sequences, iseq);
+        for (size_t iarg = 0; iarg < args.size(); iarg++)
+        {
+            if (!sequences[iarg] || !match[iarg].convert)
+                continue;
+            ith_vector[iarg] =
+                run_sanitizer(std::move(ith_vector[iarg]), match[iarg].convert);
+        }
+
+        return op_call_with_debug(op, std::move(ith_vector));
     };
 
 #ifdef AQUILA_PARALLEL
@@ -221,121 +239,94 @@ static std::unique_ptr<Value> op_call_with_sequencing(const Operation &op,
     }
 #endif
 
-    return std::make_unique<SequenceValue>(std::move(result));
+    return Ptr<SequenceValue>::make(std::move(result));
 }
 
-const Value *OpNode::yield()
+Ptr<Value> OpNode::yield()
 {
-    if (value)
-        return value.get();
 
-    std::vector<const Value *> arg_results(args.size());
-    std::vector<const SequenceValue *> seq_results(args.size());
-    std::vector<int> expanded_counts(args.size());
-    arg_results.reserve(args.size());
-    size_t num_expanded = 0;
+    std::vector<Ptr<Value>> arg_results;
+    std::vector<Str> key_results;
 
     for (size_t iarg = 0; iarg < args.size(); iarg++)
     {
         auto result = args[iarg]->yield();
-        arg_results[iarg] = result;
-        seq_results[iarg] = expansion[iarg] ? value_cast<SequenceValue>(result) : nullptr;
-        if (!is_keyword[iarg])
-            num_expanded += seq_results[iarg] ? seq_results[iarg]->size() : 1;
-    }
-    num_expanded += props.num_keyword;
-    auto orig_ptrs = build_ptrs_from_match(arg_results, match);
-    const auto num_match = props.num_positionals + props.num_keyword;
-#ifndef NDEBUG
-    std::cout << "num expanded= " << num_expanded << std::endl;
-#endif
-    if (!props.has_ellipsis && num_expanded != num_match)
-        throw std::runtime_error(
-            std::string("Mismatch in total argument count for function ") + op->name()
-            + std::string("; expected ") + std::to_string(num_match)
-            + std::string(" but got ") + std::to_string(num_expanded));
-    std::vector<const Value *> expanded_ptrs(num_expanded);
-    for (size_t imatch = props.num_positionals; imatch < num_match; imatch++)
-        expanded_ptrs[imatch] = orig_ptrs[imatch];
-
-    auto idest = [this](size_t ipos_cursor)
-    {
-        return ipos_cursor < this->props.num_positionals
-            ? ipos_cursor
-            : ipos_cursor + this->props.num_keyword;
-    };
-
-    size_t ipos_cursor = 0;
-    for (size_t ipos = 0; ipos < args.size(); ipos++)
-    {
-        if (!keys[ipos].empty() && !expansion[ipos])
-            continue;
-#ifndef NDEBUG
-        std::cout << "ipos = " << ipos << "   cursor = " << ipos_cursor << std::endl;
-#endif
-        if (!expansion[ipos] || !seq_results[ipos])
+        if (!expansion[iarg])
         {
-#ifndef NDEBUG
-            std::cout << "arg @" << ipos << " " << *arg_results[ipos] << " -> expanded "
-                      << idest(ipos_cursor) << std::endl;
-#endif
-            expanded_ptrs[idest(ipos_cursor)] = arg_results[ipos];
-            ipos_cursor += 1;
+            arg_results.push_back(std::move(result));
+            key_results.push_back(keys[iarg]);
             continue;
         }
-        for (auto &ptr : seq_results[ipos]->items)
+        auto seq_result = value_cast<SequenceValue>(result);
+        if (!seq_result)
         {
+            std::cout << "Expansion but not a sequence..." << std::endl;
+            arg_results.push_back(std::move(result));
+            key_results.push_back({});
+            continue;
+        }
 
-#ifndef NDEBUG
-            std::cout << "seq @" << ipos << " " << *seq_results[ipos] << " -> expanded "
-                      << idest(ipos_cursor) << std::endl;
-#endif
-            expanded_ptrs[idest(ipos_cursor)] = ptr.get();
-            ipos_cursor += 1;
+        if (seq_result.is_owned())
+        {
+            auto seq_owned = seq_result.own();
+            for (size_t iexp = 0; iexp < seq_owned->size(); iexp++)
+            {
+                arg_results.emplace_back(std::move(seq_owned->items[iexp]));
+                key_results.push_back({});
+            }
+        }
+        else
+        {
+            for (size_t iexp = 0; iexp < seq_result->size(); iexp++)
+            {
+                arg_results.emplace_back(seq_result->items[iexp].get());
+                key_results.push_back({});
+            }
         }
     }
-    while (match.size() < num_expanded)
-        match.push_back({.pos = match.size(),
-            .convert = ellipsis_entry.convert,
-            .sequence = ellipsis_entry.sequence});
+    for (size_t iarg = 0; iarg < arg_results.size(); iarg++)
+    {
+        std::cout << "ARG " << iarg + 1 << ": key \"" << key_results[iarg]
+                  << "\", value = " << *arg_results[iarg] << std::endl;
+    }
+    auto manifest = op->arg_manifest();
+    manifest_properties_t props;
+    props.analyze(manifest);
+    auto match = match_arguments(manifest, props, key_results);
     try
     {
-        value = op_call_with_sequencing(*op, expanded_ptrs, match);
+        return op_call_with_sequencing(
+            *op, build_ptrs_from_match(arg_results, match), match);
     }
     catch (const std::runtime_error &e)
     {
         throw std::runtime_error(
             std::string("Error in operation ") + op->name() + ": " + e.what());
     }
-
-    for (auto &arg : args)
-    {
-        arg->clean();
-    }
-
-    return value.get();
 }
 
-const Value *InlineAssignmentNode::yield()
+Ptr<Value> InlineAssignmentNode::yield()
 {
-    if (value)
-        return value.get();
 
-    const Value *in = arg->yield();
+    Ptr<Value> in = arg->yield();
+
+    if (!in)
+        throw std::runtime_error("empty value may not be assigned");
 
     if (idents.size() == 1)
     {
-        return ns.push(idents[0], in->clone());
+        return &ns.push(idents[0], in.own());
     }
     else
     {
-        const SequenceValue &sqv = value_cast<SequenceValue>(*in);
+        auto owned = in.own();
+        SequenceValue &sqv = value_cast<SequenceValue>(*owned);
         if (sqv.size() != idents.size())
             throw std::runtime_error("expected sequence of length "
                 + std::to_string(idents.size()) + ", got: " + std::to_string(sqv.size()));
         for (std::size_t iarg = 0; iarg < idents.size(); iarg++)
         {
-            ns.push(idents[iarg], sqv.items[iarg]->clone());
+            ns.push(idents[iarg], sqv.items[iarg].own());
         }
 
         return in;

@@ -8,7 +8,7 @@ namespace aquila::ops
 struct PathOp : public Operation
 {
     BIND_ARGS(&PathOp::run);
-    ValuePtr run(const std::vector<const Str *> &) const;
+    ValuePtr run(std::vector<const Str *>) const;
 
     ArgManifest arg_manifest() const override
     {

@@ -7,9 +7,9 @@ namespace aquila::ops
 {
 
 REGISTER(AddOp);
-std::unique_ptr<Value> AddOp::call(const std::vector<const Value *> &args) const
+Ptr<Value> AddOp::run(std::vector<const Value *> args) const
 {
-    ValuePtr result = std::make_unique<RealValue>(0);
+    std::unique_ptr<Value> result = std::make_unique<RealValue>(0);
     for (const Value *arg : args)
     {
         result = apply_binary(*result, *arg, [](auto a, auto b) { return a + b; });
@@ -25,12 +25,10 @@ ArgManifest AddOp::arg_manifest() const
 }
 
 REGISTER(SubOp);
-std::unique_ptr<Value> SubOp::call(const std::vector<const Value *> &args) const
+Ptr<Value> SubOp::run(Ptr<Value> first, std::vector<const Value *> args) const
 {
-    if (args.size() < 1)
-        throw std::runtime_error(name() + " expects at least one argument!");
-    ValuePtr result = args[0]->clone();
-    for (std::size_t iarg = 1; iarg < args.size(); iarg++)
+    auto result = first.own();
+    for (std::size_t iarg = 0; iarg < args.size(); iarg++)
     {
         result = apply_binary(*result, *args[iarg], [](auto a, auto b) { return a - b; });
     }
@@ -46,9 +44,9 @@ ArgManifest SubOp::arg_manifest() const
 }
 
 REGISTER(MulOp);
-std::unique_ptr<Value> MulOp::call(const std::vector<const Value *> &args) const
+Ptr<Value> MulOp::run(std::vector<const Value *> args) const
 {
-    ValuePtr result = std::make_unique<RealValue>(1);
+    std::unique_ptr<Value> result = std::make_unique<RealValue>(1);
     for (const Value *arg : args)
     {
         result = apply_binary(*result, *arg, [](auto a, auto b) { return a * b; });
@@ -64,12 +62,12 @@ ArgManifest MulOp::arg_manifest() const
 }
 
 REGISTER(DivOp);
-std::unique_ptr<Value> DivOp::call(const std::vector<const Value *> &args) const
+Ptr<Value> DivOp::run(Ptr<Value> first, std::vector<const Value *> args) const
 {
-    if (args.size() < 1)
-        throw std::runtime_error(name() + " expects at least one argument!");
-    ValuePtr result = args[0]->clone();
-    for (std::size_t iarg = 1; iarg < args.size(); iarg++)
+    if (args.size() == 0)
+        return first;
+    auto result = first.own();
+    for (std::size_t iarg = 0; iarg < args.size(); iarg++)
     {
         result = apply_binary(*result, *args[iarg], [](auto a, auto b) { return a / b; });
     }
@@ -84,13 +82,13 @@ ArgManifest DivOp::arg_manifest() const
     };
 }
 REGISTER(MixOp);
-std::unique_ptr<Value> MixOp::call(const std::vector<const Value *> &args) const
+Ptr<Value> MixOp::run(std::vector<const Value *> args) const
 {
     if (args.size() % 2)
         throw std::runtime_error(
             std::string("Mix requires even number of arguments but got: ")
             + std::to_string(args.size()));
-    ValuePtr result = std::make_unique<RealValue>(0);
+    std::unique_ptr<Value> result = std::make_unique<RealValue>(0);
     for (std::size_t iarg = 0; iarg < args.size(); iarg += 2)
     {
         result = apply_tertiary(*result,
@@ -109,24 +107,21 @@ ArgManifest MixOp::arg_manifest() const
 }
 
 REGISTER(LrgbOp);
-std::unique_ptr<Value> LrgbOp::call(const std::vector<const Value *> &args) const
+Ptr<Value> LrgbOp::run(Ptr<Value> lum, std::vector<const Value *> args) const
 {
     if (args.size() == 0)
-        throw std::runtime_error(
-            "LRGB requires at least 1 argument (but pointless below 3) ");
-    if (args.size() == 1)
-        return std::make_unique<interpreter::SequenceValue>();
-    ValuePtr chroma_sum = std::make_unique<RealValue>(0);
-    for (std::size_t iarg = 1; iarg < args.size(); iarg++)
+        return lum;
+    std::unique_ptr<Value> chroma_sum = std::make_unique<RealValue>(0);
+    for (std::size_t iarg = 0; iarg < args.size(); iarg++)
     {
         chroma_sum =
             apply_binary(*chroma_sum, *args[iarg], [](auto a, auto b) { return a + b; });
     }
     std::vector<ValuePtr> scaled_components;
     scaled_components.reserve(args.size() - 1);
-    for (std::size_t iarg = 1; iarg < args.size(); iarg++)
+    for (std::size_t iarg = 0; iarg < args.size(); iarg++)
     {
-        scaled_components.push_back(apply_tertiary(*args[0],
+        scaled_components.push_back(apply_tertiary(*lum,
             *args[iarg],
             *chroma_sum,
             [](auto l, auto c, auto s) { return l * c / s; }));

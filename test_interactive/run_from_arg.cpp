@@ -13,7 +13,7 @@ int main(int argc, char **argv)
     {
         try
         {
-            const Value *result = interp.exec(argv[i]);
+            auto result = interp.exec(argv[i]);
             if (!result)
             {
                 std::cout << "null" << std::endl;

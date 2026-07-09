@@ -7,13 +7,13 @@ namespace aquila::ops
 
 REGISTER(NormalizeOp);
 ValuePtr NormalizeOp::run(
-    const Real &margin, const std::vector<const values::BufferValue *> &inputs) const
+    const Real &margin, std::vector<Ptr<values::BufferValue>> inputs) const
 {
     std::vector<ValuePtr> items;
     std::vector<const_buffer_descriptor_t> buf_inputs;
     std::vector<buffer_descriptor_t> buf_outputs;
 
-    for (auto ptr : inputs)
+    for (auto &ptr : inputs)
     {
         auto buf = std::make_unique<values::BufferValue>(
             Buffer<real_buf_t>(ptr->buffer.cols(), ptr->buffer.rows()), ptr->info);
@@ -26,7 +26,7 @@ ValuePtr NormalizeOp::run(
         buf_inputs.data(), buf_outputs.data(), inputs.size(), margin, &err);
     if (err.status)
         throw std::string(err.message);
-    return std::make_unique<SequenceValue>(std::move(items));
+    return Ptr<SequenceValue>::make(std::move(items));
 }
 
 ArgManifest NormalizeOp::arg_manifest() const

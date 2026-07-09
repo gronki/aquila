@@ -19,7 +19,7 @@ class AquilaInterpreter
     std::unique_ptr<ExecNode> exectree;
 
 public:
-    const Value *exec(const std::string &);
+    ValuePtr exec(const std::string &);
 };
 
 } // namespace aquila::interpreter

@@ -17,8 +17,7 @@ protected:
 
 public:
     ExecNode(Namespace &ns) : ns(ns) {}
-    virtual const Value *yield() = 0;
-    virtual void clean() {};
+    virtual Ptr<Value> yield() = 0;
     virtual std::optional<std::string> get_refname() const { return std::nullopt; }
     virtual ~ExecNode() = default;
 };
@@ -26,20 +25,13 @@ public:
 class RefNode : public ExecNode
 {
     std::string refname;
-    StrValue fallback;
 
 public:
-    RefNode(const std::string &refname, Namespace &ns) :
-        ExecNode(ns), refname(refname), fallback(refname)
+    RefNode(const std::string &refname, Namespace &ns) : ExecNode(ns), refname(refname)
     {
     }
 
-    const Value *yield() override
-    {
-        if (ns.contains(refname))
-            return &ns.get(refname);
-        return &fallback;
-    }
+    Ptr<Value> yield() override { return ns.get(refname); }
 
     std::optional<std::string> get_refname() const override { return refname; }
 };
@@ -55,14 +47,15 @@ public:
     {
     }
 
-    const Value *yield() override
+    Ptr<Value> yield() override
     {
-        const Value *rhs_yield = rhs->yield();
-        ns.push(lhs, rhs_yield->clone());
-        return rhs_yield;
+        Ptr<Value> rhs_yield = rhs->yield();
+        if (!rhs_yield)
+            return {};
+        auto mine = rhs_yield.own();
+        mine->materialize();
+        return &ns.push(lhs, std::move(mine));
     }
-
-    void clean() override { rhs->clean(); }
 };
 
 class ValueNode : public ExecNode
@@ -75,33 +68,27 @@ public:
     {
     }
 
-    const Value *yield() override { return value.get(); }
+    Ptr<Value> yield() override { return value.get(); }
 };
 
 class OpNode : public ExecNode
 {
     std::unique_ptr<Operation> op;
-    std::unique_ptr<Value> value;
     std::vector<std::unique_ptr<ExecNode>> args;
-    std::vector<ArgMatch> match;
     std::vector<std::string> keys;
-    manifest_properties_t props;
     std::vector<int> expansion, is_keyword;
-    ArgSpec ellipsis_entry;
+    bool any_expansion = false;
 
 public:
     OpNode(std::unique_ptr<Operation> op,
         std::vector<std::unique_ptr<ExecNode>> args,
         std::vector<std::string> keys,
         Namespace &ns);
-    const Value *yield() override;
-
-    void clean() override { value = nullptr; }
+    Ptr<Value> yield() override;
 };
 
 class InlineAssignmentNode : public ExecNode
 {
-    std::unique_ptr<Value> value;
     std::unique_ptr<ExecNode> arg;
     std::vector<std::string> idents;
 
@@ -112,8 +99,6 @@ public:
     {
     }
 
-    const Value *yield() override;
-
-    void clean() override { value = nullptr; }
+    Ptr<Value> yield() override;
 };
 } // namespace aquila::interpreter

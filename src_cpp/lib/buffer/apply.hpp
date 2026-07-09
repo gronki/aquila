@@ -18,7 +18,7 @@ inline auto apply(const View<T> &one, F f)
     {
         const T *__restrict one_data = one.data();
         U *__restrict result_data = result.data();
-#pragma omp simd
+        // #pragma omp simd
         for (std::int64_t i = 0; i < result.size(); i++)
         {
             result_data[i] = f(one_data[i]);
@@ -30,7 +30,7 @@ inline auto apply(const View<T> &one, F f)
     {
         const T *__restrict one_vec = one.vec(ivec);
         U *__restrict result_vec = result.vec(ivec);
-#pragma omp simd
+        // #pragma omp simd
         for (std::int64_t lvec = 0; lvec < one.nvec(); lvec++)
         {
             result_vec[lvec] = f(one_vec[lvec]);
@@ -55,7 +55,7 @@ inline auto apply(const View<T> &one, const View<U> &other, F f)
         const T *__restrict one_data = one.data();
         const U *__restrict other_data = other.data();
         V *__restrict result_data = result.data();
-#pragma omp simd
+        // #pragma omp simd
         for (std::int64_t i = 0; i < result.size(); i++)
         {
             result_data[i] = f(one_data[i], other_data[i]);
@@ -68,7 +68,7 @@ inline auto apply(const View<T> &one, const View<U> &other, F f)
         const T *__restrict one_vec = one.vec(ivec);
         const U *__restrict other_vec = other.vec(ivec);
         V *__restrict result_vec = result.vec(ivec);
-#pragma omp simd
+        // #pragma omp simd
         for (std::int64_t lvec = 0; lvec < one.nvec(); lvec++)
         {
             result_vec[lvec] = f(one_vec[lvec], other_vec[lvec]);
@@ -96,7 +96,7 @@ inline auto apply(const View<T> &one, const View<U> &other, const View<V> &onemo
         const U *__restrict other_data = other.data();
         const V *__restrict onemore_data = onemore.data();
         W *__restrict result_data = result.data();
-#pragma omp simd
+        // #pragma omp simd
         for (std::int64_t i = 0; i < result.size(); i++)
         {
             result_data[i] = f(one_data[i], other_data[i], onemore_data[i]);
@@ -110,7 +110,7 @@ inline auto apply(const View<T> &one, const View<U> &other, const View<V> &onemo
         const U *__restrict other_vec = other.vec(ivec);
         const V *__restrict onemore_vec = onemore.vec(ivec);
         W *__restrict result_vec = result.vec(ivec);
-#pragma omp simd
+        // #pragma omp simd
         for (std::int64_t lvec = 0; lvec < one.nvec(); lvec++)
         {
             result_vec[lvec] = f(one_vec[lvec], other_vec[lvec], onemore_vec[lvec]);

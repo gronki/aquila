@@ -4,15 +4,15 @@ namespace aquila::interpreter::ops
 {
 
 REGISTER(SequenceOp);
-std::unique_ptr<Value> SequenceOp::call(const std::vector<const Value *> &args) const
+ValuePtr SequenceOp::call(std::vector<ValuePtr> args) const
 {
-    std::vector<std::unique_ptr<Value>> items;
+    std::vector<ValuePtr> items;
     items.resize(args.size());
     for (size_t i = 0; i < args.size(); i++)
     {
-        items[i] = args[i]->clone();
+        items[i] = std::move(args[i]);
     }
-    return std::make_unique<SequenceValue>(std::move(items));
+    return Ptr<SequenceValue>::make(std::move(items));
 }
 
 ArgManifest SequenceOp::arg_manifest() const
@@ -23,15 +23,15 @@ ArgManifest SequenceOp::arg_manifest() const
 }
 
 REGISTER(ZipOp);
-std::unique_ptr<Value> ZipOp::call(const std::vector<const Value *> &args) const
+ValuePtr ZipOp::call(std::vector<ValuePtr> args) const
 {
-    std::vector<std::unique_ptr<Value>> items;
+    std::vector<ValuePtr> items;
     items.resize(args.size());
     for (size_t i = 0; i < args.size(); i++)
     {
-        items[i] = args[i]->clone();
+        items[i] = std::move(args[i]);
     }
-    return std::make_unique<SequenceValue>(std::move(items));
+    return Ptr<SequenceValue>::make(std::move(items));
 }
 
 ArgManifest ZipOp::arg_manifest() const

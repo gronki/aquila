@@ -38,6 +38,14 @@ struct value_type
             }
         }
     }
+    constexpr value_type(const value_type &other)
+    {
+        for (std::size_t i = 0; i < TYPE_N_LEN; i++)
+        {
+            tname[i] = other.tname[i];
+        }
+        hsh = other.hsh;
+    }
     std::string str() const
     {
         std::size_t len_trim;
@@ -64,6 +72,98 @@ struct value_type
     }
 };
 
+struct Value;
+
+template <typename T>
+concept ValueConcept = std::derived_from<T, Value>;
+
+template <ValueConcept T>
+class Ptr
+{
+    std::unique_ptr<T> owned;
+    const T *ref;
+
+public:
+    template <ValueConcept U>
+    friend class Ptr;
+
+    Ptr() : owned(nullptr), ref(nullptr) {};
+    Ptr(std::nullptr_t) : owned(nullptr), ref(nullptr) {};
+
+    template <ValueConcept U>
+    Ptr(const U *ref) : owned(nullptr), ref(static_cast<const T *>(ref))
+    {
+    }
+
+    template <ValueConcept U>
+    Ptr(std::unique_ptr<U> owned) :
+        owned(owned ? static_cast<T *>(owned.release()) : nullptr), ref(nullptr)
+    {
+    }
+
+    template <ValueConcept U>
+    Ptr(Ptr<U> &&other) :
+        owned(other.owned ? std::unique_ptr<T>(static_cast<T *>(other.owned.release()))
+                          : nullptr),
+        ref(static_cast<const T *>(other.ref))
+    {
+    }
+
+    template <ValueConcept U>
+    Ptr &operator=(Ptr<U> &&other)
+    {
+        owned = other.owned ? std::unique_ptr<T>(static_cast<T *>(other.owned.release()))
+                            : nullptr;
+        ref = static_cast<const T *>(other.ref);
+        return *this;
+    }
+
+    Ptr &operator=(std::nullptr_t)
+    {
+        owned = nullptr;
+        ref = nullptr;
+        return *this;
+    }
+
+    std::unique_ptr<T> own()
+    {
+        if (owned)
+        {
+            ref = owned.get();
+            return std::move(owned);
+        }
+        if (!ref)
+            throw std::runtime_error("trying to dereferenc empty pointer!");
+        std::unique_ptr<Value> cloned = ref->clone();
+        return std::unique_ptr<T>(static_cast<T *>(cloned.release()));
+    }
+
+    Ptr<Value> own_item(size_t idx);
+
+    bool is_owned() const noexcept { return (bool)owned; }
+
+    const T &operator*() const
+    {
+        if (owned)
+            return *owned;
+        if (!ref)
+            throw std::runtime_error("trying to dereferenc empty pointer!");
+        return *ref;
+    }
+
+    template <typename... Args>
+    static Ptr make(Args &&...args)
+    {
+        return std::make_unique<T>(std::forward<Args>(args)...);
+    }
+
+    const T *operator->() const noexcept { return owned ? owned.get() : ref; }
+    const T *get() const noexcept { return owned ? owned.get() : ref; }
+    explicit operator bool() const noexcept { return owned || ref; }
+};
+
+using ValuePtr = Ptr<Value>;
+
 struct Value
 {
     Value() {}
@@ -73,6 +173,9 @@ struct Value
     virtual void write(std::ostream &os) const = 0;
     virtual ~Value() = default;
     virtual const value_type &get_type() const = 0;
+    virtual void materialize() {}
+    virtual bool is_sequence() const { return false; }
+    virtual ValuePtr shallow() const { return {this}; }
     std::string str() const
     {
         std::stringstream ss;
@@ -106,19 +209,25 @@ inline std::ostream &operator<<(std::ostream &os, const Value &v)
 }
 
 template <typename T>
+inline bool __is_compatible(const value_type &t)
+{
+    return t == T::type_name;
+}
+
+template <>
+inline bool __is_compatible<Value>(const value_type &t)
+{
+    return true;
+}
+
+template <typename T>
 inline T *value_cast(Value *other)
 {
     if (!other)
         return nullptr;
-    if (other->get_type() != T::type_name)
+    if (!__is_compatible<T>(other->get_type()))
         return nullptr;
     return static_cast<T *>(other);
-}
-
-template <>
-inline Value *value_cast<Value>(Value *other)
-{
-    return other;
 }
 
 template <typename T>
@@ -126,133 +235,51 @@ inline const T *value_cast(const Value *other)
 {
     if (!other)
         return nullptr;
-    if (other->get_type() != T::type_name)
+    if (!__is_compatible<T>(other->get_type()))
         return nullptr;
     return static_cast<const T *>(other);
-}
-
-template <>
-inline const Value *value_cast<Value>(const Value *other)
-{
-    return other;
 }
 
 template <typename T>
 inline T &value_cast(Value &other)
 {
-    if (other.get_type() != T::type_name)
+    if (!__is_compatible<T>(other.get_type()))
         throw std::bad_cast{};
     return static_cast<T &>(other);
-}
-
-template <>
-inline Value &value_cast<Value>(Value &other)
-{
-    return other;
 }
 
 template <typename T>
 inline const T &value_cast(const Value &other)
 {
-    if (other.get_type() != T::type_name)
+    if (!__is_compatible<T>(other.get_type()))
         throw std::bad_cast{};
     return static_cast<const T &>(other);
 }
 
-template <>
-inline const Value &value_cast<Value>(const Value &other)
+template <ValueConcept T, ValueConcept U>
+inline Ptr<T> value_cast(Ptr<U> &other)
 {
-    return other;
+    if (!other)
+        return {};
+    if (!__is_compatible<T>(other->get_type()))
+        return {};
+    return std::move(other);
 }
-
-template <typename T>
-concept ValueConcept = std::derived_from<T, Value>;
-
-template <ValueConcept T>
-class Ptr
-{
-    std::unique_ptr<T> owned;
-    const T *ref;
-
-public:
-    template <ValueConcept U>
-    friend class Ptr;
-
-    Ptr() : owned(nullptr), ref(nullptr) {};
-    Ptr(const std::nullptr_t &) : owned(nullptr), ref(nullptr) {};
-
-    template <ValueConcept U>
-        requires std::derived_from<U, T>
-    Ptr(const U *ref) : owned(nullptr), ref(ref)
-    {
-    }
-
-    template <ValueConcept U>
-        requires std::derived_from<U, T>
-    Ptr(std::unique_ptr<U> owned) : owned(std::move(owned)), ref(nullptr)
-    {
-    }
-
-    template <ValueConcept U>
-        requires std::derived_from<U, T>
-    Ptr(Ptr<U> &&other) : owned(std::move(other.owned)), ref(other.ref)
-    {
-    }
-
-    template <ValueConcept U>
-        requires std::derived_from<U, T>
-    Ptr &operator=(Ptr<U> &&other)
-    {
-        ref = std::move(other.ref);
-        owned = std::move(other.owned);
-        return *this;
-    }
-
-    Ptr &operator=(const std::nullptr_t &)
-    {
-        ref = nullptr;
-        owned = nullptr;
-        return *this;
-    }
-
-    std::unique_ptr<T> own()
-    {
-        if (owned)
-            return std::move(owned);
-        if (!ref)
-            throw std::runtime_error("trying to dereferenc empty pointer!");
-        std::unique_ptr<Value> cloned = ref->clone();
-        return std::unique_ptr<T>(static_cast<T *>(cloned.release()));
-    }
-
-    bool is_owned() const noexcept { return (bool)owned; }
-
-    const T &operator*() const
-    {
-        if (owned)
-            return *owned;
-        if (!ref)
-            throw std::runtime_error("trying to dereferenc empty pointer!");
-        return *ref;
-    }
-
-    template <typename... Args>
-    static Ptr make(Args &&...args)
-    {
-        return std::make_unique<T>(std::forward<Args>(args)...);
-    }
-
-    const T *operator->() const noexcept { return owned ? owned.get() : ref; }
-    const T *get() const noexcept { return owned ? owned.get() : ref; }
-    explicit operator bool() const noexcept { return owned || ref; }
-};
 
 using Real = double;
 using Str = std::string;
 using Int = std::int64_t;
 
 template <typename T>
-struct __simpleval_typenames;
+struct __simpleval_typenames
+{
+    TYPE_NAME(T::type_name);
+};
+template <>
+struct __simpleval_typenames<Value>
+{
+    TYPE_NAME("any");
+};
 template <>
 struct __simpleval_typenames<Str>
 {
@@ -268,6 +295,12 @@ struct __simpleval_typenames<Real>
 {
     TYPE_NAME("real");
 };
+
+template <typename T>
+const value_type &value_type_info()
+{
+    return __simpleval_typenames<T>::type_name;
+}
 
 template <typename T>
 struct SimpleValue : public ValueBase<SimpleValue<T>>
@@ -384,7 +417,6 @@ inline const Real &value_cast<Real>(const Value &other)
     return value_cast<SimpleValue<Real>>(other).value;
 }
 
-using ValuePtr = std::unique_ptr<Value>;
 using ValuePtrVector = std::vector<ValuePtr>;
 
 struct SequenceValue : public ValueBase<SequenceValue>
@@ -405,6 +437,34 @@ struct SequenceValue : public ValueBase<SequenceValue>
     SequenceValue() : items(0) {}
 
     size_t size() const { return items.size(); }
+    virtual bool is_sequence() const override { return true; }
+
+    void materialize() override
+    {
+        for (auto &item : items)
+        {
+            auto owned = item.own();
+            owned->materialize();
+            item = std::move(owned);
+        }
+    }
+
+    virtual ValuePtr shallow() const override
+    {
+        ValuePtrVector shallow_items;
+        for (const auto &item : items)
+        {
+            if (!item)
+            {
+                shallow_items.emplace_back(nullptr);
+            }
+            else
+            {
+                shallow_items.emplace_back(item->shallow());
+            }
+        }
+        return Ptr<SequenceValue>::make(std::move(shallow_items));
+    }
 
     void write(std::ostream &os) const override
     {
@@ -431,27 +491,21 @@ struct SequenceValue : public ValueBase<SequenceValue>
         }
         os << "]";
     }
-
-    template <typename U>
-    std::vector<const U *> items_as() const
-    {
-        std::vector<const U *> casted(items.size());
-        for (size_t iarg = 0; iarg < items.size(); iarg++)
-        {
-            auto &casted_item = casted[iarg];
-            if (!items[iarg])
-            {
-                casted_item = nullptr;
-                continue;
-            }
-            casted_item = value_cast<U>(items[iarg].get());
-            if (!casted_item)
-                throw std::runtime_error(std::string("Cast failed for item ")
-                    + std::to_string(iarg + 1) + " of the list.");
-        }
-        return casted;
-    }
 };
+
+template <ValueConcept T>
+inline Ptr<Value> Ptr<T>::own_item(size_t idx)
+{
+    SequenceValue *seq = const_cast<SequenceValue *>(
+        value_cast<SequenceValue>(owned ? owned.get() : ref));
+    if (!seq || idx >= seq->items.size())
+        return nullptr;
+    if (owned)
+    {
+        return seq->items[idx].own();
+    }
+    return seq->items[idx].get();
+}
 
 } // namespace aquila::interpreter
 
@@ -469,6 +523,7 @@ using interpreter::Str;
 using interpreter::StrValue;
 using interpreter::Value;
 
+using interpreter::Ptr;
 using interpreter::value_cast;
 using interpreter::value_type;
 using interpreter::ValueBase;

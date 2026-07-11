@@ -118,7 +118,7 @@ class View
 
 public:
     View(const Buffer<T> &buf) :
-        buf(&buf), off_x(0), off_y(0), nx(buf.nx), buf_nx(buf.nx), ny(buf.ny),
+        buf(&buf), off_x(0), off_y(0), nx(buf.nx), ny(buf.ny), buf_nx(buf.nx),
         buf_ny(buf.ny)
     {
     }
@@ -128,9 +128,9 @@ public:
         std::int64_t ix_hi,
         std::int64_t iy_lo,
         std::int64_t iy_hi) :
-        buf(&buf), buf_nx(buf.nx), buf_ny(buf.ny), off_x(wrap_idx(ix_lo, buf.cols())),
+        buf(&buf), off_x(wrap_idx(ix_lo, buf.cols())),
         off_y(wrap_idx(iy_lo, buf.rows())), nx(wrap_idx(ix_hi, buf.cols()) - off_x),
-        ny(wrap_idx(iy_hi, buf.rows()) - off_y)
+        ny(wrap_idx(iy_hi, buf.rows()) - off_y), buf_nx(buf.nx), buf_ny(buf.ny)
     {
 #ifndef NDEBUG
         std::cout << "requested slice " << ix_lo << ":" << ix_hi << " " << iy_lo << ":"
@@ -148,11 +148,11 @@ public:
         std::int64_t ix_hi,
         std::int64_t iy_lo,
         std::int64_t iy_hi) :
-        buf(view.buf), buf_nx(view.buf_nx), buf_ny(view.buf_ny),
-        off_x(view.off_x + wrap_idx(ix_lo, view.cols())),
+        buf(view.buf), off_x(view.off_x + wrap_idx(ix_lo, view.cols())),
         off_y(view.off_y + wrap_idx(iy_lo, view.rows())),
         nx(wrap_idx(ix_hi, view.cols()) - wrap_idx(ix_lo, view.cols())),
-        ny(wrap_idx(iy_hi, view.rows()) - wrap_idx(iy_lo, view.rows()))
+        ny(wrap_idx(iy_hi, view.rows()) - wrap_idx(iy_lo, view.rows())),
+        buf_nx(view.buf_nx), buf_ny(view.buf_ny)
     {
 #ifndef NDEBUG
         std::cout << "requested slice " << ix_lo << ":" << ix_hi << " " << iy_lo << ":"
@@ -165,8 +165,8 @@ public:
         check(ny > 0);
     }
     View(const MutableView<T> &view) :
-        buf(view.buf), buf_nx(view.buf_nx), buf_ny(view.buf_ny), off_x(view.off_x),
-        off_y(view.off_y), nx(view.nx), ny(view.ny)
+        buf(view.buf), off_x(view.off_x), off_y(view.off_y), nx(view.nx), ny(view.ny),
+        buf_nx(view.buf_nx), buf_ny(view.buf_ny)
     {
     }
 
@@ -222,7 +222,7 @@ class MutableView
 
 public:
     MutableView(Buffer<T> &buf) :
-        buf(&buf), off_x(0), off_y(0), nx(buf.nx), buf_nx(buf.nx), ny(buf.ny),
+        buf(&buf), off_x(0), off_y(0), nx(buf.nx), ny(buf.ny), buf_nx(buf.nx),
         buf_ny(buf.ny)
     {
     }
@@ -232,9 +232,9 @@ public:
         std::int64_t ix_hi,
         std::int64_t iy_lo,
         std::int64_t iy_hi) :
-        buf(&buf), buf_nx(buf.nx), buf_ny(buf.ny), off_x(wrap_idx(ix_lo, buf.cols())),
+        buf(&buf), off_x(wrap_idx(ix_lo, buf.cols())),
         off_y(wrap_idx(iy_lo, buf.rows())), nx(wrap_idx(ix_hi, buf.cols()) - off_x),
-        ny(wrap_idx(iy_hi, buf.rows()) - off_y)
+        ny(wrap_idx(iy_hi, buf.rows()) - off_y), buf_nx(buf.nx), buf_ny(buf.ny)
     {
 #ifndef NDEBUG
         std::cout << "requested slice " << ix_lo << ":" << ix_hi << " " << iy_lo << ":"
@@ -252,11 +252,11 @@ public:
         std::int64_t ix_hi,
         std::int64_t iy_lo,
         std::int64_t iy_hi) :
-        buf(view.buf), buf_nx(view.buf_nx), buf_ny(view.buf_ny),
-        off_x(view.off_x + wrap_idx(ix_lo, view.cols())),
+        buf(view.buf), off_x(view.off_x + wrap_idx(ix_lo, view.cols())),
         off_y(view.off_y + wrap_idx(iy_lo, view.rows())),
         nx(wrap_idx(ix_hi, view.cols()) - wrap_idx(ix_lo, view.cols())),
-        ny(wrap_idx(iy_hi, view.rows()) - wrap_idx(iy_lo, view.rows()))
+        ny(wrap_idx(iy_hi, view.rows()) - wrap_idx(iy_lo, view.rows())),
+        buf_nx(view.buf_nx), buf_ny(view.buf_ny)
     {
 #ifndef NDEBUG
         std::cout << "requested slice " << ix_lo << ":" << ix_hi << " " << iy_lo << ":"

@@ -18,7 +18,7 @@ struct EqualizeOp : public Operation
         const Real &sigma_star,
         const Int &niter,
         const Int &margin,
-        const std::vector<const values::BufferValue *> &bufs) const;
+        std::vector<Ptr<values::BufferValue>>) const;
 
     std::string name() const override { return "wb"; }
 

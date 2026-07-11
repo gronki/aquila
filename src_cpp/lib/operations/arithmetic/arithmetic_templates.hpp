@@ -9,7 +9,7 @@ namespace aquila::ops
 {
 
 template <typename F, typename... Args>
-ValuePtr apply_unitary(const Value &a, F op, Args &&...args)
+std::unique_ptr<Value> apply_unitary(const Value &a, F op, Args &&...args)
 {
     auto scalar_ptr = value_cast<RealValue>(&a);
 
@@ -27,7 +27,7 @@ ValuePtr apply_unitary(const Value &a, F op, Args &&...args)
 }
 
 template <typename F, typename... Args>
-ValuePtr apply_binary(const Value &a, const Value &b, F op, Args &&...args)
+std::unique_ptr<Value> apply_binary(const Value &a, const Value &b, F op, Args &&...args)
 {
     auto scalar_ptr_a = value_cast<RealValue>(&a);
     auto buffer_ptr_a = value_cast<values::BufferValue>(&a);
@@ -76,7 +76,8 @@ ValuePtr apply_binary(const Value &a, const Value &b, F op, Args &&...args)
  * This monstrosity only exists to support mix() operation.
  */
 template <typename F, typename... Args>
-ValuePtr apply_tertiary(const Value &a, const Value &b, const Value &c, F op, Args &&...args)
+std::unique_ptr<Value> apply_tertiary(
+    const Value &a, const Value &b, const Value &c, F op, Args &&...args)
 {
     auto scalar_ptr_a = value_cast<RealValue>(&a);
     auto buffer_ptr_a = value_cast<values::BufferValue>(&a);

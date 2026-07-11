@@ -24,7 +24,7 @@ public:
         const Str &pos2,
         const Str &key1,
         const Str &key2,
-        const std::vector<const Str *> &ellipsis) const
+        std::vector<const Str *> ellipsis) const
     {
         std::cout << "pos1 = " << pos1 << std::endl
                   << "pos2 = " << pos2 << std::endl

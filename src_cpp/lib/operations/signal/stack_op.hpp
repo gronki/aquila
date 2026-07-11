@@ -9,8 +9,7 @@ namespace aquila::ops
 struct StackOp : public Operation
 {
     BIND_ARGS(&StackOp::run);
-    ValuePtr run(const std::string &method,
-        const std::vector<const values::BufferValue *> &) const;
+    ValuePtr run(const std::string &method, std::vector<const values::BufferValue *>) const;
 
     ArgManifest arg_manifest() const override;
     std::string name() const override { return "stack"; }

@@ -71,10 +71,13 @@ TEST(normal)
     IntValue i{2};
     StrValue s{"three"};
 
-    std::vector<const Value *> inputs{&r, &i, &s};
+    std::vector<ValuePtr> inputs;
+    inputs.emplace_back(&r);
+    inputs.emplace_back(&i);
+    inputs.emplace_back(&s);
 
     TestOperation addop;
-    auto result = addop.call(inputs);
+    auto result = addop.call(std::move(inputs));
 
     std::cout << *result << std::endl;
 }
@@ -84,10 +87,12 @@ TEST(direct)
     RealValue r{1.0};
     IntValue i{2};
 
-    std::vector<const Value *> inputs{&r, &i};
+    std::vector<ValuePtr> inputs;
+    inputs.emplace_back(&r);
+    inputs.emplace_back(&i);
 
     DirectCastOp addop;
-    auto result = addop.call(inputs);
+    auto result = addop.call(std::move(inputs));
 
     std::cout << *result << std::endl;
 }
@@ -107,14 +112,17 @@ TEST(wrongtype)
     RealValue i{2};
     StrValue s{"three"};
 
-    std::vector<const Value *> inputs{&r, &i, &s};
+    std::vector<ValuePtr> inputs;
+    inputs.emplace_back(&r);
+    inputs.emplace_back(&i);
+    inputs.emplace_back(&s);
 
     TestOperation addop;
 
     EXPECT_ERROR("interpret",
         [&]()
         {
-            auto result = addop.call(inputs);
+            auto result = addop.call(std::move(inputs));
             std::cout << *result << std::endl;
         });
 }
@@ -127,14 +135,18 @@ TEST(toomany)
     StrValue s{"three"};
     StrValue f{"oops"};
 
-    std::vector<const Value *> inputs{&r, &i, &s, &f};
+    std::vector<ValuePtr> inputs;
+    inputs.emplace_back(&r);
+    inputs.emplace_back(&i);
+    inputs.emplace_back(&s);
+    inputs.emplace_back(&f);
 
     TestOperation addop;
 
     EXPECT_ERROR("length",
         [&]()
         {
-            auto result = addop.call(inputs);
+            auto result = addop.call(std::move(inputs));
             std::cout << *result << std::endl;
         });
 }
@@ -145,14 +157,16 @@ TEST(notenough)
     RealValue r{1.0};
     IntValue i{2};
 
-    std::vector<const Value *> inputs{&r, &i};
+    std::vector<ValuePtr> inputs;
+    inputs.emplace_back(&r);
+    inputs.emplace_back(&i);
 
     TestOperation addop;
 
     EXPECT_ERROR("length",
         [&]()
         {
-            auto result = addop.call(inputs);
+            auto result = addop.call(std::move(inputs));
             std::cout << *result << std::endl;
         });
 }

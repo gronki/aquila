@@ -14,7 +14,7 @@ ValuePtr EqualizeOp::run(const Str &what,
     const Real &sigma_star,
     const Int &niter,
     const Int &margin,
-    const std::vector<const values::BufferValue *> &bufs) const
+    std::vector<Ptr<values::BufferValue>> bufs) const
 {
     bkeq_param_t params;
     params.background = what == "bg" || what == "both";
@@ -29,9 +29,9 @@ ValuePtr EqualizeOp::run(const Str &what,
     std::vector<std::unique_ptr<values::BufferValue>> out_bufs;
     std::vector<buffer_descriptor_t> c_bufs;
 
-    for (const auto &buf : bufs)
+    for (auto &buf : bufs)
     {
-        out_bufs.push_back(std::make_unique<values::BufferValue>(*buf));
+        out_bufs.push_back(buf.own());
         c_bufs.push_back(c_buf(out_bufs.back()->buffer));
     }
 
@@ -43,12 +43,12 @@ ValuePtr EqualizeOp::run(const Str &what,
         throw std::runtime_error(std::string("equalize_background failed: ") + err.message);
     }
 
-    std::vector<std::unique_ptr<Value>> return_bufs;
+    std::vector<Ptr<Value>> return_bufs;
     for (auto &buf : out_bufs)
     {
         return_bufs.push_back(std::move(buf));
     }
-    return std::make_unique<SequenceValue>(std::move(return_bufs));
+    return Ptr<SequenceValue>::make(std::move(return_bufs));
 }
 
 ArgManifest EqualizeOp::arg_manifest() const

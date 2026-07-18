@@ -68,7 +68,7 @@ subroutine normalize_offset_gain_c(buffers, buffers_out, n_buf, margin, err) &
    use aquila_c_binding
 
    integer(c_int), value :: n_buf, margin
-   type(buffer_descriptor_t) :: buffers(n_buf), buffers_out(n_buf)
+   type(buffer_descriptor_r32_t) :: buffers(n_buf), buffers_out(n_buf)
    type(error_status_t) :: err
 
    real(buf_k) :: a, b, av, sd
@@ -225,8 +225,8 @@ subroutine stack_frames_c(frames, n_frames, method_, frame_out, err) &
    character(len=32) :: method
    real(buf_k), allocatable :: buffer(:,:,:)
    integer(c_int), value :: n_frames
-   type(buffer_descriptor_t), intent(in) :: frames(n_frames)
-   type(buffer_descriptor_t), value :: frame_out
+   type(buffer_descriptor_r32_t), intent(in) :: frames(n_frames)
+   type(buffer_descriptor_r32_t), value :: frame_out
    type(error_status_t) :: err
    real(buf_k), pointer, contiguous :: buf_out(:,:)
    real(real64) :: t1, t2
@@ -281,7 +281,7 @@ subroutine collect_dframes_into_buffer(frames, buffer, err)
    use framehandling, only: image_frame_t
    use aquila_c_binding
 
-   type(buffer_descriptor_t), intent(in) :: frames(:)
+   type(buffer_descriptor_r32_t), intent(in) :: frames(:)
    real(buf_k), pointer, contiguous :: buf(:,:)
    type(error_status_t) :: err
    real(kind=buf_k), allocatable :: buffer(:,:,:)

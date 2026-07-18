@@ -46,18 +46,3 @@ inline std::unique_ptr<Value> loadFrame(const StrValue &s)
 }
 
 } // namespace aquila::convert
-
-namespace aquila
-{
-
-inline buffer_descriptor_t c_buf(Buffer<real_buf_t> &buf)
-{
-    return {buf.data(), buf.rows(), buf.cols()};
-}
-
-inline const_buffer_descriptor_t c_const_buf(const Buffer<real_buf_t> &buf)
-{
-    return {buf.data(), buf.rows(), buf.cols()};
-}
-
-}; // namespace aquila

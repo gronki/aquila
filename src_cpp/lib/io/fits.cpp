@@ -37,27 +37,16 @@ Buffer<real_buf_t> aquila::read_fits(const std::string &filename)
     const std::int64_t nx = naxes[0];
     const std::int64_t ny = naxes[1];
 
-    std::vector<real_buf_t> data(nx * ny, 0.L);
-    fits_read_img_flt(fptr, 1, 1, nx * ny, 0.L, data.data(), &anynul, &status);
-    throw_for_error(status);
-
     Buffer<real_buf_t> buf(nx, ny);
-    MutableView<real_buf_t> img{buf};
-    for (std::int64_t ix = 0; ix < nx; ix++)
-    {
-        for (std::int64_t iy = 0; iy < ny; iy++)
-        {
-            img(ix, iy) = data[ix + nx * iy];
-        }
-    }
-
+    fits_read_img_flt(fptr, 1, 1, nx * ny, 0.L, buf.data(), &anynul, &status);
+    throw_for_error(status);
     fits_close_file(fptr, &status);
     throw_for_error(status);
 
     return buf;
 }
 
-void aquila::write_fits(const std::string &filename, const View<real_buf_t> &img)
+void aquila::write_fits(const std::string &filename, const Buffer<real_buf_t> &img)
 {
 
     fitsfile *fptr = nullptr;
@@ -66,16 +55,6 @@ void aquila::write_fits(const std::string &filename, const View<real_buf_t> &img
     std::int64_t nx = img.cols();
     std::int64_t ny = img.rows();
 
-    std::vector<real_buf_t> data(img.size(), 0.L);
-
-    for (std::int64_t ix = 0; ix < nx; ix++)
-    {
-        for (std::int64_t iy = 0; iy < ny; iy++)
-        {
-            data[ix + nx * iy] = img(ix, iy);
-        }
-    }
-
     fits_create_diskfile(&fptr, filename.c_str(), &status);
     throw_for_error(status);
 
@@ -83,7 +62,7 @@ void aquila::write_fits(const std::string &filename, const View<real_buf_t> &img
     fits_write_imghdr(fptr, -32, 2, naxes, &status);
     throw_for_error(status);
 
-    fits_write_img_flt(fptr, 1, 1, nx * ny, data.data(), &status);
+    fits_write_img_flt(fptr, 1, 1, nx * ny, const_cast<real_buf_t *>(img.data()), &status);
     throw_for_error(status);
 
     fits_close_file(fptr, &status);

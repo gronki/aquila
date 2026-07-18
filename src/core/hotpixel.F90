@@ -34,7 +34,7 @@ end subroutine
 
 subroutine find_hot_c (im, sigma, hot_mask) bind(C, name="find_hot")
    use aquila_c_binding
-   type(buffer_descriptor_t), value :: im, hot_mask
+   type(buffer_descriptor_r32_t), value :: im, hot_mask
    real(buf_k), value :: sigma
    logical, allocatable :: logical_mask(:,:)
    real(buf_k), pointer, CONTIGUOUS :: ptr_mask(:,:)
@@ -80,7 +80,7 @@ end subroutine
 
 subroutine fix_hot_c (im, hot_mask) bind(C, name="fix_hot")
    use aquila_c_binding
-   type(buffer_descriptor_t), value :: im, hot_mask
+   type(buffer_descriptor_r32_t), value :: im, hot_mask
    call fix_hot(from_descriptor(im), from_descriptor(hot_mask) > 0._buf_k)
 end subroutine
  !----------------------------------------------------------------------------!
@@ -216,7 +216,7 @@ end subroutine
 
 subroutine fix_hot_light(im, sigma, im_out) bind(C)
    use aquila_c_binding
-   type(buffer_descriptor_t), value :: im, im_out
+   type(buffer_descriptor_r32_t), value :: im, im_out
    real(buf_k), value :: sigma
    call fix_hot_median(from_descriptor(im), from_descriptor(im_out), sigma)
 end subroutine

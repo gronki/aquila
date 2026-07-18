@@ -312,7 +312,7 @@ end subroutine
 subroutine register_stars_c(imd, list, limit, param, nstar) bind(C, name="register_stars")
    use aquila_c_binding
 
-   type(buffer_descriptor_t), value :: imd
+   type(buffer_descriptor_r32_t), value :: imd
    integer(c_int64_t), intent(in), value :: limit
    type(findstar_params_t) :: param
    type(source_t), intent(out) :: list(limit)

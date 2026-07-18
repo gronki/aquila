@@ -10,8 +10,8 @@ ValuePtr NormalizeOp::run(
     const Real &margin, std::vector<Ptr<values::BufferValue>> inputs) const
 {
     std::vector<ValuePtr> items;
-    std::vector<const_buffer_descriptor_t> buf_inputs;
-    std::vector<buffer_descriptor_t> buf_outputs;
+    std::vector<const_buffer_descriptor_r32_t> buf_inputs;
+    std::vector<buffer_descriptor_r32_t> buf_outputs;
 
     for (auto &ptr : inputs)
     {

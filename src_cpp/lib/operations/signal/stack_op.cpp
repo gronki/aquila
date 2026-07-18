@@ -13,7 +13,7 @@ ValuePtr StackOp::run(
     if (buf_vals.size() == 0)
         return nullptr;
 
-    std::vector<const_buffer_descriptor_t> inputs;
+    std::vector<const_buffer_descriptor_r32_t> inputs;
     std::int64_t out_cols = 0, out_rows = 0;
 
     for (const auto *buf_value : buf_vals)

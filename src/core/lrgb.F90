@@ -20,7 +20,7 @@ end function
 
 
 subroutine equalize_background(buffers, nbuf, param, err) bind(C)
-   type(buffer_descriptor_t) :: buffers(nbuf)
+   type(buffer_descriptor_r32_t) :: buffers(nbuf)
    type(bkeq_param_t) :: param
    type(error_status_t) :: err
    integer(c_int), value :: nbuf

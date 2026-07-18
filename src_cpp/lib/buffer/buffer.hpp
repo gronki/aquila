@@ -1,11 +1,8 @@
 #pragma once
 
-#include <concepts>
 #include <cstdint>
-#include <functional>
 #include <iomanip>
 #include <iostream>
-#include <set>
 #include <vector>
 
 #include "check.hpp"
@@ -71,8 +68,8 @@ public:
     T *data() noexcept { return buffer.data(); }
     const T *data() const noexcept { return buffer.data(); }
 
-    std::int64_t vecs() const noexcept { return nx; }
-    std::int64_t nvec() const noexcept { return ny; }
+    std::int64_t vecs() const noexcept { return ny; }
+    std::int64_t nvec() const noexcept { return nx; }
 
     T *vec(std::int64_t ivec) noexcept
     {
@@ -176,7 +173,7 @@ public:
         check(ix < nx);
         check(iy >= 0);
         check(iy < ny);
-        return buf->buffer[buf_ny * (ix + off_x) + (iy + off_y)];
+        return buf->buffer[buf_nx * (iy + off_y) + (ix + off_x)];
     }
 
     std::int64_t cols() const noexcept { return nx; }
@@ -184,12 +181,12 @@ public:
     std::int64_t size() const noexcept { return nx * ny; }
     bool is_contiguous() const noexcept { return (ny == buf_ny) && (off_y == 0); }
 
-    std::int64_t vecs() const noexcept { return nx; }
-    std::int64_t nvec() const noexcept { return ny; }
+    std::int64_t vecs() const noexcept { return ny; }
+    std::int64_t nvec() const noexcept { return nx; }
     const T *vec(std::int64_t ivec) const noexcept
     {
         check(ivec < vecs());
-        return &(buf->buffer[off_y + buf_ny * (ivec + off_x)]);
+        return &(buf->buffer[off_x + buf_nx * (ivec + off_y)]);
     }
     const T *data() const noexcept
     {
@@ -275,7 +272,7 @@ public:
         check(ix < nx);
         check(iy >= 0);
         check(iy < ny);
-        return buf->buffer[buf_ny * (ix + off_x) + (iy + off_y)];
+        return buf->buffer[buf_nx * (iy + off_y) + (ix + off_x)];
     }
 
     const T &operator()(const std::int64_t ix, const std::int64_t iy) const noexcept
@@ -284,7 +281,7 @@ public:
         check(ix < nx);
         check(iy >= 0);
         check(iy < ny);
-        return buf->buffer[buf_ny * (ix + off_x) + (iy + off_y)];
+        return buf->buffer[buf_nx * (iy + off_y) + (ix + off_x)];
     }
 
     std::int64_t cols() const noexcept { return nx; }
@@ -292,17 +289,17 @@ public:
     std::int64_t size() const noexcept { return nx * ny; }
     bool is_contiguous() const noexcept { return (ny == buf_ny) && (off_y == 0); }
 
-    std::int64_t vecs() const noexcept { return nx; }
-    std::int64_t nvec() const noexcept { return ny; }
+    std::int64_t vecs() const noexcept { return ny; }
+    std::int64_t nvec() const noexcept { return nx; }
     T *vec(std::int64_t ivec) noexcept
     {
         check(ivec < vecs());
-        return &(buf->buffer[off_y + buf_ny * (ivec + off_x)]);
+        return &(buf->buffer[off_x + buf_nx * (ivec + off_y)]);
     }
     const T *vec(std::int64_t ivec) const noexcept
     {
         check(ivec < vecs());
-        return &(buf->buffer[off_y + buf_ny * (ivec + off_x)]);
+        return &(buf->buffer[off_x + buf_nx * (ivec + off_y)]);
     }
     T *data() noexcept
     {
@@ -366,6 +363,16 @@ std::ostream &operator<<(std::ostream &os, const View<U> &buf)
         std::cout << std::endl;
     }
     return os;
+}
+
+inline buffer_descriptor_r32_t c_buf(Buffer<float> &buf)
+{
+    return {buf.data(), buf.cols(), buf.rows()};
+}
+
+inline const_buffer_descriptor_r32_t c_const_buf(const Buffer<float> &buf)
+{
+    return {buf.data(), buf.cols(), buf.rows()};
 }
 
 } // namespace aquila

@@ -77,26 +77,26 @@ extern "C"
 
     typedef struct
     {
-        real_buf_t *data;
+        float *data;
         int64_t rows;
         int64_t cols;
-    } buffer_descriptor_t;
+    } buffer_descriptor_r32_t;
 
     typedef struct
     {
-        const real_buf_t *data;
+        const float *data;
         int64_t rows;
         int64_t cols;
-    } const_buffer_descriptor_t;
+    } const_buffer_descriptor_r32_t;
 
-    void register_stars(const_buffer_descriptor_t,
+    void register_stars(const_buffer_descriptor_r32_t,
         source_t *list,
         int64_t limit,
         const findstar_params_t *param,
         int64_t *nstar);
 
-    void mexhakrn(double fwhm, buffer_descriptor_t);
-    void gausskrn(double fwhm, buffer_descriptor_t);
+    void mexhakrn(double fwhm, buffer_descriptor_r32_t);
+    void gausskrn(double fwhm, buffer_descriptor_r32_t);
 
     int64_t get_kernel_size(double fwhm);
 
@@ -109,22 +109,22 @@ extern "C"
         transform_t *,
         error_status_t *);
 
-    void conv2d_smallkernel(const_buffer_descriptor_t x,
-        const_buffer_descriptor_t k,
+    void conv2d_smallkernel(const_buffer_descriptor_r32_t x,
+        const_buffer_descriptor_r32_t k,
         const char *method,
-        buffer_descriptor_t y,
+        buffer_descriptor_r32_t y,
         bool parallel,
         int *err);
 
-    void stack_frames(const const_buffer_descriptor_t *frames,
+    void stack_frames(const const_buffer_descriptor_r32_t *frames,
         int n_frames,
         const char *method,
-        buffer_descriptor_t frame_out,
+        buffer_descriptor_r32_t frame_out,
         error_status_t *err);
 
     void project_bilinear(const transform_t *vc,
-        const_buffer_descriptor_t im0,
-        buffer_descriptor_t im,
+        const_buffer_descriptor_r32_t im0,
+        buffer_descriptor_r32_t im,
         double resample,
         error_status_t *err);
 
@@ -142,29 +142,32 @@ extern "C"
 
     bkeq_param_t default_bkeq_params();
 
-    void equalize_background(const buffer_descriptor_t *buffers,
+    void equalize_background(const buffer_descriptor_r32_t *buffers,
         int32_t nbuf,
         bkeq_param_t *param,
         error_status_t *err);
 
-    void deconvol_lr(const_buffer_descriptor_t im,
-        const_buffer_descriptor_t krn,
+    void deconvol_lr(const_buffer_descriptor_r32_t im,
+        const_buffer_descriptor_r32_t krn,
         real_buf_t strength,
         int maxiter,
-        buffer_descriptor_t im2,
+        buffer_descriptor_r32_t im2,
         bool parallel);
 
-    void normalize_offset_gain(const const_buffer_descriptor_t *buffers,
-        const buffer_descriptor_t *buffers_out,
+    void normalize_offset_gain(const const_buffer_descriptor_r32_t *buffers,
+        const buffer_descriptor_r32_t *buffers_out,
         int n_buf,
         int margin,
         error_status_t *err);
 
-    void find_hot(
-        const_buffer_descriptor_t buf, real_buf_t sigma, buffer_descriptor_t mask_out);
-    void fix_hot(buffer_descriptor_t im, const_buffer_descriptor_t mask);
+    void find_hot(const_buffer_descriptor_r32_t buf,
+        real_buf_t sigma,
+        buffer_descriptor_r32_t mask_out);
+    void fix_hot(buffer_descriptor_r32_t im, const_buffer_descriptor_r32_t mask);
     void fix_hot_light(
-        const_buffer_descriptor_t in, real_buf_t sigma, buffer_descriptor_t out);
+        const_buffer_descriptor_r32_t in, real_buf_t sigma, buffer_descriptor_r32_t out);
+
+    void avsd_2d(const_buffer_descriptor_r32_t, real_buf_t *av, real_buf_t *sd);
 
 #ifdef __cplusplus
 } /* extern "C" */

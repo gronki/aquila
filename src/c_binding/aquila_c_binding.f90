@@ -4,7 +4,7 @@ use iso_c_binding
 use globals
 implicit none
 
-type, bind(c) :: buffer_descriptor_t
+type, bind(c) :: buffer_descriptor_r32_t
    type(c_ptr) :: data
    integer(i64_k) :: rows, cols
 end type
@@ -72,7 +72,7 @@ subroutine set_err(status, code, msg)
 end subroutine
 
 function from_descriptor(descr)
-   type(buffer_descriptor_t), intent(in) :: descr
+   type(buffer_descriptor_r32_t), intent(in) :: descr
    real(buf_k), pointer, contiguous :: from_descriptor(:,:)
    integer(i64_k) :: arrshape(2)
 

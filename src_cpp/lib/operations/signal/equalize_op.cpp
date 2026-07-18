@@ -27,7 +27,7 @@ ValuePtr EqualizeOp::run(const Str &what,
     params.margin = static_cast<int32_t>(margin);
 
     std::vector<std::unique_ptr<values::BufferValue>> out_bufs;
-    std::vector<buffer_descriptor_t> c_bufs;
+    std::vector<buffer_descriptor_r32_t> c_bufs;
 
     for (auto &buf : bufs)
     {

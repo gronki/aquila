@@ -70,7 +70,34 @@ endif()
 
 option (AQUILA_WINDOW "enable window" Off)
 if (AQUILA_WINDOW)
-    find_package(SDL2)
+    option(AQUILA_SYSTEM_SDL2 "use system-installed SDL2 instead of the bundled minimal build" Off)
+    if (AQUILA_SYSTEM_SDL2)
+        find_package(SDL2 REQUIRED)
+        set(AQUILA_SDL2_TARGET SDL2::SDL2)
+    else()
+        # minimal SDL2 build: plain X11 window + software-rendered texture blit,
+        # no audio/joystick/haptic/GL/Vulkan backends and their system deps
+        set(SDL_SHARED OFF CACHE BOOL "" FORCE)
+        set(SDL_STATIC ON CACHE BOOL "" FORCE)
+        set(SDL_AUDIO OFF CACHE BOOL "" FORCE)
+        set(SDL_JOYSTICK OFF CACHE BOOL "" FORCE)
+        set(SDL_HAPTIC OFF CACHE BOOL "" FORCE)
+        set(SDL_OPENGL OFF CACHE BOOL "" FORCE)
+        set(SDL_OPENGLES OFF CACHE BOOL "" FORCE)
+        set(SDL_VULKAN OFF CACHE BOOL "" FORCE)
+        set(SDL_WAYLAND OFF CACHE BOOL "" FORCE)
+        set(SDL_IBUS OFF CACHE BOOL "" FORCE)
+        set(SDL_LIBUDEV OFF CACHE BOOL "" FORCE)
+        add_subdirectory(deps/SDL2)
+        set(AQUILA_SDL2_TARGET SDL2-static)
+        # bundled build exposes headers as include/SDL.h; shim an SDL2/ prefix
+        # so app code can #include <SDL2/SDL.h> regardless of which SDL2 is used
+        if (NOT EXISTS ${CMAKE_BINARY_DIR}/sdl2-shim/SDL2)
+            file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/sdl2-shim)
+            file(CREATE_LINK ${CMAKE_CURRENT_SOURCE_DIR}/deps/SDL2/include
+                ${CMAKE_BINARY_DIR}/sdl2-shim/SDL2 SYMBOLIC)
+        endif()
+    endif()
 endif()
 
 option(AQUILA_TESTS "build tests and examples" On)
@@ -215,12 +242,16 @@ endif()
 message(${APP_SOURCES})
 add_executable(aqcli ${APP_SOURCES})
 
-target_link_libraries(aqcli 
+target_link_libraries(aqcli PRIVATE 
     -Wl,--no-as-needed aqtask_dispatch aquila2 -Wl,--as-needed 
     ${READLINE_LIBRARIES})
 
 if (AQUILA_WINDOW)
     target_compile_definitions(aqcli PRIVATE AQUILA_WINDOW)
+    target_link_libraries(aqcli PRIVATE ${AQUILA_SDL2_TARGET})
+    if (NOT AQUILA_SYSTEM_SDL2)
+        target_include_directories(aqcli PRIVATE ${CMAKE_BINARY_DIR}/sdl2-shim)
+    endif()
 endif()
 
 install(TARGETS aqfindstar aqcli RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})

@@ -77,8 +77,8 @@ subroutine project_bilinear_c(vc, im0, im, resample, err) bind(C, name="project_
    use aquila_c_binding
    use transform_c_binding
    type(transform_c_t), intent(in) :: vc
-   type(buffer_descriptor_t), value :: im0
-   type(buffer_descriptor_t), value :: im
+   type(buffer_descriptor_r32_t), value :: im0
+   type(buffer_descriptor_r32_t), value :: im
    real(buf_k), pointer, contiguous :: im0ptr(:,:), imptr(:,:)
    real(r64_k), intent(in), value :: resample
    class(transform_t), allocatable :: v

@@ -23,8 +23,8 @@ elemental subroutine ij_to_xy(i, j, ni, nj, scale, x, y)
    integer(i64_k), intent(in) :: ni, nj
    real(r64_k), intent(out) :: x, y
 
-   x =   (j - 0.5_r64_k * (nj + 1_i64_k)) / scale
-   y = - (i - 0.5_r64_k * (ni + 1_i64_k)) / scale
+   x =   (i - 0.5_r64_k * (ni + 1_i64_k)) / scale
+   y = - (j - 0.5_r64_k * (nj + 1_i64_k)) / scale
 
 end subroutine
 
@@ -35,8 +35,8 @@ elemental subroutine xy_to_ij(x, y, ni, nj, scale, i, j)
    integer(i64_k), intent(in) :: ni, nj
    real(r64_k), intent(out) :: i, j
 
-   j =   x * scale + 0.5_r64_k * (nj + 1_i64_k)
-   i = - y * scale + 0.5_r64_k * (ni + 1_i64_k)
+   i =   x * scale + 0.5_r64_k * (ni + 1_i64_k)
+   j = - y * scale + 0.5_r64_k * (nj + 1_i64_k)
 
 end subroutine
 

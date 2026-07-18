@@ -100,8 +100,8 @@ char *command_generator(const char *text, int state)
 
 char **completion(const char *text, int start, int end)
 {
-    rl_completion_append_character = '(';
-    // std::cout << "completion " << start << ":" << end << "    ->" << text << std::endl;
+    // rl_completion_append_character = '(';
+    //  std::cout << "completion " << start << ":" << end << "    ->" << text << std::endl;
     return rl_completion_matches(text, command_generator);
 }
 
@@ -207,7 +207,7 @@ void handle_help(std::string input)
 int main()
 {
 #if AQUILA_WINDOW
-    app::AquilaDisplayManager dmgr;
+    app::AquilaWindow dmgr;
 #endif
     AquilaInterpreter interp;
 
@@ -263,7 +263,7 @@ int main()
             {
                 std::cout << result->str() << std::endl;
 #if AQUILA_WINDOW
-                dmgr.update("0", result);
+                dmgr.update(result.get());
 #endif
             }
             else

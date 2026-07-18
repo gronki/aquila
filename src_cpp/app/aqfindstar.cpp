@@ -9,16 +9,6 @@
 using namespace aquila;
 using std::cout, std::cerr, std::endl;
 
-static buffer_descriptor_t c_buf(Buffer<real_buf_t> &buf)
-{
-    return {buf.data(), buf.rows(), buf.cols()};
-}
-
-static const_buffer_descriptor_t c_const_buf(const Buffer<real_buf_t> &buf)
-{
-    return {buf.data(), buf.rows(), buf.cols()};
-}
-
 int main(int argc, char **argv)
 {
 

@@ -117,8 +117,8 @@ pure subroutine expand_image(x, shape_k, method, y, errno)
 end subroutine
 
 subroutine conv2d_bind_c(x, k, method, y, parallel, errno) bind(C, name="conv2d_smallkernel")
-   type(buffer_descriptor_t), intent(in), value :: x, k
-   type(buffer_descriptor_t), intent(in), value :: y
+   type(buffer_descriptor_r32_t), intent(in), value :: x, k
+   type(buffer_descriptor_r32_t), intent(in), value :: y
    character(kind=c_char, len=1), intent(in) :: method(*)
    logical(kind=c_bool), intent(in), value :: parallel
    integer(c_int) :: errno
@@ -226,7 +226,7 @@ implicit none
 contains
 
 subroutine deconvol_lr_c(im1, psf, strength, maxiter, im2, parallel) bind(C, name="deconvol_lr")
-   type(buffer_descriptor_t), value :: im1, psf, im2
+   type(buffer_descriptor_r32_t), value :: im1, psf, im2
    logical(c_bool), value :: parallel
    real(buf_k), value :: strength
    integer(c_int), value :: maxiter

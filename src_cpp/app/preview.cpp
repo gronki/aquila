@@ -1,10 +1,12 @@
 #include "preview.hpp"
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_events.h>
+#include <SDL2/SDL_keycode.h>
 #include <SDL2/SDL_render.h>
 #include <SDL2/SDL_video.h>
 #include <SDL_pixels.h>
 #include <aquila.h>
+#include <cmath>
 #include <iostream>
 
 namespace aquila::app
@@ -86,7 +88,8 @@ void window_thread_proc(image_payload_t *payload, std::mutex *mtx, std::atomic_b
     SDL_Init(SDL_INIT_VIDEO);
 
     std::unique_ptr<SDL_Window, void (*)(SDL_Window *)> window{
-        SDL_CreateWindow("Aquila Preview", 0, 0, 1000, 1000, SDL_WINDOW_RESIZABLE),
+        SDL_CreateWindow(
+            "Aquila Preview", 0, 0, 1200, 800, SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALWAYS_ON_TOP),
         [](SDL_Window *w)
         {
             if (w)
@@ -135,6 +138,42 @@ void window_thread_proc(image_payload_t *payload, std::mutex *mtx, std::atomic_b
             //  std::cout << "event! " << event.type << std::endl;
             switch (event.type)
             {
+            case SDL_KEYDOWN:
+                switch (event.key.keysym.sym)
+                {
+                case SDLK_LEFT:
+                case SDLK_h:
+                    view.center_x += 50 / view.scale;
+                    break;
+                case SDLK_RIGHT:
+                case SDLK_l:
+                    view.center_x -= 50 / view.scale;
+                    break;
+                case SDLK_UP:
+                case SDLK_k:
+                    view.center_y += 50 / view.scale;
+                    break;
+                case SDLK_DOWN:
+                case SDLK_j:
+                    view.center_y -= 50 / view.scale;
+                    break;
+                case SDLK_PAGEUP:
+                    view.scale /= std::sqrt(2);
+                    break;
+                case SDLK_PAGEDOWN:
+                    view.scale *= std::sqrt(2);
+                    break;
+                case SDLK_0:
+                    view.center_x = 0;
+                    view.center_y = 0;
+                    view.scale = std::min(view.height / float(payload->height),
+                        view.width / float(payload->width));
+                    break;
+                case SDLK_1:
+                    view.scale = 1;
+                    break;
+                }
+                break;
             case SDL_WINDOWEVENT:
                 if (event.window.event == SDL_WINDOWEVENT_RESIZED)
                 {

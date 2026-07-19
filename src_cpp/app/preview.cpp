@@ -158,9 +158,11 @@ void window_thread_proc(image_payload_t *payload, std::mutex *mtx, std::atomic_b
                     view.center_y -= 50 / view.scale;
                     break;
                 case SDLK_PAGEUP:
+                case SDLK_i:
                     view.scale /= std::sqrt(2);
                     break;
                 case SDLK_PAGEDOWN:
+                case SDLK_u:
                     view.scale *= std::sqrt(2);
                     break;
                 case SDLK_0:
@@ -171,6 +173,9 @@ void window_thread_proc(image_payload_t *payload, std::mutex *mtx, std::atomic_b
                     break;
                 case SDLK_1:
                     view.scale = 1;
+                    break;
+                case SDLK_q:
+                    *done = true;
                     break;
                 }
                 break;

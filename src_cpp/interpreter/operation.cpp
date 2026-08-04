@@ -65,7 +65,7 @@ static bool valid_argspec_key(const std::string &name)
     return true;
 }
 
-void manifest_properties_t::analyze(const std::vector<ArgSpec> &manifest)
+manifest_properties_t::manifest_properties_t(const std::vector<ArgSpec> &manifest)
 {
     bool first_keyword = false;
     has_ellipsis = false;
@@ -142,8 +142,8 @@ std::vector<ArgMatch> match_arguments(const std::vector<ArgSpec> &manifest,
     }
 
     bool first_keyword = false;
-    bool any_expansion = false;
-    std::ptrdiff_t pos_shift = 0;
+    // bool any_expansion = false;
+    // std::ptrdiff_t pos_shift = 0;
 
     for (size_t iarg = 0; iarg < given_keys.size(); iarg++)
     {
@@ -153,11 +153,11 @@ std::vector<ArgMatch> match_arguments(const std::vector<ArgSpec> &manifest,
         }
 
         const std::string &key = given_keys[iarg];
-        const bool is_expansion = !key.empty() && key == std::string(1, EXPAND_DELIM);
-        if (is_expansion)
-            pos_shift -= 1;
-        any_expansion = any_expansion || is_expansion;
-        const bool is_keyword = !key.empty() && !is_expansion;
+        /* const bool is_expansion = !key.empty() && key == std::string(1, EXPAND_DELIM);
+         if (is_expansion)
+             pos_shift -= 1;
+         any_expansion = any_expansion || is_expansion; */
+        const bool is_keyword = !key.empty() /* &&  !is_expansion */;
         first_keyword = first_keyword || is_keyword;
 
         if (first_keyword && !is_keyword)
@@ -191,9 +191,9 @@ std::vector<ArgMatch> match_arguments(const std::vector<ArgSpec> &manifest,
 
             // positional arguments
         }
-        else if (!is_expansion)
+        else // if (!is_expansion)
         {
-            auto iarg_corrected = iarg + pos_shift;
+            auto iarg_corrected = iarg /* + pos_shift */;
             if (iarg_corrected < props.num_positionals)
             {
                 // named
@@ -236,16 +236,16 @@ std::vector<ArgMatch> match_arguments(const std::vector<ArgSpec> &manifest,
             continue;
         }
 
-        if (!any_expansion)
-            throw std::runtime_error(std::string("Argument ") + manifest[imatch].name
-                + " required but not provided");
+        // if (!any_expansion)
+        throw std::runtime_error(std::string("Argument ") + manifest[imatch].name
+            + " required but not provided");
     }
 
     return match;
 }
 
 std::vector<ValuePtr> build_ptrs_from_match(
-    std::vector<ValuePtr> &given_args, std::vector<ArgMatch> &match)
+    std::vector<ValuePtr> &given_args, const std::vector<ArgMatch> &match)
 {
     const size_t n_args = match.size();
 
@@ -261,13 +261,38 @@ std::vector<ValuePtr> build_ptrs_from_match(
         }
         if (match[ispec].deftgt)
         {
-            args[ispec] = std::move(match[ispec].deftgt);
+            args[ispec] = match[ispec].deftgt.get();
             continue;
         }
         std::cout << "Warning! empty argument " << ispec << std::endl;
     }
 
     return args;
+}
+std::vector<value_trace_t> build_traces_from_match(
+    const std::vector<value_trace_t> &traces, const std::vector<ArgMatch> &match)
+{
+    const size_t n_args = match.size();
+
+    std::vector<value_trace_t> out_traces(n_args);
+
+    for (size_t ispec = 0; ispec < n_args; ispec++)
+    {
+        if (match[ispec].matched)
+        {
+            auto iarg = match[ispec].pos;
+            out_traces[ispec] = traces[iarg];
+            continue;
+        }
+        if (match[ispec].deftgt)
+        {
+            out_traces[ispec] = match[ispec].deftgt->get_trace();
+            continue;
+        }
+        std::cout << "Warning! empty argument " << ispec << std::endl;
+    }
+
+    return out_traces;
 }
 
 std::string Operation::signature_str() const

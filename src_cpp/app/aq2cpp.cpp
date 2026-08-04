@@ -234,6 +234,7 @@ int main()
 
         if (input == "")
             continue;
+
         if (input.substr(0, 4) == "help")
         {
             handle_help(input);
@@ -251,7 +252,10 @@ int main()
             auto result = interp.exec(input);
 
             if (result)
-                std::cout << result->str() << std::endl;
+            {
+                std::cout << "--> " << result->str() << std::endl
+                          << "--> " << result->get_trace() << std::endl;
+            }
             else
                 std::cout << "(null)" << std::endl;
         }

@@ -39,15 +39,20 @@ using ArgManifest = std::vector<ArgSpec>;
 static const std::string ARG_ELLIPSIS = "...";
 struct manifest_properties_t
 {
-    manifest_properties_t() {}
-    manifest_properties_t(const ArgManifest &m) { analyze(m); }
-    void analyze(const ArgManifest &);
+    manifest_properties_t(const ArgManifest &m);
     size_t num_positionals, num_keyword;
     bool has_ellipsis;
 };
 
 struct Operation
 {
+    enum class Tracing
+    {
+        DEFAULT,
+        FROM_INPUTS,
+        FROM_RETVAL,
+        UNTRACEABLE
+    };
     virtual ArgManifest arg_manifest() const
     {
         return ArgManifest{ArgSpec{.name = ARG_ELLIPSIS}};
@@ -55,6 +60,11 @@ struct Operation
     virtual ValuePtr call(std::vector<ValuePtr>) const = 0;
     virtual std::string name() const = 0;
     virtual std::string description() const { return ""; }
+    virtual Tracing tracing_mode() const { return Tracing::DEFAULT; }
+    virtual value_trace_t custom_trace(const std::vector<ValuePtr> *, const Value *) const
+    {
+        return {};
+    }
     std::string signature_str() const;
     virtual ~Operation() = default;
 };
@@ -79,7 +89,9 @@ std::vector<ArgMatch> match_arguments(const std::vector<ArgSpec> &manifest,
     const std::vector<std::string> &given_keys);
 
 std::vector<ValuePtr> build_ptrs_from_match(
-    std::vector<ValuePtr> &given_args, std::vector<ArgMatch> &match);
+    std::vector<ValuePtr> &given_args, const std::vector<ArgMatch> &match);
+std::vector<value_trace_t> build_traces_from_match(
+    const std::vector<value_trace_t> &traces, const std::vector<ArgMatch> &match);
 
 using OpFactory = std::unique_ptr<Operation> (*)();
 

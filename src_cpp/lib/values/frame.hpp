@@ -24,7 +24,10 @@ struct BufferValue : public ValueBase<BufferValue>
         buffer(std::move(v)), info(std::move(info))
     {
     }
-    BufferValue(const BufferValue &other) : buffer(other.buffer), info(other.info) {}
+    BufferValue(const BufferValue &other) : buffer(other.buffer), info(other.info)
+    {
+        trace = other.trace;
+    }
     void write(std::ostream &os) const
     {
         os << "(frame ";

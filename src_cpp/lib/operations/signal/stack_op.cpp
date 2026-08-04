@@ -6,18 +6,19 @@ namespace aquila::ops
 {
 
 REGISTER(StackOp);
-ValuePtr StackOp::run(
-    const std::string &method, std::vector<const values::BufferValue *> buf_vals) const
+ValuePtr StackOp::run(Ptr<SequenceValue> buffers, const std::string &method) const
 {
-
-    if (buf_vals.size() == 0)
+    if (buffers->size() == 0)
         return nullptr;
 
     std::vector<const_buffer_descriptor_t> inputs;
     std::int64_t out_cols = 0, out_rows = 0;
 
-    for (const auto *buf_value : buf_vals)
+    for (const auto &item : buffers->items)
     {
+        const auto *buf_value = value_cast<values::BufferValue>(item.get());
+        if (!buf_value)
+            throw std::runtime_error("stack: expected buffer in sequence");
         out_cols = buf_value->buffer.cols();
         out_rows = buf_value->buffer.rows();
         inputs.push_back(c_const_buf(buf_value->buffer));
@@ -36,10 +37,8 @@ ValuePtr StackOp::run(
 ArgManifest StackOp::arg_manifest() const
 {
     return ArgManifest{
+        ArgSpec{.name = "buffers", .sequence = true, .help = "buffers to stack"},
         ArgSpec{.name = "method", .default_str = "average"},
-        ArgSpec{.name = "...",
-            .help = "buffers to stack",
-            .convert = guard(convert::loadFrame)},
     };
 }
 

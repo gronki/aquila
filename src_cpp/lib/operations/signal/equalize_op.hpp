@@ -11,14 +11,14 @@ struct EqualizeOp : public Operation
 {
 
     BIND_ARGS(&EqualizeOp::run);
-    ValuePtr run(const Str &what,
+    ValuePtr run(Ptr<SequenceValue> bufs,
+        const Str &what,
         const Real &apar,
         const Real &bpar,
         const Real &sigma,
         const Real &sigma_star,
         const Int &niter,
-        const Int &margin,
-        std::vector<Ptr<values::BufferValue>>) const;
+        const Int &margin) const;
 
     std::string name() const override { return "wb"; }
 

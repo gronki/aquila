@@ -15,8 +15,14 @@ struct ReadFrame : public Operation
     {
         return ArgManifest{ArgSpec{.name = "filename"}};
     }
-    std::string name() const { return "load"; }
+    std::string name() const override { return "load"; }
     std::string description() const override { return "Reads a FITS frame"; }
+    Operation::Tracing tracing_mode() const override
+    {
+        return Operation::Tracing::FROM_INPUTS;
+    }
+    interpreter::value_trace_t custom_trace(
+        const std::vector<ValuePtr> *args, const Value *retval) const override;
 };
 
 struct WriteFrame : public Operation
@@ -31,7 +37,7 @@ struct WriteFrame : public Operation
             ArgSpec{.name = "filename"},
         };
     }
-    std::string name() const { return "save"; }
+    std::string name() const override { return "save"; }
     std::string description() const override
     {
         return "Saves a FITS file, choose name with suffix if exists.";

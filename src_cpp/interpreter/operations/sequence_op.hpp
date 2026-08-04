@@ -12,6 +12,18 @@ struct SequenceOp : Operation
     ArgManifest arg_manifest() const override;
 };
 
+struct ItemOp : public Operation
+{
+
+    BIND_ARGS(&ItemOp::run);
+    ValuePtr run(Ptr<SequenceValue> seq, Real ix) const;
+
+    std::string name() const override { return "item"; }
+
+    ArgManifest arg_manifest() const override;
+    std::string description() const override;
+};
+
 struct ZipOp : Operation
 {
     ValuePtr call(std::vector<ValuePtr> args) const override;

@@ -159,10 +159,39 @@ public:
 
     const T *operator->() const noexcept { return owned ? owned.get() : ref; }
     const T *get() const noexcept { return owned ? owned.get() : ref; }
+    T *get_mut() const noexcept { return owned ? owned.get() : nullptr; }
     explicit operator bool() const noexcept { return owned || ref; }
 };
 
 using ValuePtr = Ptr<Value>;
+
+struct value_trace_t
+{
+    value_trace_t() {}
+    value_trace_t(const std::string &content) : content(content) {};
+    std::string content;
+    std::string flatten() const { return content; }
+    bool is_corrupt = false;
+    static value_trace_t corrupt()
+    {
+        value_trace_t t;
+        t.is_corrupt = true;
+        return t;
+    }
+};
+
+inline std::ostream &operator<<(std::ostream &os, const value_trace_t &trace)
+{
+    if (trace.is_corrupt)
+    {
+        os << "##NOTRACE##";
+    }
+    else
+    {
+        os << trace.flatten();
+    }
+    return os;
+}
 
 struct Value
 {
@@ -176,6 +205,13 @@ struct Value
     virtual void materialize() {}
     virtual bool is_sequence() const { return false; }
     virtual ValuePtr shallow() const { return {this}; }
+    value_trace_t trace;
+    virtual value_trace_t get_trace() const
+    {
+        if (!trace.content.empty())
+            return trace;
+        return str();
+    }
     std::string str() const
     {
         std::stringstream ss;
@@ -309,8 +345,14 @@ struct SimpleValue : public ValueBase<SimpleValue<T>>
 
     T value;
 
-    SimpleValue(const T &value) : value(value) {}
-    SimpleValue(const SimpleValue<T> &value) : value(value.value) {}
+    SimpleValue(const T &value, const value_trace_t &trace = {}) : value(value)
+    {
+        this->trace = trace;
+    }
+    SimpleValue(const SimpleValue<T> &other) : value(other.value)
+    {
+        this->trace = other.trace;
+    }
 
     void write(std::ostream &os) const override { os << value; }
 
@@ -423,7 +465,7 @@ struct SequenceValue : public ValueBase<SequenceValue>
 {
     TYPE_NAME("sequence");
 
-    ValuePtrVector items;
+    std::vector<Ptr<Value>> items;
 
     SequenceValue(const SequenceValue &other)
     {
@@ -432,8 +474,13 @@ struct SequenceValue : public ValueBase<SequenceValue>
         {
             items.push_back(item->clone());
         }
+        trace = other.trace;
     }
-    SequenceValue(ValuePtrVector items) : items(std::move(items)) {}
+    SequenceValue(std::vector<Ptr<Value>> items, const value_trace_t &trace = {}) :
+        items(std::move(items))
+    {
+        this->trace = trace;
+    }
     SequenceValue() : items(0) {}
 
     size_t size() const { return items.size(); }
@@ -447,6 +494,38 @@ struct SequenceValue : public ValueBase<SequenceValue>
             owned->materialize();
             item = std::move(owned);
         }
+    }
+
+    value_trace_t get_trace() const override
+    {
+        if (!trace.content.empty())
+        {
+            return trace;
+        }
+        std::stringstream ss;
+        ss << "[";
+        bool first = true;
+        for (const auto &item : items)
+        {
+            if (first)
+            {
+                first = false;
+            }
+            else
+            {
+                ss << ", ";
+            }
+            if (item)
+            {
+                ss << item->get_trace();
+            }
+            else
+            {
+                ss << "(null)";
+            }
+        }
+        ss << "]";
+        return ss.str();
     }
 
     virtual ValuePtr shallow() const override
@@ -463,7 +542,7 @@ struct SequenceValue : public ValueBase<SequenceValue>
                 shallow_items.emplace_back(item->shallow());
             }
         }
-        return Ptr<SequenceValue>::make(std::move(shallow_items));
+        return Ptr<SequenceValue>::make(std::move(shallow_items), trace);
     }
 
     void write(std::ostream &os) const override

@@ -2,13 +2,32 @@
 
 ![Aquila](snap/gui/aquila.png)
 
+**aquila** is a command-line toolkit for astrophotography data reduction and compositing on Linux.
+While graphical tools exist for this workflow, they rarely integrate well with the terminal — the natural environment for batch-processing hundreds of FITS files, writing reproducible pipelines, and automating nightly runs.
+Aquila is designed to fit into that world: fast, scriptable, and unobtrusive.
+
+Currently, the package consists of following programs:
+
+1. ``aqstack`` (via snap: ``aquila.stack``) — stacking and calibration of monochromatic CCD frames (bias, dark, flat, alignment, sigma-clipping)
+2. ``aqlrgb`` (via snap: ``aquila.lrgb``) — compositing multi-filter data into colour images with luminance, white-balance, and stretching controls
+3. ``aqcli`` (via snap: ``aquila.cli``) — a scripting interpreter for building full end-to-end image processing pipelines
+
+## Installation
+
 **Snap**
+
+The recommended way to install and use Aquila is to obtain it from the Snap store.
 
 [![aquila](https://snapcraft.io/aquila/badge.svg)](https://snapcraft.io/aquila)
 [![Get it from the Snap Store](https://snapcraft.io/en/dark/install.svg)](https://snapcraft.io/aquila)
 
 ```sh
 sudo snap install aquila
+```
+
+After installation, run the following commands to create aliases for scripting:
+
+```sh
 sudo snap alias aquila.lrgb aqlrgb
 sudo snap alias aquila.stack aqstack
 sudo snap alias aquila.cli aqcli
@@ -27,16 +46,6 @@ chmod +x aquila
 ./aquila
 sudo install aquila /usr/local/bin/aquila
 ```
-
-**aquila** is a command-line toolkit for astrophotography data reduction and compositing on Linux.
-While graphical tools exist for this workflow, they rarely integrate well with the terminal — the natural environment for batch-processing hundreds of FITS files, writing reproducible pipelines, and automating nightly runs.
-Aquila is designed to fit into that world: fast, scriptable, and unobtrusive.
-
-Currently, the package consists of following programs:
-
-1. ``aqstack`` (via snap: ``aquila.stack``) — stacking and calibration of monochromatic CCD frames (bias, dark, flat, alignment, sigma-clipping)
-2. ``aqlrgb`` (via snap: ``aquila.lrgb``) — compositing multi-filter data into colour images with luminance, white-balance, and stretching controls
-3. ``aqcli`` (via snap: ``aquila.cli``) — a scripting interpreter for building full end-to-end image processing pipelines
 
 
 ### Build from source

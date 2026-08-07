@@ -2,6 +2,18 @@
 
 ![Aquila](snap/gui/aquila.png)
 
+**Snap**
+
+[![aquila](https://snapcraft.io/aquila/badge.svg)](https://snapcraft.io/aquila)
+[![Get it from the Snap Store](https://snapcraft.io/en/dark/install.svg)](https://snapcraft.io/aquila)
+
+```sh
+sudo snap install aquila
+sudo snap alias aquila.lrgb aqlrgb
+sudo snap alias aquila.stack aqstack
+sudo snap alias aquila.cli aqcli
+```
+
 **AppImage**
 
 * Download Stable [x86_64 / PC](https://github.com/gronki/aquila/releases/download/stable/aquila-x86_64.AppImage) and [ARM64 / Rpi / Mac](https://github.com/gronki/aquila/releases/download/stable/aquila-aarch64.AppImage)
@@ -14,18 +26,6 @@ chmod +x aquila
 # test
 ./aquila
 sudo install aquila /usr/local/bin/aquila
-```
-
-**Snap**
-
-[![aquila](https://snapcraft.io/aquila/badge.svg)](https://snapcraft.io/aquila)
-[![Get it from the Snap Store](https://snapcraft.io/en/dark/install.svg)](https://snapcraft.io/aquila)
-
-```sh
-sudo snap install aquila
-sudo snap alias aquila.lrgb aqlrgb
-sudo snap alias aquila.stack aqstack
-sudo snap alias aquila.cli aqcli
 ```
 
 **aquila** is a command-line toolkit for astrophotography data reduction and compositing on Linux.

@@ -113,7 +113,8 @@ TokenResult Tokenizer::next_token()
         return {Token(TokenType::DELIM, TokenStr(1, ch), update_end(loc))};
     }
 
-    return {Token(TokenType::END), "error tokenizing expression"}; // to silence warning
+    return {Token(TokenType::DELIM, TokenStr(1, ch), update_end(loc)),
+        "Unknown character encountered: " + TokenStr(1, ch)};
 }
 
 std::vector<Token> tokenize(const TokenStr &buffer, std::int64_t start_line)
@@ -121,7 +122,7 @@ std::vector<Token> tokenize(const TokenStr &buffer, std::int64_t start_line)
     return LazyTokenArray(Tokenizer(buffer)).all_tokens();
 }
 
-TokenResult LazyTokenArray::get_token(std::int64_t abs_pos)
+Token LazyTokenArray::get_token(std::int64_t abs_pos, std::vector<ParsingError> &errors_out)
 {
     if (abs_pos < 0)
         throw std::runtime_error("may not rewind before the first token");
@@ -130,8 +131,14 @@ TokenResult LazyTokenArray::get_token(std::int64_t abs_pos)
     {
         auto result = tokenizer.next_token();
 #ifndef NDEBUG
-        std::cout << "at pos " << abs_pos << " token " << result.token << std::endl;
+        std::cout << "at pos " << abs_pos << " token " << result.token << " "
+                  << (result.error ? result.error->message : "") << std::endl;
 #endif
+        if (result.error)
+        {
+            errors.push_back(result.error.value());
+            errors_out.push_back(result.error.value());
+        }
         tokens.push_back(result.token);
     }
     return tokens[abs_pos];
@@ -139,20 +146,24 @@ TokenResult LazyTokenArray::get_token(std::int64_t abs_pos)
 
 Token LazyTokenArray::peek_token(std::int64_t offset)
 {
-    auto result = get_token(offset + pos);
-    if (result.error)
-        throw std::runtime_error(result.error->message);
-    return result.token;
+    std::vector<ParsingError> errors;
+    auto result = get_token(offset + pos, errors);
+    if (!errors.empty())
+    {
+        throw std::runtime_error(errors.back().message);
+    }
+    return result;
 }
 
 std::vector<Token> LazyTokenArray::all_tokens()
 {
     std::int64_t off = 0;
     std::vector<Token> only_tokens;
+    std::vector<ParsingError> errors;
     bool is_end;
     do
     {
-        Token t = get_token(off++).token;
+        Token t = get_token(off++, errors);
         is_end = t.type == TokenType::END;
         only_tokens.push_back(std::move(t));
     } while (!is_end);

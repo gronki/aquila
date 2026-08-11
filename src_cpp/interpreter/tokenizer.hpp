@@ -48,12 +48,13 @@ public:
 class LazyTokenArray
 {
     Tokenizer tokenizer;
-    std::vector<TokenResult> tokens;
+    std::vector<Token> tokens;
+    std::vector<ParsingError> errors;
     std::int64_t pos = 0;
 
 public:
     LazyTokenArray(Tokenizer tokenizer) : tokenizer(std::move(tokenizer)) {}
-    TokenResult get_token(std::int64_t abs_pos);
+    Token get_token(std::int64_t abs_pos, std::vector<ParsingError> &errors);
     Token peek_token(std::int64_t offset = 0);
     Token cur_token();
     Token next_token(std::int64_t offset = 1);

@@ -23,6 +23,9 @@ Ptr<Value> AquilaInterpreter::exec(const std::string &command)
     exectree = build_exectree_from_str(command, sub_ns, global_op_db());
     if (!exectree)
         return nullptr;
+#ifndef NDEBUG
+    std::cout << "::: " << exectree->trace() << std::endl;
+#endif
     auto result = exectree->yield();
     ns.merge(std::move(sub_ns));
     return result;

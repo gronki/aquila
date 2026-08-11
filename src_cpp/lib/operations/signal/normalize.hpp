@@ -10,7 +10,7 @@ namespace aquila::ops
 struct NormalizeOp : public Operation
 {
     BIND_ARGS(&NormalizeOp::run);
-    ValuePtr run(const Real &margin, std::vector<Ptr<values::BufferValue>>) const;
+    ValuePtr run(Ptr<SequenceValue> buffers, const Real &margin) const;
 
     std::string name() const override { return "normalize"; }
 

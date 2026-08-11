@@ -23,6 +23,15 @@ struct PathOp : public Operation
         return "Bash-style expansion of paths. For "
                "example, file_{a,b}.fits --> file_a.fits file_b.fits";
     }
+    Operation::Tracing tracing_mode() const override
+    {
+        return Operation::Tracing::FROM_RETVAL;
+    }
+    interpreter::value_trace_t custom_trace(
+        const std::vector<ValuePtr> *args, const Value *retval) const override
+    {
+        return retval->str();
+    }
 };
 
 struct PwdOp : public Operation
@@ -36,6 +45,15 @@ struct PwdOp : public Operation
     std::string description() const override
     {
         return "Get current working directory.";
+    }
+    Operation::Tracing tracing_mode() const override
+    {
+        return Operation::Tracing::FROM_RETVAL;
+    }
+    interpreter::value_trace_t custom_trace(
+        const std::vector<ValuePtr> *args, const Value *retval) const override
+    {
+        return retval->str();
     }
 };
 

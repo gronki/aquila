@@ -211,7 +211,8 @@ static ValuePtr run_op_with_trace(
 static ValuePtr op_call_with_sequencing(const Operation &op,
     std::vector<ValuePtr> args,
     const std::vector<ArgMatch> &match,
-    bool trace_only)
+    bool trace_only,
+    bool parallel)
 {
 
     if (args.size() == 0)
@@ -262,63 +263,70 @@ static ValuePtr op_call_with_sequencing(const Operation &op,
                 run_sanitizer(std::move(ith_vector[iarg]), match[iarg].convert);
         }
 
-        return run_op_with_trace(op, ith_vector, trace_only);
+        return op_call_with_sequencing(op, std::move(ith_vector), match, trace_only, false);
     };
 
 #ifdef AQUILA_PARALLEL
 
-    const auto ncpu = std::max(1l, (std::int64_t)std::thread::hardware_concurrency());
-    const auto num_threads = std::min(ncpu, sequence_len);
-    const auto block_size = (sequence_len + num_threads - 1) / num_threads;
+    if (parallel)
+    {
+
+        const auto ncpu = std::max(1l, (std::int64_t)std::thread::hardware_concurrency());
+        const auto num_threads = std::min(ncpu, sequence_len);
+        const auto block_size = (sequence_len + num_threads - 1) / num_threads;
 #    ifndef NDEBUG
-    std::cout << op.name() << " threads = " << num_threads << " bs = " << block_size
-              << std::endl;
+        std::cout << op.name() << " threads = " << num_threads << " bs = " << block_size
+                  << std::endl;
 #    endif
 
-    std::vector<std::thread> threads;
-    threads.reserve(num_threads);
-    std::vector<std::exception_ptr> exceptions(num_threads);
+        std::vector<std::thread> threads;
+        threads.reserve(num_threads);
+        std::vector<std::exception_ptr> exceptions(num_threads);
 
-    for (std::int64_t ithread = 0; ithread < num_threads; ithread++)
-    {
-        threads.emplace_back(
-            [&, ithread]()
-            {
-                try
+        for (std::int64_t ithread = 0; ithread < num_threads; ithread++)
+        {
+            threads.emplace_back(
+                [&, ithread]()
                 {
-                    for (std::int64_t iseq = ithread * block_size;
-                        iseq < std::min((ithread + 1) * block_size, sequence_len);
-                        iseq++)
+                    try
                     {
+                        for (std::int64_t iseq = ithread * block_size;
+                            iseq < std::min((ithread + 1) * block_size, sequence_len);
+                            iseq++)
+                        {
 #    ifndef NDEBUG
-                        std::cout << " --- thread = " << ithread << " item = " << iseq
-                                  << std::endl;
+                            std::cout << " --- thread = " << ithread
+                                      << " item = " << iseq << std::endl;
 #    endif
-                        result[iseq] = process_seq_item(iseq);
+                            result[iseq] = process_seq_item(iseq);
+                        }
                     }
-                }
-                catch (...)
-                {
-                    exceptions[ithread] = std::current_exception();
-                }
-            });
-    }
+                    catch (...)
+                    {
+                        exceptions[ithread] = std::current_exception();
+                    }
+                });
+        }
 
-    for (auto &thread : threads)
-    {
-        thread.join();
-    }
+        for (auto &thread : threads)
+        {
+            thread.join();
+        }
 
-    for (auto &except_ptr : exceptions)
-    {
-        if (except_ptr)
-            std::rethrow_exception(except_ptr);
+        for (auto &except_ptr : exceptions)
+        {
+            if (except_ptr)
+                std::rethrow_exception(except_ptr);
+        }
     }
-
-#else
-    for (std::int64_t iseq = 0; iseq < sequence_len; iseq++)
+    else
     {
-        result[iseq] = process_seq_item(iseq);
+#endif
+        for (std::int64_t iseq = 0; iseq < sequence_len; iseq++)
+        {
+            result[iseq] = process_seq_item(iseq);
+        }
+#ifdef AQUILA_PARALLEL
     }
 #endif
 
@@ -371,7 +379,7 @@ Ptr<Value> OpNode::yield() const
     try
     {
         auto result = op_call_with_sequencing(
-            *op, build_ptrs_from_match(arg_results, match), match, false);
+            *op, build_ptrs_from_match(arg_results, match), match, false, true);
         if (op->tracing_mode() != Operation::Tracing::FROM_RETVAL)
         {
             std::string ns_name =
@@ -432,7 +440,8 @@ value_trace_t OpNode::trace() const
     auto result = op_call_with_sequencing(*op,
         build_ptrs_from_match(arg_results, match),
         match,
-        op->tracing_mode() == Operation::Tracing::FROM_INPUTS);
+        op->tracing_mode() == Operation::Tracing::FROM_INPUTS,
+        false);
 
     if (!result)
         throw std::runtime_error("Error in evaluating trace for operation " + op->name());

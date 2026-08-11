@@ -138,8 +138,6 @@ public:
         return std::unique_ptr<T>(static_cast<T *>(cloned.release()));
     }
 
-    Ptr<Value> own_item(size_t idx);
-
     bool is_owned() const noexcept { return (bool)owned; }
 
     const T &operator*() const
@@ -204,6 +202,7 @@ struct Value
     virtual const value_type &get_type() const = 0;
     virtual void materialize() {}
     virtual bool is_sequence() const { return false; }
+    virtual int64_t sequence_len() const { return -1; }
     virtual ValuePtr shallow() const { return {this}; }
     value_trace_t trace;
     virtual value_trace_t get_trace() const
@@ -485,6 +484,7 @@ struct SequenceValue : public ValueBase<SequenceValue>
 
     size_t size() const { return items.size(); }
     virtual bool is_sequence() const override { return true; }
+    int64_t sequence_len() const override { return items.size(); }
 
     void materialize() override
     {
@@ -571,20 +571,6 @@ struct SequenceValue : public ValueBase<SequenceValue>
         os << "]";
     }
 };
-
-template <ValueConcept T>
-inline Ptr<Value> Ptr<T>::own_item(size_t idx)
-{
-    SequenceValue *seq = const_cast<SequenceValue *>(
-        value_cast<SequenceValue>(owned ? owned.get() : ref));
-    if (!seq || idx >= seq->items.size())
-        return nullptr;
-    if (owned)
-    {
-        return seq->items[idx].own();
-    }
-    return seq->items[idx].get();
-}
 
 } // namespace aquila::interpreter
 

@@ -31,9 +31,9 @@ static std::vector<Ptr<Value>> make_ith_argument(const std::vector<Ptr<Value>> &
         auto &seq = sequences[iarg];
         if (seq)
         {
-            if (seq.is_owned())
+            if (auto seq_mut = seq.get_mut())
             {
-                argvec[iarg] = seq.own_item(iseq);
+                argvec[iarg] = seq_mut->items[iseq].own();
             }
             else
             {
@@ -106,13 +106,11 @@ static value_trace_t default_op_trace(
 
 static constexpr int64_t SEQUENCE_NOT_FOUND = -1;
 
-static std::vector<Ptr<SequenceValue>> pick_sequences(
-    std::vector<ValuePtr> &args, const std::vector<ArgMatch> &match, int64_t &sequence_len)
+static void pick_sequences(std::vector<ValuePtr> &args,
+    std::vector<Ptr<SequenceValue>> &sequences,
+    const std::vector<ArgMatch> &match,
+    int64_t &sequence_len)
 {
-
-    std::vector<Ptr<SequenceValue>> sequences(args.size());
-
-    sequence_len = SEQUENCE_NOT_FOUND;
 
     for (size_t iarg = 0; iarg < args.size(); iarg++)
     {
@@ -138,7 +136,6 @@ static std::vector<Ptr<SequenceValue>> pick_sequences(
                 + std::to_string(seq_arg->size()) + " != " + std::to_string(sequence_len));
         }
     }
-    return sequences;
 }
 
 struct dummy_value_t : public ValueBase<dummy_value_t>
@@ -218,8 +215,10 @@ static ValuePtr op_call_with_sequencing(const Operation &op,
     if (args.size() == 0)
         return run_op_with_trace(op, args, trace_only);
 
-    int64_t sequence_len;
-    auto sequences = pick_sequences(args, match, sequence_len);
+    int64_t sequence_len = SEQUENCE_NOT_FOUND;
+    std::vector<Ptr<SequenceValue>> sequences(args.size());
+
+    pick_sequences(args, sequences, match, sequence_len);
 
     // sanitize non-sequence args
     for (size_t iarg = 0; iarg < args.size(); iarg++)
@@ -228,6 +227,10 @@ static ValuePtr op_call_with_sequencing(const Operation &op,
             continue;
         args[iarg] = run_sanitizer(std::move(args[iarg]), match[iarg].convert);
     }
+
+    // 2nd pass for pick sequences (post-sanitizer). this is for example
+    // for operations which might expand filenames in preprocessing
+    pick_sequences(args, sequences, match, sequence_len);
 
     if (sequence_len == SEQUENCE_NOT_FOUND)
     {
@@ -350,7 +353,7 @@ static std::uint64_t fnv1a(std::string s)
 }
 Ptr<Value> OpNode::yield() const
 {
-    if (op->tracing_mode() != Operation::Tracing::FROM_RETVAL)
+    if (op->cacheable())
     {
         auto lookup_trace = trace();
         if (!lookup_trace.is_corrupt)
@@ -380,7 +383,7 @@ Ptr<Value> OpNode::yield() const
     {
         auto result = op_call_with_sequencing(
             *op, build_ptrs_from_match(arg_results, match), match, false, true);
-        if (op->tracing_mode() != Operation::Tracing::FROM_RETVAL)
+        if (op->cacheable() && result->sequence_len() < 10)
         {
             std::string ns_name =
                 "__cache_" + std::to_string(fnv1a(result->get_trace().flatten()));

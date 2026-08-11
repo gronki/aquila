@@ -39,17 +39,6 @@ struct BufferValue : public ValueBase<BufferValue>
 
 }; // namespace aquila::values
 
-namespace aquila::convert
-{
-
-inline std::unique_ptr<Value> loadFrame(const StrValue &s)
-{
-    return std::make_unique<values::BufferValue>(
-        read_fits(s.value), values::FrameInfo{.fn_origin = s.value});
-}
-
-} // namespace aquila::convert
-
 namespace aquila
 {
 

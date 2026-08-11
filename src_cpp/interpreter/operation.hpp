@@ -61,6 +61,11 @@ struct Operation
     virtual std::string name() const = 0;
     virtual std::string description() const { return ""; }
     virtual Tracing tracing_mode() const { return Tracing::DEFAULT; }
+    virtual bool cacheable() const
+    {
+        return tracing_mode() != Operation::Tracing::FROM_RETVAL
+            && tracing_mode() != Operation::Tracing::UNTRACEABLE;
+    }
     virtual value_trace_t custom_trace(const std::vector<ValuePtr> *, const Value *) const
     {
         return {};

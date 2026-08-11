@@ -314,7 +314,7 @@ std::string Operation::signature_str() const
         }
         if (argspec.sequence)
         {
-            ss << "[" << argspec.name << ", ...]";
+            ss << "[" << argspec.name << "]";
         }
         else
         {

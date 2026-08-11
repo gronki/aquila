@@ -141,6 +141,26 @@ Commands with ... accept any number of arguments. For example,
 
    add 1, 2, 3, 4  -->  10
 
+You can assign result of a command to a name (variable) in two ways:
+
+    a = add 1, 2
+    sub 3, 4, 5 | as b
+
+Top-level commands do not need parentheses (). However, they are
+required for nested commands and commands with no arguments.
+(Otherwise they could be confused with variables).
+
+   add sub(1, 2), random()
+
+Operation can be chained using |. The result of previous operation
+is passed as the first argument for the next. For example:
+
+   add 1, 2 | mul 3  -->  mul( add(1,2), 3 ) = 9
+
+Arithmetic operations work on images and numbers. For example:
+
+   load "image.fits" | add 100 | save "image2.fits"
+
 You may create sequences using [] syntax. For example:
 
    myseq = [ 1, 2, 3 ]
@@ -149,19 +169,39 @@ Operations iterate on sequences by default. For example:
 
    add myseq, 1  --> [ 1 + 1, 2 + 1, 3 + 1 ] = [ 2, 3, 4 ]
 
-To collect a sequence when passing it into operation, use >:
+Lengths of arrays given to operations matter. Examples:
 
-   add >myseq, 1  -->  1 + 2 + 3 + 1 = 11
+   add [1, 2, 3], [3, 2, 1]     # ok
+   add [1, 2, 3], [3, 2, 1, 0]  # error
 
-Operation can be chained using |. The result of previous operation
-is passed as the first argument for the next. For example:
+Arrays are processed recursively. For example:
 
-   add 1, 2 | mul 3  -->  mul( add(1,2), 3 ) = 9
+   add [1, 2], [[3, 4], 5]      # = [[4, 5], 7]
 
-Operators | and > may be used together as |>. For example:
+Some operation inputs (for example, stacking) do not follow this rule
+and process sequence as whole. 
 
-   myseq | add 1   --> add( myseq, 1)  =  [ 2, 3, 4 ]
-   myseq |> add 1  --> add( >myseq, 1) =  11
+    load ["image1.fits", "image2.fits"] 
+          | normalize() | stack() | save "stack.fits"
+
+You can identify them in the operation list following this introduction
+by []. For example:
+
+        stack([buffers], method: "average") -- Stacks images
+
+You can load many images using wildcards. For example:
+
+   load "Light/*.fits"
+   load "stack_{R,G,B}.fits"
+
+Computation results are saved. If you rerun a command for the second 
+time, the result will be retrieved from memory. Exception are sequences 
+longer than 10 items. They will not be saved to prevent overwhelming 
+memory usage.
+
+If the command loads a file, the absolute file path and its modification
+time are saved. If any of these changes, the computations will rerun.
+
 )EOF" << std::endl
               << "AVAILABLE COMMANDS: " << std::endl
               << std::endl;

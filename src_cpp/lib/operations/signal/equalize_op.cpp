@@ -7,15 +7,24 @@ namespace aquila::ops
 
 REGISTER(EqualizeOp);
 
-ValuePtr EqualizeOp::run(const Str &what,
+ValuePtr EqualizeOp::run(Ptr<SequenceValue> channels,
+    const Str &what,
     const Real &apar,
     const Real &bpar,
     const Real &sigma,
     const Real &sigma_star,
     const Int &niter,
-    const Int &margin,
-    std::vector<Ptr<values::BufferValue>> bufs) const
+    const Int &margin) const
 {
+    std::vector<Ptr<values::BufferValue>> bufs;
+    for (const auto &item : channels->items)
+    {
+        const auto *casted = value_cast<values::BufferValue>(item.get());
+        if (!casted)
+            throw std::runtime_error("wb: expected buffer in sequence");
+        bufs.push_back(casted);
+    }
+
     bkeq_param_t params;
     params.background = what == "bg" || what == "both";
     params.stars = what == "stars" || what == "both";
@@ -54,6 +63,7 @@ ValuePtr EqualizeOp::run(const Str &what,
 ArgManifest EqualizeOp::arg_manifest() const
 {
     return ArgManifest{
+        ArgSpec{.name = "channels", .sequence = true},
         ArgSpec{.name = "what", .default_str = "both", .help = "bg, stars or both"},
         ArgSpec{.name = "apar", .default_real = 2.0},
         ArgSpec{.name = "bpar", .default_real = 0.5},
@@ -61,7 +71,6 @@ ArgManifest EqualizeOp::arg_manifest() const
         ArgSpec{.name = "sigma_star", .default_real = 4.0},
         ArgSpec{.name = "niter", .default_int = 32},
         ArgSpec{.name = "margin", .default_int = 32},
-        ArgSpec{.name = "...", .convert = guard(convert::loadFrame)},
     };
 }
 

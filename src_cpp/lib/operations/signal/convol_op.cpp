@@ -24,8 +24,8 @@ ValuePtr ConvolOp::run(const values::BufferValue &buf,
 ArgManifest ConvolOp::arg_manifest() const
 {
     return ArgManifest{
-        ArgSpec{.name = "buffer", .convert = guard(convert::loadFrame)},
-        ArgSpec{.name = "kernel", .convert = guard(convert::loadFrame)},
+        ArgSpec{.name = "buffer"},
+        ArgSpec{.name = "kernel"},
         ArgSpec{.name = "edges", .default_str = "e", .help = "How to fix edges?"},
     };
 }
@@ -50,8 +50,8 @@ ValuePtr DeconvOp::run(const values::BufferValue &buf,
 ArgManifest DeconvOp::arg_manifest() const
 {
     return ArgManifest{
-        ArgSpec{.name = "buffer", .convert = guard(convert::loadFrame)},
-        ArgSpec{.name = "kernel", .convert = guard(convert::loadFrame)},
+        ArgSpec{.name = "buffer"},
+        ArgSpec{.name = "kernel"},
         ArgSpec{.name = "strength",
             .default_real = 0.5,
             .help = "How much of deconvolution apply each step?"},

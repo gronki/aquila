@@ -17,8 +17,10 @@ protected:
 
 public:
     ExecNode(Namespace &ns) : ns(ns) {}
-    virtual Ptr<Value> yield() = 0;
+    virtual Ptr<Value> yield() const = 0;
+    virtual value_trace_t trace() const = 0;
     virtual std::optional<std::string> get_refname() const { return std::nullopt; }
+    virtual bool trivial() const { return false; }
     virtual ~ExecNode() = default;
 };
 
@@ -31,7 +33,9 @@ public:
     {
     }
 
-    Ptr<Value> yield() override { return ns.get(refname); }
+    Ptr<Value> yield() const override { return ns.get(refname); }
+    value_trace_t trace() const override { return ns.get(refname)->get_trace(); }
+    bool trivial() const override { return true; }
 
     std::optional<std::string> get_refname() const override { return refname; }
 };
@@ -47,15 +51,8 @@ public:
     {
     }
 
-    Ptr<Value> yield() override
-    {
-        Ptr<Value> rhs_yield = rhs->yield();
-        if (!rhs_yield)
-            return {};
-        auto mine = rhs_yield.own();
-        mine->materialize();
-        return &ns.push(lhs, std::move(mine));
-    }
+    Ptr<Value> yield() const override;
+    value_trace_t trace() const override { return rhs->trace(); }
 };
 
 class ValueNode : public ExecNode
@@ -68,23 +65,30 @@ public:
     {
     }
 
-    Ptr<Value> yield() override { return value.get(); }
+    Ptr<Value> yield() const override { return value.get(); }
+    value_trace_t trace() const override { return value->get_trace(); }
+    bool trivial() const override { return true; }
 };
 
 class OpNode : public ExecNode
 {
     std::unique_ptr<Operation> op;
     std::vector<std::unique_ptr<ExecNode>> args;
-    std::vector<std::string> keys;
-    std::vector<int> expansion, is_keyword;
-    bool any_expansion = false;
+    ArgManifest manifest;
+    manifest_properties_t props;
+    std::vector<ArgMatch> match;
 
 public:
     OpNode(std::unique_ptr<Operation> op,
         std::vector<std::unique_ptr<ExecNode>> args,
         std::vector<std::string> keys,
         Namespace &ns);
-    Ptr<Value> yield() override;
+    Ptr<Value> yield() const override;
+    value_trace_t trace() const override;
+    bool trivial() const override
+    {
+        return op->tracing_mode() == Operation::Tracing::FROM_RETVAL;
+    }
 };
 
 class InlineAssignmentNode : public ExecNode
@@ -99,6 +103,7 @@ public:
     {
     }
 
-    Ptr<Value> yield() override;
+    Ptr<Value> yield() const override;
+    value_trace_t trace() const override { return arg->trace(); }
 };
 } // namespace aquila::interpreter

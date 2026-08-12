@@ -14,23 +14,10 @@ OpNode::OpNode(std::unique_ptr<Operation> op,
     std::vector<std::unique_ptr<ExecNode>> args,
     std::vector<std::string> keys,
     Namespace &ns) :
-    ExecNode(ns), op(std::move(op)), args(std::move(args)), keys(std::move(keys))
+    ExecNode(ns), op(std::move(op)), args(std::move(args)),
+    manifest(this->op->arg_manifest()), props(manifest),
+    match(match_arguments(manifest, props, keys))
 {
-    try
-    {
-        for (const auto &key : this->keys)
-        {
-            bool is_expansion = key == std::string(1, EXPAND_DELIM);
-            expansion.push_back(is_expansion);
-            is_keyword.push_back(!key.empty() && !is_expansion);
-            any_expansion = any_expansion || is_expansion;
-        }
-    }
-    catch (std::exception &e)
-    {
-        throw std::runtime_error(
-            std::string("operation ") + this->op->name() + ": " + e.what());
-    }
 }
 
 static std::vector<Ptr<Value>> make_ith_argument(const std::vector<Ptr<Value>> &args,
@@ -44,9 +31,9 @@ static std::vector<Ptr<Value>> make_ith_argument(const std::vector<Ptr<Value>> &
         auto &seq = sequences[iarg];
         if (seq)
         {
-            if (seq.is_owned())
+            if (auto seq_mut = seq.get_mut())
             {
-                argvec[iarg] = seq.own_item(iseq);
+                argvec[iarg] = seq_mut->items[iseq].own();
             }
             else
             {
@@ -102,15 +89,28 @@ static Ptr<Value> run_sanitizer(Ptr<Value> arg, const ConvertFun &conv)
     return arg;
 }
 
+static value_trace_t default_op_trace(
+    const Operation &op, const std::vector<value_trace_t> &expanded)
+{
+    std::stringstream ss;
+    ss << op.name() << "{";
+    for (size_t iarg = 0; iarg < expanded.size(); iarg++)
+    {
+        ss << expanded[iarg];
+        if (iarg + 1 < expanded.size())
+            ss << "; ";
+    }
+    ss << "}";
+    return ss.str();
+}
+
 static constexpr int64_t SEQUENCE_NOT_FOUND = -1;
 
-static std::vector<Ptr<SequenceValue>> pick_sequences(
-    std::vector<ValuePtr> &args, const std::vector<ArgMatch> &match, int64_t &sequence_len)
+static void pick_sequences(std::vector<ValuePtr> &args,
+    std::vector<Ptr<SequenceValue>> &sequences,
+    const std::vector<ArgMatch> &match,
+    int64_t &sequence_len)
 {
-
-    std::vector<Ptr<SequenceValue>> sequences(args.size());
-
-    sequence_len = SEQUENCE_NOT_FOUND;
 
     for (size_t iarg = 0; iarg < args.size(); iarg++)
     {
@@ -136,18 +136,89 @@ static std::vector<Ptr<SequenceValue>> pick_sequences(
                 + std::to_string(seq_arg->size()) + " != " + std::to_string(sequence_len));
         }
     }
-    return sequences;
 }
 
-static ValuePtr op_call_with_sequencing(
-    const Operation &op, std::vector<ValuePtr> args, const std::vector<ArgMatch> &match)
+struct dummy_value_t : public ValueBase<dummy_value_t>
+{
+    TYPE_NAME("dummy");
+    dummy_value_t(const value_trace_t &trace) { this->trace = trace; }
+    dummy_value_t(const dummy_value_t &other) { this->trace = other.trace; }
+    void write(std::ostream &os) const override {}
+};
+
+static std::vector<value_trace_t> collect_traces(const std::vector<ValuePtr> &args)
+{
+    std::vector<value_trace_t> traces;
+    traces.reserve(args.size());
+    for (const auto &arg : args)
+    {
+        if (!arg)
+        {
+            traces.push_back({});
+            continue;
+        }
+        traces.push_back(arg->get_trace());
+    }
+    return traces;
+}
+static std::vector<value_trace_t> collect_traces(
+    const std::vector<std::unique_ptr<ExecNode>> &args)
+{
+    std::vector<value_trace_t> traces;
+    traces.reserve(args.size());
+    for (const auto &arg : args)
+    {
+        if (!arg)
+        {
+            traces.push_back({});
+            continue;
+        }
+        traces.push_back(arg->trace());
+    }
+    return traces;
+}
+
+static ValuePtr run_op_with_trace(
+    const Operation &op, std::vector<ValuePtr> &args, bool trace_only)
+{
+    value_trace_t trace{value_trace_t::corrupt()};
+
+    if (op.tracing_mode() == Operation::Tracing::FROM_INPUTS)
+    {
+        trace = op.custom_trace(&args, nullptr);
+    }
+    else if (op.tracing_mode() == Operation::Tracing::DEFAULT)
+    {
+        trace = default_op_trace(op, collect_traces(args));
+    }
+    if (trace_only)
+        return Ptr<dummy_value_t>::make(trace);
+    auto result = op_call_with_debug(op, std::move(args));
+    if (op.tracing_mode() == Operation::Tracing::FROM_RETVAL)
+    {
+        trace = op.custom_trace(nullptr, result.get());
+    }
+    if (auto mut = result.get_mut())
+    {
+        mut->trace = trace;
+    }
+    return result;
+}
+
+static ValuePtr op_call_with_sequencing(const Operation &op,
+    std::vector<ValuePtr> args,
+    const std::vector<ArgMatch> &match,
+    bool trace_only,
+    bool parallel)
 {
 
     if (args.size() == 0)
-        return op_call_with_debug(op, {});
+        return run_op_with_trace(op, args, trace_only);
 
-    int64_t sequence_len;
-    auto sequences = pick_sequences(args, match, sequence_len);
+    int64_t sequence_len = SEQUENCE_NOT_FOUND;
+    std::vector<Ptr<SequenceValue>> sequences(args.size());
+
+    pick_sequences(args, sequences, match, sequence_len);
 
     // sanitize non-sequence args
     for (size_t iarg = 0; iarg < args.size(); iarg++)
@@ -157,17 +228,33 @@ static ValuePtr op_call_with_sequencing(
         args[iarg] = run_sanitizer(std::move(args[iarg]), match[iarg].convert);
     }
 
+    // 2nd pass for pick sequences (post-sanitizer). this is for example
+    // for operations which might expand filenames in preprocessing
+    pick_sequences(args, sequences, match, sequence_len);
+
     if (sequence_len == SEQUENCE_NOT_FOUND)
     {
-        return op_call_with_debug(op, std::move(args));
+        return run_op_with_trace(op, args, trace_only);
     }
 
     if (sequence_len == 0)
         return Ptr<SequenceValue>::make(std::vector<ValuePtr>{});
 
     std::vector<ValuePtr> result(sequence_len);
+    std::vector<value_trace_t> arg_traces(args.size());
+    for (size_t iarg = 0; iarg < args.size(); iarg++)
+    {
+        if (sequences[iarg])
+        {
+            arg_traces[iarg] = sequences[iarg]->get_trace();
+        }
+        else if (args[iarg])
+        {
+            arg_traces[iarg] = args[iarg]->get_trace();
+        }
+    }
 
-    auto process_seq_item = [&op, &args, &sequences, &match](int64_t iseq) -> ValuePtr
+    auto process_seq_item = [&op, &args, &sequences, &match, trace_only](int64_t iseq) -> ValuePtr
     {
         std::vector<ValuePtr> sanitized_seq(args.size());
         auto ith_vector = make_ith_argument(args, sequences, iseq);
@@ -179,124 +266,134 @@ static ValuePtr op_call_with_sequencing(
                 run_sanitizer(std::move(ith_vector[iarg]), match[iarg].convert);
         }
 
-        return op_call_with_debug(op, std::move(ith_vector));
+        return op_call_with_sequencing(op, std::move(ith_vector), match, trace_only, false);
     };
 
 #ifdef AQUILA_PARALLEL
 
-    const auto ncpu = std::max(1l, (std::int64_t)std::thread::hardware_concurrency());
-    const auto num_threads = std::min(ncpu, sequence_len);
-    const auto block_size = (sequence_len + num_threads - 1) / num_threads;
+    if (parallel)
+    {
+
+        const auto ncpu = std::max(1l, (std::int64_t)std::thread::hardware_concurrency());
+        const auto num_threads = std::min(ncpu, sequence_len);
+        const auto block_size = (sequence_len + num_threads - 1) / num_threads;
 #    ifndef NDEBUG
-    std::cout << op.name() << " threads = " << num_threads << " bs = " << block_size
-              << std::endl;
+        std::cout << op.name() << " threads = " << num_threads << " bs = " << block_size
+                  << std::endl;
 #    endif
 
-    std::vector<std::thread> threads;
-    threads.reserve(num_threads);
-    std::vector<std::exception_ptr> exceptions(num_threads);
+        std::vector<std::thread> threads;
+        threads.reserve(num_threads);
+        std::vector<std::exception_ptr> exceptions(num_threads);
 
-    for (std::int64_t ithread = 0; ithread < num_threads; ithread++)
-    {
-        threads.emplace_back(
-            [&, ithread]()
-            {
-                try
+        for (std::int64_t ithread = 0; ithread < num_threads; ithread++)
+        {
+            threads.emplace_back(
+                [&, ithread]()
                 {
-                    for (std::int64_t iseq = ithread * block_size;
-                        iseq < std::min((ithread + 1) * block_size, sequence_len);
-                        iseq++)
+                    try
                     {
+                        for (std::int64_t iseq = ithread * block_size;
+                            iseq < std::min((ithread + 1) * block_size, sequence_len);
+                            iseq++)
+                        {
 #    ifndef NDEBUG
-                        std::cout << " --- thread = " << ithread << " item = " << iseq
-                                  << std::endl;
+                            std::cout << " --- thread = " << ithread
+                                      << " item = " << iseq << std::endl;
 #    endif
-                        result[iseq] = process_seq_item(iseq);
+                            result[iseq] = process_seq_item(iseq);
+                        }
                     }
-                }
-                catch (...)
-                {
-                    exceptions[ithread] = std::current_exception();
-                }
-            });
-    }
+                    catch (...)
+                    {
+                        exceptions[ithread] = std::current_exception();
+                    }
+                });
+        }
 
-    for (auto &thread : threads)
-    {
-        thread.join();
-    }
+        for (auto &thread : threads)
+        {
+            thread.join();
+        }
 
-    for (auto &except_ptr : exceptions)
-    {
-        if (except_ptr)
-            std::rethrow_exception(except_ptr);
+        for (auto &except_ptr : exceptions)
+        {
+            if (except_ptr)
+                std::rethrow_exception(except_ptr);
+        }
     }
-
-#else
-    for (std::int64_t iseq = 0; iseq < sequence_len; iseq++)
+    else
     {
-        result[iseq] = process_seq_item(iseq);
+#endif
+        for (std::int64_t iseq = 0; iseq < sequence_len; iseq++)
+        {
+            result[iseq] = process_seq_item(iseq);
+        }
+#ifdef AQUILA_PARALLEL
     }
 #endif
 
+    if (op.tracing_mode() == Operation::Tracing::DEFAULT)
+    {
+        return Ptr<SequenceValue>::make(
+            std::move(result), default_op_trace(op, arg_traces));
+    }
+
     return Ptr<SequenceValue>::make(std::move(result));
 }
-
-Ptr<Value> OpNode::yield()
+static std::uint64_t fnv1a(std::string s)
 {
+    std::uint64_t h = 1469598103934665603ull;
+    for (unsigned char c : s)
+    {
+        h ^= c;
+        h *= 1099511628211ull;
+    }
+    return h;
+}
+Ptr<Value> OpNode::yield() const
+{
+    if (op->cacheable())
+    {
+        auto lookup_trace = trace();
+        if (!lookup_trace.is_corrupt)
+        {
+            std::string ns_name =
+                "__cache_" + std::to_string(fnv1a(lookup_trace.flatten()));
+            if (ns.contains(ns_name))
+            {
+#ifndef NDEBUG
+                std::cout << "retrieved from cache: " << ns_name
+                          << " := " << lookup_trace << std::endl;
+#endif
+                return ns.get(ns_name);
+            }
+#ifndef NDEBUG
+            std::cout << "cache miss: " << lookup_trace << std::endl;
+#endif
+        }
+    }
 
     std::vector<Ptr<Value>> arg_results;
-    std::vector<Str> key_results;
-
     for (size_t iarg = 0; iarg < args.size(); iarg++)
     {
-        auto result = args[iarg]->yield();
-        if (!expansion[iarg])
-        {
-            arg_results.push_back(std::move(result));
-            key_results.push_back(keys[iarg]);
-            continue;
-        }
-        auto seq_result = value_cast<SequenceValue>(result);
-        if (!seq_result)
-        {
-            std::cout << "Expansion but not a sequence..." << std::endl;
-            arg_results.push_back(std::move(result));
-            key_results.push_back({});
-            continue;
-        }
-
-        if (seq_result.is_owned())
-        {
-            auto seq_owned = seq_result.own();
-            for (size_t iexp = 0; iexp < seq_owned->size(); iexp++)
-            {
-                arg_results.emplace_back(std::move(seq_owned->items[iexp]));
-                key_results.push_back({});
-            }
-        }
-        else
-        {
-            for (size_t iexp = 0; iexp < seq_result->size(); iexp++)
-            {
-                arg_results.emplace_back(seq_result->items[iexp].get());
-                key_results.push_back({});
-            }
-        }
+        arg_results.push_back(args[iarg]->yield());
     }
-    for (size_t iarg = 0; iarg < arg_results.size(); iarg++)
-    {
-        std::cout << "ARG " << iarg + 1 << ": key \"" << key_results[iarg]
-                  << "\", value = " << *arg_results[iarg] << std::endl;
-    }
-    auto manifest = op->arg_manifest();
-    manifest_properties_t props;
-    props.analyze(manifest);
-    auto match = match_arguments(manifest, props, key_results);
     try
     {
-        return op_call_with_sequencing(
-            *op, build_ptrs_from_match(arg_results, match), match);
+        auto result = op_call_with_sequencing(
+            *op, build_ptrs_from_match(arg_results, match), match, false, true);
+        if (op->cacheable() && result->sequence_len() < 10)
+        {
+            std::string ns_name =
+                "__cache_" + std::to_string(fnv1a(result->get_trace().flatten()));
+#ifndef NDEBUG
+            std::cout << "writing to cache: " << ns_name
+                      << " := " << result->get_trace() << std::endl;
+#endif
+            ns.push(ns_name, result->clone());
+        }
+        return result;
     }
     catch (const std::runtime_error &e)
     {
@@ -305,7 +402,65 @@ Ptr<Value> OpNode::yield()
     }
 }
 
-Ptr<Value> InlineAssignmentNode::yield()
+value_trace_t OpNode::trace() const
+{
+
+    if (op->tracing_mode() == Operation::Tracing::UNTRACEABLE)
+        return value_trace_t::corrupt();
+
+    if (op->tracing_mode() == Operation::Tracing::DEFAULT)
+    {
+        auto traces = collect_traces(args);
+        for (const auto &trace : traces)
+        {
+            if (trace.is_corrupt)
+            {
+                std::cout << "op: " << op->name() << " : " << "child trace is corrupt"
+                          << std::endl;
+                return value_trace_t::corrupt();
+            }
+        }
+        return default_op_trace(*op, build_traces_from_match(traces, match));
+    }
+
+    for (const auto &arg : args)
+    {
+        if (!arg->trivial())
+        {
+
+            std::cout << "op: " << op->name() << " : " << "child arg is non-trivial"
+                      << std::endl;
+            return value_trace_t::corrupt();
+        }
+    }
+
+    std::vector<Ptr<Value>> arg_results;
+    for (size_t iarg = 0; iarg < args.size(); iarg++)
+    {
+        arg_results.push_back(args[iarg]->yield());
+    }
+
+    auto result = op_call_with_sequencing(*op,
+        build_ptrs_from_match(arg_results, match),
+        match,
+        op->tracing_mode() == Operation::Tracing::FROM_INPUTS,
+        false);
+
+    if (!result)
+        throw std::runtime_error("Error in evaluating trace for operation " + op->name());
+
+    return result->get_trace();
+}
+
+Ptr<Value> AssignmentNode::yield() const
+{
+    Ptr<Value> rhs_yield = rhs->yield();
+    if (!rhs_yield)
+        return {};
+    return ns.push(lhs, rhs_yield.own());
+}
+
+Ptr<Value> InlineAssignmentNode::yield() const
 {
 
     Ptr<Value> in = arg->yield();
@@ -315,24 +470,25 @@ Ptr<Value> InlineAssignmentNode::yield()
 
     if (idents.size() == 1)
     {
-        return &ns.push(idents[0], in.own());
+        return ns.push(idents[0], in.own());
     }
-    else
+
+    auto seq_trace = in->get_trace();
+    auto owned = in.own();
+    SequenceValue &sqv = value_cast<SequenceValue>(*owned);
+    if (sqv.size() != idents.size())
+        throw std::runtime_error("expected sequence of length "
+            + std::to_string(idents.size()) + ", got: " + std::to_string(sqv.size()));
+    auto sq_ret = std::make_unique<SequenceValue>();
+    sq_ret->trace = seq_trace;
+    for (std::size_t iarg = 0; iarg < idents.size(); iarg++)
     {
-        auto owned = in.own();
-        SequenceValue &sqv = value_cast<SequenceValue>(*owned);
-        if (sqv.size() != idents.size())
-            throw std::runtime_error("expected sequence of length "
-                + std::to_string(idents.size()) + ", got: " + std::to_string(sqv.size()));
-        for (std::size_t iarg = 0; iarg < idents.size(); iarg++)
-        {
-            ns.push(idents[iarg], sqv.items[iarg].own());
-        }
-
-        return in;
+        auto peeled = sqv.items[iarg].own();
+        peeled->trace = "item{" + seq_trace.content + "; " + std::to_string(iarg + 1) + "}";
+        sq_ret->items.push_back(ns.push(idents[iarg], std::move(peeled)));
     }
 
-    return nullptr;
+    return sq_ret;
 }
 
 } // namespace aquila::interpreter

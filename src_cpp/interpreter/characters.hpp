@@ -11,7 +11,7 @@ static constexpr TokenChar CHAIN_CALL_DELIM = '|';
 static constexpr TokenChar CHAIN_CALL_DELIM = _CHAIN_CALL_DELIM;
 #endif
 static constexpr TokenChar KWARG_DELIM = ':';
-static constexpr TokenChar EXPAND_DELIM = '>';
+// static constexpr TokenChar EXPAND_DELIM = '>';
 static constexpr TokenChar COMMENT_START = '#';
 
 inline bool is_whitespace(TokenChar ch)
@@ -22,7 +22,7 @@ inline bool is_whitespace(TokenChar ch)
 inline bool is_delim(TokenChar ch)
 {
     return (ch == '(') || (ch == ')') || (ch == ',') || (ch == '=')
-        || (ch == CHAIN_CALL_DELIM) || (ch == KWARG_DELIM) || (ch == EXPAND_DELIM)
+        || (ch == CHAIN_CALL_DELIM) || (ch == KWARG_DELIM) /* || (ch == EXPAND_DELIM) */
         || (ch == '[') || (ch == ']');
 }
 

@@ -20,6 +20,7 @@ struct SourceListValue : public ValueBase<SourceListValue>
     SourceListValue(const SourceListValue &other) :
         sources(other.sources), nx(other.nx), ny(other.ny)
     {
+        trace = other.trace;
     }
     void write(std::ostream &os) const
     {

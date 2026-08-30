@@ -205,6 +205,7 @@ struct Value
     virtual int64_t sequence_len() const { return -1; }
     virtual ValuePtr shallow() const { return {this}; }
     virtual int64_t mem_size() const { return 0; }
+    virtual int64_t sequence_depth() const { return 0; }
     value_trace_t trace;
     virtual value_trace_t get_trace() const
     {
@@ -486,6 +487,20 @@ struct SequenceValue : public ValueBase<SequenceValue>
     size_t size() const { return items.size(); }
     virtual bool is_sequence() const override { return true; }
     int64_t sequence_len() const override { return items.size(); }
+    int64_t sequence_depth() const override
+    {
+        int64_t children_depth = -1;
+        for (const auto &item : items)
+        {
+            if (!item)
+                continue;
+            auto child_depth = item->sequence_depth();
+            children_depth = (children_depth < 0 || child_depth < children_depth)
+                ? child_depth
+                : children_depth;
+        }
+        return children_depth + 1;
+    }
 
     void materialize() override
     {

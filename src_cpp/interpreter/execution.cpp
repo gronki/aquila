@@ -1,5 +1,4 @@
 #include <algorithm>
-#include <cmath>
 #include <exception>
 #include <thread>
 
@@ -10,13 +9,18 @@
 
 namespace aquila::interpreter
 {
+void ExecNode::setup()
+{
+    set_depth(0);
+    std::set<std::string> refs;
+    assignment_cache_check(refs);
+}
+
 OpNode::OpNode(std::unique_ptr<Operation> op,
     std::vector<std::unique_ptr<ExecNode>> args,
-    std::vector<std::string> keys,
-    Namespace &ns) :
-    ExecNode(ns), op(std::move(op)), args(std::move(args)),
-    manifest(this->op->arg_manifest()), props(manifest),
-    match(match_arguments(manifest, props, keys))
+    std::vector<std::string> keys) :
+    op(std::move(op)), args(std::move(args)), manifest(this->op->arg_manifest()),
+    props(manifest), match(match_arguments(manifest, props, keys))
 {
 }
 
@@ -161,8 +165,9 @@ static std::vector<value_trace_t> collect_traces(const std::vector<ValuePtr> &ar
     }
     return traces;
 }
+
 static std::vector<value_trace_t> collect_traces(
-    const std::vector<std::unique_ptr<ExecNode>> &args)
+    const std::vector<std::unique_ptr<ExecNode>> &args, ExecCtx ctx)
 {
     std::vector<value_trace_t> traces;
     traces.reserve(args.size());
@@ -173,7 +178,7 @@ static std::vector<value_trace_t> collect_traces(
             traces.push_back({});
             continue;
         }
-        traces.push_back(arg->trace());
+        traces.push_back(arg->trace(ctx));
     }
     return traces;
 }
@@ -341,57 +346,47 @@ static ValuePtr op_call_with_sequencing(const Operation &op,
 
     return Ptr<SequenceValue>::make(std::move(result));
 }
-static std::uint64_t fnv1a(std::string s)
+Ptr<Value> OpNode::yield(ExecCtx ctx) const
 {
-    std::uint64_t h = 1469598103934665603ull;
-    for (unsigned char c : s)
+    if (ctx.cache && op->cacheable())
     {
-        h ^= c;
-        h *= 1099511628211ull;
-    }
-    return h;
-}
-Ptr<Value> OpNode::yield() const
-{
-    if (op->cacheable())
-    {
-        auto lookup_trace = trace();
-        if (!lookup_trace.is_corrupt)
+        auto lookup_trace = trace(ctx);
+        auto maybe_cached = ctx.cache->get_and_score(lookup_trace, 1);
+        if (maybe_cached)
         {
-            std::string ns_name =
-                "__cache_" + std::to_string(fnv1a(lookup_trace.flatten()));
-            if (ns.contains(ns_name))
-            {
 #ifndef NDEBUG
-                std::cout << "retrieved from cache: " << ns_name
-                          << " := " << lookup_trace << std::endl;
+            std::cout << "retrieved from cache: " << lookup_trace << std::endl;
+#else
+            std::cout << "used cached result: " << op->name() << std::endl;
 #endif
-                return ns.get(ns_name);
-            }
-#ifndef NDEBUG
-            std::cout << "cache miss: " << lookup_trace << std::endl;
-#endif
+            trigger_sideeffects(ctx);
+            return maybe_cached;
         }
+#ifndef NDEBUG
+        std::cout << "cache miss: " << lookup_trace << std::endl;
+#endif
     }
 
     std::vector<Ptr<Value>> arg_results;
     for (size_t iarg = 0; iarg < args.size(); iarg++)
     {
-        arg_results.push_back(args[iarg]->yield());
+        arg_results.push_back(args[iarg]->yield(ctx));
     }
     try
     {
         auto result = op_call_with_sequencing(
             *op, build_ptrs_from_match(arg_results, match), match, false, true);
-        if (op->cacheable() && result->sequence_len() < 10)
+        if (ctx.cache && result && depth < 3 && op->cacheable()
+            && result->sequence_len() < 10)
         {
-            std::string ns_name =
-                "__cache_" + std::to_string(fnv1a(result->get_trace().flatten()));
+            auto result_trace = result->get_trace();
+            if (!result_trace.is_corrupt)
+            {
 #ifndef NDEBUG
-            std::cout << "writing to cache: " << ns_name
-                      << " := " << result->get_trace() << std::endl;
+                std::cout << "writing to cache: " << result_trace << std::endl;
 #endif
-            ns.push(ns_name, result->clone());
+                ctx.cache->push(result_trace, result->clone());
+            }
         }
         return result;
     }
@@ -402,7 +397,7 @@ Ptr<Value> OpNode::yield() const
     }
 }
 
-value_trace_t OpNode::trace() const
+value_trace_t OpNode::trace(ExecCtx ctx) const
 {
 
     if (op->tracing_mode() == Operation::Tracing::UNTRACEABLE)
@@ -410,13 +405,15 @@ value_trace_t OpNode::trace() const
 
     if (op->tracing_mode() == Operation::Tracing::DEFAULT)
     {
-        auto traces = collect_traces(args);
+        auto traces = collect_traces(args, ctx);
         for (const auto &trace : traces)
         {
             if (trace.is_corrupt)
             {
+#ifndef NDEBUG
                 std::cout << "op: " << op->name() << " : " << "child trace is corrupt"
                           << std::endl;
+#endif
                 return value_trace_t::corrupt();
             }
         }
@@ -427,9 +424,10 @@ value_trace_t OpNode::trace() const
     {
         if (!arg->trivial())
         {
-
+#ifndef NDEBUG
             std::cout << "op: " << op->name() << " : " << "child arg is non-trivial"
                       << std::endl;
+#endif
             return value_trace_t::corrupt();
         }
     }
@@ -437,7 +435,7 @@ value_trace_t OpNode::trace() const
     std::vector<Ptr<Value>> arg_results;
     for (size_t iarg = 0; iarg < args.size(); iarg++)
     {
-        arg_results.push_back(args[iarg]->yield());
+        arg_results.push_back(args[iarg]->yield(ctx));
     }
 
     auto result = op_call_with_sequencing(*op,
@@ -452,25 +450,26 @@ value_trace_t OpNode::trace() const
     return result->get_trace();
 }
 
-Ptr<Value> AssignmentNode::yield() const
+Ptr<Value> AssignmentNode::yield(ExecCtx ctx) const
 {
-    Ptr<Value> rhs_yield = rhs->yield();
+    Ptr<Value> rhs_yield = rhs->yield(ctx);
     if (!rhs_yield)
         return {};
-    return ns.push(lhs, rhs_yield.own());
+    return ctx.ns.push(lhs, rhs_yield.own());
 }
 
-Ptr<Value> InlineAssignmentNode::yield() const
+Ptr<Value> InlineAssignmentNode::yield(ExecCtx ctx) const
 {
 
-    Ptr<Value> in = arg->yield();
+    Ptr<Value> in = arg->yield(ctx);
 
     if (!in)
         throw std::runtime_error("empty value may not be assigned");
 
     if (idents.size() == 1)
     {
-        return ns.push(idents[0], in.own());
+        std::cout << "Pushing: " << idents[0] << std::endl;
+        return ctx.ns.push(idents[0], in.own());
     }
 
     auto seq_trace = in->get_trace();
@@ -485,7 +484,7 @@ Ptr<Value> InlineAssignmentNode::yield() const
     {
         auto peeled = sqv.items[iarg].own();
         peeled->trace = "item{" + seq_trace.content + "; " + std::to_string(iarg + 1) + "}";
-        sq_ret->items.push_back(ns.push(idents[iarg], std::move(peeled)));
+        sq_ret->items.push_back(ctx.ns.push(idents[iarg], std::move(peeled)));
     }
 
     return sq_ret;

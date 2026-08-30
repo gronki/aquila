@@ -35,6 +35,7 @@ struct BufferValue : public ValueBase<BufferValue>
             os << info.fn_origin << " ";
         os << buffer.cols() << "x" << buffer.rows() << ")";
     }
+    int64_t mem_size() const override { return sizeof(real_buf_t) * buffer.size(); }
 };
 
 } // namespace aquila::values

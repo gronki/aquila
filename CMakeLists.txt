@@ -239,7 +239,6 @@ set (APP_SOURCES src_cpp/app/aq2cpp.cpp)
 if (AQUILA_WINDOW)
     set (APP_SOURCES ${APP_SOURCES} src_cpp/app/preview.cpp)
 endif()
-message(${APP_SOURCES})
 add_executable(aqcli ${APP_SOURCES})
 
 target_link_libraries(aqcli PRIVATE 
@@ -253,6 +252,9 @@ if (AQUILA_WINDOW)
         target_include_directories(aqcli PRIVATE ${CMAKE_BINARY_DIR}/sdl2-shim)
     endif()
 endif()
+if (AQUILA_PARALLEL)
+    target_link_libraries(aqcli PRIVATE OpenMP::OpenMP_CXX)
+endif ()
 
 install(TARGETS aqfindstar aqcli RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 

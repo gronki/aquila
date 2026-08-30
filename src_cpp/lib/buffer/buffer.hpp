@@ -48,6 +48,12 @@ public:
         }
     }
 
+    Buffer(const Buffer &other) :
+        buffer(other.nx * other.ny), nx(other.nx), ny(other.ny)
+    {
+        std::copy(other.buffer.begin(), other.buffer.end(), buffer.begin());
+    }
+
     T &operator[](const std::int64_t i) noexcept
     {
         check(i >= 0);

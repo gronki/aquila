@@ -1,7 +1,7 @@
 #include <iostream>
 
-#include "../src_cpp/interpreter/interpreter.hpp"
 #include "../src_cpp/interpreter/characters.hpp"
+#include "../src_cpp/interpreter/interpreter.hpp"
 
 #include "test_operations.hpp"
 #include "testmacros.hpp"
@@ -22,9 +22,9 @@ TEST(example)
     Namespace ns = example_ns();
     auto exec = build_exectree_from_str(
         std::string(" add(1, 2) ") + std::string(1, CHAIN_CALL_DELIM) + " mul(3)",
-        ns,
         global_op_db());
-    auto result = exec->yield();
+    exec->setup();
+    auto result = exec->yield({ns, nullptr});
     std::cout << (bool(result) ? result->str() : std::string("(null)")) << std::endl;
 }
 

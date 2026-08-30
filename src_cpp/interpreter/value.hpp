@@ -165,11 +165,11 @@ using ValuePtr = Ptr<Value>;
 
 struct value_trace_t
 {
-    value_trace_t() {}
-    value_trace_t(const std::string &content) : content(content) {};
     std::string content;
+    bool is_corrupt;
+    value_trace_t() : is_corrupt(true) {}
+    value_trace_t(const std::string &content) : content(content), is_corrupt(false) {};
     std::string flatten() const { return content; }
-    bool is_corrupt = false;
     static value_trace_t corrupt()
     {
         value_trace_t t;
@@ -204,6 +204,7 @@ struct Value
     virtual bool is_sequence() const { return false; }
     virtual int64_t sequence_len() const { return -1; }
     virtual ValuePtr shallow() const { return {this}; }
+    virtual int64_t mem_size() const { return 0; }
     value_trace_t trace;
     virtual value_trace_t get_trace() const
     {
@@ -543,6 +544,15 @@ struct SequenceValue : public ValueBase<SequenceValue>
             }
         }
         return Ptr<SequenceValue>::make(std::move(shallow_items), trace);
+    }
+
+    int64_t mem_size() const override
+    {
+        int64_t size = 0;
+        for (const auto &item : items)
+            if (item)
+                size += item->mem_size();
+        return size;
     }
 
     void write(std::ostream &os) const override

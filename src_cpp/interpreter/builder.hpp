@@ -8,6 +8,6 @@ namespace aquila::interpreter
 {
 
 std::unique_ptr<ExecNode> build_exec_tree(
-    const std::unique_ptr<AstNode> &ast, Namespace &ns, const OpDatabase &opdb);
+    const std::unique_ptr<AstNode> &ast, const OpDatabase &opdb);
 
 } // namespace aquila::interpreter

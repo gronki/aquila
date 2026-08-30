@@ -1,65 +1,65 @@
 module framehandling
 
-  use iso_fortran_env, only: real32, real64
-  use ieee_arithmetic
-  use globals
-  use str_utils_m
+use iso_fortran_env, only: real32, real64
+use ieee_arithmetic
+use globals
+use str_utils_m
 
-  use frame_m
-  use image_frame_m
+use frame_m
+use image_frame_m
 
-  !----------------------------------------------------------------------------!
+ !----------------------------------------------------------------------------!
 
-  implicit none
-  public
+implicit none
+public
 
 contains
 
-  !----------------------------------------------------------------------------!
+ !----------------------------------------------------------------------------!
 
-  subroutine read_fits_naxes(fn, ni, nj, errno)
-    character(len = *), intent(in) :: fn
-    integer, intent(out) :: ni, nj
-    integer, intent(inout), optional :: errno
-    integer :: sz(2), ndim, bsize, ftiostat, un
+subroutine read_fits_naxes(fn, ni, nj, errno)
+   character(len = *), intent(in) :: fn
+   integer, intent(out) :: ni, nj
+   integer, intent(inout), optional :: errno
+   integer :: sz(2), ndim, bsize, ftiostat, un
 
-    ftiostat = 0
+   ftiostat = 0
 
-    call ftgiou(un, ftiostat)
-    call ftdkopn(un, fn, 0, bsize, ftiostat)
+   call ftgiou(un, ftiostat)
+   call ftdkopn(un, fn, 0, bsize, ftiostat)
 
-    if (ftiostat /= 0) then
+   if (ftiostat /= 0) then
       call ftrprt("stderr", ftiostat)
       if (present(errno)) then
-        errno = ftiostat; return
+         errno = ftiostat; return
       else
-        error stop "error opening FITS file: " // fn
+         error stop "error opening FITS file: " // fn
       end if
-    end if
+   end if
 
-    ! get number of dimensions
-    call ftgidm(un, ndim, ftiostat)
-    if (ndim /= 2) error stop "only monochrome images are supported for now"
+   ! get number of dimensions
+   call ftgidm(un, ndim, ftiostat)
+   if (ndim /= 2) error stop "only monochrome images are supported for now"
 
-    ! get image dimensions
-    call ftgisz(un, 2, sz, ftiostat)
-    ni = sz(2)
-    nj = sz(1)
+   ! get image dimensions
+   call ftgisz(un, 2, sz, ftiostat)
+   ni = sz(1)
+   nj = sz(2)
 
-    ! close the unit
-    call ftclos(un, ftiostat)
-    call ftfiou(un, ftiostat)
+   ! close the unit
+   call ftclos(un, ftiostat)
+   call ftfiou(un, ftiostat)
 
-    if (ftiostat /= 0) then
+   if (ftiostat /= 0) then
       call ftrprt("stderr", ftiostat)
       if (present(errno)) then
-        errno = ftiostat; return
+         errno = ftiostat; return
       else
-        error stop "error reading FITS file: " // fn
+         error stop "error reading FITS file: " // fn
       end if
-    end if
-  end subroutine
+   end if
+end subroutine
 
-  !----------------------------------------------------------------------------!
+ !----------------------------------------------------------------------------!
 
 end module framehandling

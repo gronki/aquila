@@ -4,7 +4,7 @@ namespace aquila::interpreter
 {
 
 static std::unique_ptr<ExecNode> build_op_node(
-    const AstOpNode &ast_op_node, Namespace &ns, const OpDatabase &opdb)
+    const AstOpNode &ast_op_node, const OpDatabase &opdb)
 {
 
     std::vector<std::unique_ptr<ExecNode>> args;
@@ -13,7 +13,7 @@ static std::unique_ptr<ExecNode> build_op_node(
     keys.reserve(ast_op_node.args.size());
     for (const auto &arg : ast_op_node.args)
     {
-        args.push_back(build_exec_tree(arg.arg_val, ns, opdb));
+        args.push_back(build_exec_tree(arg.arg_val, opdb));
         keys.push_back(arg.key);
     }
 
@@ -31,7 +31,7 @@ static std::unique_ptr<ExecNode> build_op_node(
             idents.push_back(*label);
         }
         return std::make_unique<InlineAssignmentNode>(
-            build_exec_tree(ast_op_node.args[0].arg_val, ns, opdb), idents, ns);
+            build_exec_tree(ast_op_node.args[0].arg_val, opdb), idents);
     }
 
     auto op_it = opdb.find(ast_op_node.opname);
@@ -43,31 +43,31 @@ static std::unique_ptr<ExecNode> build_op_node(
     if (!op)
         throw std::logic_error("Null operation pointer.");
 
-    return std::make_unique<OpNode>(std::move(op), std::move(args), keys, ns);
+    return std::make_unique<OpNode>(std::move(op), std::move(args), keys);
 }
 
 std::unique_ptr<ExecNode> build_exec_tree(
-    const std::unique_ptr<AstNode> &ast, Namespace &ns, const OpDatabase &opdb)
+    const std::unique_ptr<AstNode> &ast, const OpDatabase &opdb)
 {
     if (const auto *ast_ref_node = dynamic_cast<const AstRefNode *>(ast.get()))
     {
-        return std::make_unique<RefNode>(ast_ref_node->refname, ns);
+        return std::make_unique<RefNode>(ast_ref_node->refname);
     }
 
     if (const auto *ast_val_node = dynamic_cast<const AstValueNode *>(ast.get()))
     {
-        return std::make_unique<ValueNode>(ast_val_node->constant->clone(), ns);
+        return std::make_unique<ValueNode>(ast_val_node->constant->clone());
     }
 
     if (const auto *ast_op_node = dynamic_cast<const AstOpNode *>(ast.get()))
     {
-        return build_op_node(*ast_op_node, ns, opdb);
+        return build_op_node(*ast_op_node, opdb);
     }
 
     if (const auto *ast_assgn_node = dynamic_cast<const AstAssignmentNode *>(ast.get()))
     {
         return std::make_unique<AssignmentNode>(
-            ast_assgn_node->lhs, build_exec_tree(ast_assgn_node->rhs, ns, opdb), ns);
+            ast_assgn_node->lhs, build_exec_tree(ast_assgn_node->rhs, opdb));
     }
 
     throw std::logic_error("Unreachable");

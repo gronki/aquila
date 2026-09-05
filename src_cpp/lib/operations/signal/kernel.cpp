@@ -30,12 +30,13 @@ ValuePtr KernelOp::run(const double &fwhm, const std::string &type) const
     return std::make_unique<values::BufferValue>(std::move(krn));
 }
 
-ArgManifest KernelOp::arg_manifest() const
+const ArgManifest &KernelOp::arg_manifest() const
 {
-    return ArgManifest{
+    static const ArgManifest manifest{
         ArgSpec{.name = "fwhm"},
         ArgSpec{.name = "type", .default_str = "gauss", .help = "options: gauss, mexha"},
     };
+    return manifest;
 }
 
 } // namespace aquila::ops

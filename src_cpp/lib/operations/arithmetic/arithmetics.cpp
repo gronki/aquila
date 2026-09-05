@@ -17,11 +17,12 @@ Ptr<Value> AddOp::run(std::vector<const Value *> args) const
     return result;
 }
 
-ArgManifest AddOp::arg_manifest() const
+const ArgManifest &AddOp::arg_manifest() const
 {
-    return ArgManifest{
+    static const ArgManifest manifest{
         ArgSpec{.name = "..."},
     };
+    return manifest;
 }
 
 REGISTER(SubOp);
@@ -35,12 +36,13 @@ Ptr<Value> SubOp::run(Ptr<Value> first, std::vector<const Value *> args) const
     return result;
 }
 
-ArgManifest SubOp::arg_manifest() const
+const ArgManifest &SubOp::arg_manifest() const
 {
-    return ArgManifest{
+    static const ArgManifest manifest{
         ArgSpec{.name = "x"},
         ArgSpec{.name = "..."},
     };
+    return manifest;
 }
 
 REGISTER(MulOp);
@@ -54,11 +56,12 @@ Ptr<Value> MulOp::run(std::vector<const Value *> args) const
     return result;
 }
 
-ArgManifest MulOp::arg_manifest() const
+const ArgManifest &MulOp::arg_manifest() const
 {
-    return ArgManifest{
+    static const ArgManifest manifest{
         ArgSpec{.name = "..."},
     };
+    return manifest;
 }
 
 REGISTER(DivOp);
@@ -74,12 +77,13 @@ Ptr<Value> DivOp::run(Ptr<Value> first, std::vector<const Value *> args) const
     return result;
 }
 
-ArgManifest DivOp::arg_manifest() const
+const ArgManifest &DivOp::arg_manifest() const
 {
-    return ArgManifest{
+    static const ArgManifest manifest{
         ArgSpec{.name = "x"},
         ArgSpec{.name = "..."},
     };
+    return manifest;
 }
 REGISTER(MixOp);
 Ptr<Value> MixOp::run(std::vector<const Value *> args) const
@@ -99,11 +103,12 @@ Ptr<Value> MixOp::run(std::vector<const Value *> args) const
     return result;
 }
 
-ArgManifest MixOp::arg_manifest() const
+const ArgManifest &MixOp::arg_manifest() const
 {
-    return ArgManifest{
+    static const ArgManifest manifest{
         ArgSpec{.name = "..."},
     };
+    return manifest;
 }
 
 REGISTER(LrgbOp);
@@ -129,13 +134,14 @@ Ptr<Value> LrgbOp::run(Ptr<Value> lum, std::vector<const Value *> args) const
     return std::make_unique<interpreter::SequenceValue>(std::move(scaled_components));
 }
 
-ArgManifest LrgbOp::arg_manifest() const
+const ArgManifest &LrgbOp::arg_manifest() const
 {
-    return ArgManifest{
+    static const ArgManifest manifest{
         ArgSpec{.name = "L", .help = "luminance"},
         ArgSpec{
             .name = "...", .help = "color channels"},
     };
+    return manifest;
 }
 
 REGISTER(PowOp);
@@ -144,12 +150,13 @@ ValuePtr PowOp::run(const Value &a, const Value &b) const
     return apply_binary(a, b, [](auto a, auto b) { return std::pow(a, b); });
 }
 
-ArgManifest PowOp::arg_manifest() const
+const ArgManifest &PowOp::arg_manifest() const
 {
-    return ArgManifest{
+    static const ArgManifest manifest{
         ArgSpec{.name = "base"},
         ArgSpec{.name = "exponent"},
     };
+    return manifest;
 }
 
 REGISTER(SqrtOp);
@@ -158,9 +165,10 @@ ValuePtr SqrtOp::run(const Value &x) const
     return apply_unitary(x, [](auto a) { return std::sqrt(a); });
 }
 
-ArgManifest SqrtOp::arg_manifest() const
+const ArgManifest &SqrtOp::arg_manifest() const
 {
-    return ArgManifest{ArgSpec{.name = "x"}};
+    static const ArgManifest manifest{ArgSpec{.name = "x"}};
+    return manifest;
 }
 
 } // namespace aquila::ops

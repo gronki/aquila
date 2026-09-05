@@ -10,7 +10,7 @@ struct AddOp : public Operation
 {
     BIND_ARGS(&AddOp::run);
     Ptr<Value> run(std::vector<const Value *> args) const;
-    ArgManifest arg_manifest() const override;
+    const ArgManifest &arg_manifest() const override;
     std::string name() const { return "add"; }
     std::string description() const override
     {
@@ -23,7 +23,7 @@ struct SubOp : public Operation
     BIND_ARGS(&SubOp::run);
     Ptr<Value> run(Ptr<Value> first, std::vector<const Value *> args) const;
 
-    ArgManifest arg_manifest() const override;
+    const ArgManifest &arg_manifest() const override;
     std::string name() const { return "sub"; }
     std::string description() const override
     {
@@ -35,7 +35,7 @@ struct MulOp : public Operation
 {
     BIND_ARGS(&MulOp::run);
     Ptr<Value> run(std::vector<const Value *> args) const;
-    ArgManifest arg_manifest() const override;
+    const ArgManifest &arg_manifest() const override;
     std::string name() const { return "mul"; }
     std::string description() const override
     {
@@ -48,7 +48,7 @@ struct DivOp : public Operation
     BIND_ARGS(&DivOp::run);
     Ptr<Value> run(Ptr<Value> first, std::vector<const Value *> args) const;
 
-    ArgManifest arg_manifest() const override;
+    const ArgManifest &arg_manifest() const override;
     std::string name() const { return "div"; }
     std::string description() const override
     {
@@ -60,7 +60,7 @@ struct MixOp : public Operation
 {
     BIND_ARGS(&MixOp::run);
     Ptr<Value> run(std::vector<const Value *> args) const;
-    ArgManifest arg_manifest() const override;
+    const ArgManifest &arg_manifest() const override;
     std::string name() const { return "mix"; }
     std::string description() const override
     {
@@ -73,7 +73,7 @@ struct LrgbOp : public Operation
     BIND_ARGS(&LrgbOp::run);
     Ptr<Value> run(Ptr<Value> lum, std::vector<const Value *> args) const;
 
-    ArgManifest arg_manifest() const override;
+    const ArgManifest &arg_manifest() const override;
     std::string name() const { return "lrgb"; }
     std::string description() const override
     {
@@ -87,7 +87,7 @@ struct PowOp : public Operation
     BIND_ARGS(&PowOp::run);
     ValuePtr run(const Value &a, const Value &b) const;
 
-    ArgManifest arg_manifest() const override;
+    const ArgManifest &arg_manifest() const override;
     std::string name() const { return "pow"; }
     std::string description() const override { return "Computes base^exponent."; }
 };
@@ -97,7 +97,7 @@ struct SqrtOp : public Operation
     BIND_ARGS(&SqrtOp::run);
     ValuePtr run(const Value &x) const;
 
-    ArgManifest arg_manifest() const override;
+    const ArgManifest &arg_manifest() const override;
     std::string name() const { return "sqrt"; }
     std::string description() const override
     {

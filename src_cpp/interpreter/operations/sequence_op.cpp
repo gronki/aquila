@@ -15,11 +15,12 @@ ValuePtr SequenceOp::call(std::vector<ValuePtr> args) const
     return Ptr<SequenceValue>::make(std::move(items));
 }
 
-ArgManifest SequenceOp::arg_manifest() const
+const ArgManifest &SequenceOp::arg_manifest() const
 {
-    return ArgManifest{
+    static const ArgManifest manifest{
         ArgSpec{.name = "...", .sequence = true},
     };
+    return manifest;
 }
 
 REGISTER(ItemOp);
@@ -37,12 +38,13 @@ ValuePtr ItemOp::run(Ptr<SequenceValue> seq, Real ix) const
     return seq->items[idx].get();
 }
 
-ArgManifest ItemOp::arg_manifest() const
+const ArgManifest &ItemOp::arg_manifest() const
 {
-    return ArgManifest{
+    static const ArgManifest manifest{
         ArgSpec{.name = "seq", .sequence = true},
         ArgSpec{.name = "ix"},
     };
+    return manifest;
 }
 
 std::string ItemOp::description() const
@@ -62,11 +64,12 @@ ValuePtr ZipOp::call(std::vector<ValuePtr> args) const
     return Ptr<SequenceValue>::make(std::move(items));
 }
 
-ArgManifest ZipOp::arg_manifest() const
+const ArgManifest &ZipOp::arg_manifest() const
 {
-    return ArgManifest{
+    static const ArgManifest manifest{
         ArgSpec{.name = "...", .sequence = false},
     };
+    return manifest;
 }
 
 } // namespace aquila::interpreter::ops

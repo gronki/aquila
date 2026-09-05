@@ -13,12 +13,13 @@ ValuePtr HotFindOp::run(const values::BufferValue &im, const Real &sigma) const
     return std::make_unique<values::BufferValue>(std::move(result), im.info);
 }
 
-ArgManifest HotFindOp::arg_manifest() const
+const ArgManifest &HotFindOp::arg_manifest() const
 {
-    return ArgManifest{
+    static const ArgManifest manifest{
         ArgSpec{.name = "im"},
         ArgSpec{.name = "sigma", .default_real = 3.},
     };
+    return manifest;
 }
 
 std::string HotFindOp::description() const
@@ -33,12 +34,13 @@ ValuePtr HotFixOp::run(const values::BufferValue &im, const values::BufferValue 
     return std::make_unique<values::BufferValue>(std::move(result), im.info);
 }
 
-ArgManifest HotFixOp::arg_manifest() const
+const ArgManifest &HotFixOp::arg_manifest() const
 {
-    return ArgManifest{
+    static const ArgManifest manifest{
         ArgSpec{.name = "im"},
         ArgSpec{.name = "mask"},
     };
+    return manifest;
 }
 
 std::string HotFixOp::description() const
@@ -54,12 +56,13 @@ ValuePtr HotFixLightOp::run(const values::BufferValue &im, const Real &sigma) co
     return std::make_unique<values::BufferValue>(std::move(result), im.info);
 }
 
-ArgManifest HotFixLightOp::arg_manifest() const
+const ArgManifest &HotFixLightOp::arg_manifest() const
 {
-    return ArgManifest{
+    static const ArgManifest manifest{
         ArgSpec{.name = "im"},
         ArgSpec{.name = "sigma", .default_real = 3.},
     };
+    return manifest;
 }
 
 std::string HotFixLightOp::description() const

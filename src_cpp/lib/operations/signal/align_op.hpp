@@ -15,7 +15,7 @@ struct AlignOp : public Operation
         const std::string &method,
         const std::string& prealign) const;
 
-    ArgManifest arg_manifest() const override;
+    const ArgManifest &arg_manifest() const override;
 
     std::string name() const override { return "register"; }
     std::string description() const override

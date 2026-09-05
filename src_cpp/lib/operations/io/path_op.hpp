@@ -10,11 +10,12 @@ struct PathOp : public Operation
     BIND_ARGS(&PathOp::run);
     ValuePtr run(std::vector<const Str *>) const;
 
-    ArgManifest arg_manifest() const override
+    const ArgManifest &arg_manifest() const override
     {
-        return ArgManifest{
+        static const ArgManifest manifest{
             ArgSpec{.name = "...", .help = "Path to expand"},
         };
+        return manifest;
     }
 
     std::string name() const override { return "find"; }
@@ -39,7 +40,11 @@ struct PwdOp : public Operation
     BIND_ARGS(&PwdOp::run);
     ValuePtr run() const;
 
-    ArgManifest arg_manifest() const override { return ArgManifest{}; }
+    const ArgManifest &arg_manifest() const override
+    {
+        static const ArgManifest manifest{};
+        return manifest;
+    }
 
     std::string name() const override { return "pwd"; }
     std::string description() const override
@@ -62,11 +67,12 @@ struct ChdirOp : public Operation
     BIND_ARGS(&ChdirOp::run);
     ValuePtr run(const std::string &) const;
 
-    ArgManifest arg_manifest() const override
+    const ArgManifest &arg_manifest() const override
     {
-        return ArgManifest{
+        static const ArgManifest manifest{
             ArgSpec{.name = "path", .help = "New working directory"},
         };
+        return manifest;
     }
 
     std::string name() const override { return "cd"; }

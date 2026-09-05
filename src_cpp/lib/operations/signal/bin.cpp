@@ -59,12 +59,13 @@ ValuePtr BinOp::run(const values::BufferValue &in, const Real &scale) const
     return nullptr;
 }
 
-ArgManifest BinOp::arg_manifest() const
+const ArgManifest &BinOp::arg_manifest() const
 {
-    return ArgManifest{
+    static const ArgManifest manifest{
         ArgSpec{.name = "frame"},
         ArgSpec{.name = "scale"},
     };
+    return manifest;
 }
 
 std::string BinOp::description() const

@@ -59,13 +59,14 @@ ValuePtr WritePng::run(
     return in_mono.clone();
 }
 
-ArgManifest WritePng::arg_manifest() const
+const ArgManifest &WritePng::arg_manifest() const
 {
-    return ArgManifest{
+    static const ArgManifest manifest{
         ArgSpec{.name = "data"},
         ArgSpec{.name = "filename"},
         ArgSpec{.name = "bits", .default_real = 8},
     };
+    return manifest;
 }
 
 std::string WritePng::description() const
@@ -98,15 +99,16 @@ ValuePtr WritePngRGB::run(const values::BufferValue &in_r,
     return std::make_unique<SequenceValue>(std::move(rgb));
 }
 
-ArgManifest WritePngRGB::arg_manifest() const
+const ArgManifest &WritePngRGB::arg_manifest() const
 {
-    return ArgManifest{
+    static const ArgManifest manifest{
         ArgSpec{.name = "r"},
         ArgSpec{.name = "g"},
         ArgSpec{.name = "b"},
         ArgSpec{.name = "filename"},
         ArgSpec{.name = "bits", .default_real = 8},
     };
+    return manifest;
 }
 
 std::string WritePngRGB::description() const

@@ -10,15 +10,16 @@ class TestOperation : public Operation
 {
 public:
     std::string name() const override { return "testing"; }
-    interpreter::ArgManifest arg_manifest() const override
+    const interpreter::ArgManifest &arg_manifest() const override
     {
-        return interpreter::ArgManifest{
+        static const interpreter::ArgManifest manifest{
             ArgSpec{.name = "pos1"},
             ArgSpec{.name = "pos2"},
             ArgSpec{.name = "key1", .default_str = "key1"},
             ArgSpec{.name = "key2", .default_str = "key2"},
             ArgSpec{.name = "..."},
         };
+        return manifest;
     }
     interpreter::ValuePtr run(const Str &pos1,
         const Str &pos2,

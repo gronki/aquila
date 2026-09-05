@@ -25,13 +25,14 @@ ValuePtr ProjectOp::run(const values::TransformValue &trans,
     return std::make_unique<values::BufferValue>(buf_out, bufval.info);
 }
 
-ArgManifest ProjectOp::arg_manifest() const
+const ArgManifest &ProjectOp::arg_manifest() const
 {
-    return ArgManifest{
+    static const ArgManifest manifest{
         ArgSpec{.name = "transform"},
         ArgSpec{.name = "buffer"},
         ArgSpec{.name = "resample", .default_real = 1.0},
     };
+    return manifest;
 }
 
 std::string ProjectOp::description() const

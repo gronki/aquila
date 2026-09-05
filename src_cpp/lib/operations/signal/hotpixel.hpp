@@ -15,7 +15,7 @@ struct HotFindOp : public Operation
 
     std::string name() const override { return "hot_find"; }
 
-    ArgManifest arg_manifest() const override;
+    const ArgManifest &arg_manifest() const override;
     std::string description() const override;
 };
 
@@ -27,7 +27,7 @@ struct HotFixOp : public Operation
 
     std::string name() const override { return "hot_fix"; }
 
-    ArgManifest arg_manifest() const override;
+    const ArgManifest &arg_manifest() const override;
     std::string description() const override;
 };
 
@@ -39,7 +39,7 @@ struct HotFixLightOp : public Operation
 
     std::string name() const override { return "hot_fix_light"; }
 
-    ArgManifest arg_manifest() const override;
+    const ArgManifest &arg_manifest() const override;
     std::string description() const override;
 };
 

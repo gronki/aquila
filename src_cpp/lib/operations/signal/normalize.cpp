@@ -31,12 +31,13 @@ ValuePtr NormalizeOp::run(Ptr<SequenceValue> buffers, const Real &margin) const
     return Ptr<SequenceValue>::make(std::move(items));
 }
 
-ArgManifest NormalizeOp::arg_manifest() const
+const ArgManifest &NormalizeOp::arg_manifest() const
 {
-    return ArgManifest{
+    static const ArgManifest manifest{
         ArgSpec{.name = "buffers", .sequence = true},
         ArgSpec{.name = "margin", .default_real = 80},
     };
+    return manifest;
 }
 
 std::string NormalizeOp::description() const

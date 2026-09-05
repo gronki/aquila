@@ -10,7 +10,7 @@ struct TraceOp : Operation
     BIND_ARGS(&TraceOp::run);
     ValuePtr run(const Value &) const;
     std::string name() const override { return "trace"; }
-    ArgManifest arg_manifest() const override;
+    const ArgManifest &arg_manifest() const override;
 };
 
 } // namespace aquila::interpreter::ops

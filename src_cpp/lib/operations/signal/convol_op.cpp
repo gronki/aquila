@@ -21,13 +21,14 @@ ValuePtr ConvolOp::run(const values::BufferValue &buf,
     return std::make_unique<values::BufferValue>(std::move(result), buf.info);
 }
 
-ArgManifest ConvolOp::arg_manifest() const
+const ArgManifest &ConvolOp::arg_manifest() const
 {
-    return ArgManifest{
+    static const ArgManifest manifest{
         ArgSpec{.name = "buffer"},
         ArgSpec{.name = "kernel"},
         ArgSpec{.name = "edges", .default_str = "e", .help = "How to fix edges?"},
     };
+    return manifest;
 }
 
 REGISTER(DeconvOp);
@@ -47,9 +48,9 @@ ValuePtr DeconvOp::run(const values::BufferValue &buf,
     return std::make_unique<values::BufferValue>(std::move(result), buf.info);
 }
 
-ArgManifest DeconvOp::arg_manifest() const
+const ArgManifest &DeconvOp::arg_manifest() const
 {
-    return ArgManifest{
+    static const ArgManifest manifest{
         ArgSpec{.name = "buffer"},
         ArgSpec{.name = "kernel"},
         ArgSpec{.name = "strength",
@@ -57,6 +58,7 @@ ArgManifest DeconvOp::arg_manifest() const
             .help = "How much of deconvolution apply each step?"},
         ArgSpec{.name = "niter", .default_real = 32, .help = "Number of iterations"},
     };
+    return manifest;
 }
 
 } // namespace aquila::ops

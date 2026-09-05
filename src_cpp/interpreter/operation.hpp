@@ -53,9 +53,10 @@ struct Operation
         FROM_RETVAL,
         UNTRACEABLE
     };
-    virtual ArgManifest arg_manifest() const
+    virtual const ArgManifest &arg_manifest() const
     {
-        return ArgManifest{ArgSpec{.name = ARG_ELLIPSIS}};
+        static const ArgManifest manifest{ArgSpec{.name = ARG_ELLIPSIS}};
+        return manifest;
     }
     virtual ValuePtr call(std::vector<ValuePtr>) const = 0;
     virtual std::string name() const = 0;

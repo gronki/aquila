@@ -18,7 +18,7 @@ struct FindstarOp : public Operation
         const std::int64_t &rslice,
         const double &thresh_sd) const;
 
-    ArgManifest arg_manifest() const override;
+    const ArgManifest &arg_manifest() const override;
     std::string name() const override { return "findstar"; }
     std::string description() const override { return "Find stars in the image."; }
 };

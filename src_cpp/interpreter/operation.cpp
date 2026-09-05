@@ -300,7 +300,7 @@ std::string Operation::signature_str() const
     std::stringstream ss;
 
     ss << name() << "(";
-    auto manifest = arg_manifest();
+    const auto &manifest = arg_manifest();
     bool first = true;
     for (const auto &argspec : manifest)
     {

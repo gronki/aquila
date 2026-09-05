@@ -14,7 +14,7 @@ struct ConvolOp : public Operation
         const values::BufferValue &krn,
         const std::string &edges) const;
 
-    ArgManifest arg_manifest() const override;
+    const ArgManifest &arg_manifest() const override;
 
     std::string name() const override { return "conv"; }
     std::string description() const override { return "Convolution"; }
@@ -29,7 +29,7 @@ struct DeconvOp : public Operation
             const Real& strength,
             const Real& niter) const;
 
-    ArgManifest arg_manifest() const override;
+    const ArgManifest &arg_manifest() const override;
 
     std::string name() const override { return "deconv"; }
     std::string description() const override { return "DeConvolution"; }

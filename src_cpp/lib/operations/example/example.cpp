@@ -13,11 +13,12 @@ ValuePtr ExampleOp::run(const std::string &param) const
     return nullptr;
 }
 
-ArgManifest ExampleOp::arg_manifest() const
+const ArgManifest &ExampleOp::arg_manifest() const
 {
-    return ArgManifest{
+    static const ArgManifest manifest{
         ArgSpec{.name = "param"},
     };
+    return manifest;
 }
 
 std::string ExampleOp::description() const

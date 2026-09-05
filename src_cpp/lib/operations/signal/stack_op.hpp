@@ -11,7 +11,7 @@ struct StackOp : public Operation
     BIND_ARGS(&StackOp::run);
     ValuePtr run(Ptr<SequenceValue> buffers, const std::string &method) const;
 
-    ArgManifest arg_manifest() const override;
+    const ArgManifest &arg_manifest() const override;
     std::string name() const override { return "stack"; }
     std::string description() const override { return ""; }
 };

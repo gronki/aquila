@@ -14,7 +14,7 @@ struct NormalizeOp : public Operation
 
     std::string name() const override { return "normalize"; }
 
-    ArgManifest arg_manifest() const override;
+    const ArgManifest &arg_manifest() const override;
     std::string description() const override;
 };
 

@@ -9,11 +9,12 @@ ValuePtr TraceOp::run(const Value &v) const
     return Ptr<StrValue>::make(v.get_trace().content);
 }
 
-ArgManifest TraceOp::arg_manifest() const
+const ArgManifest &TraceOp::arg_manifest() const
 {
-    return ArgManifest{
+    static const ArgManifest manifest{
         ArgSpec{.name = "value", .sequence = true},
     };
+    return manifest;
 }
 
 } // namespace aquila::interpreter::ops

@@ -34,12 +34,13 @@ ValuePtr StackOp::run(Ptr<SequenceValue> buffers, const std::string &method) con
     throw std::runtime_error(std::string(err.message));
 }
 
-ArgManifest StackOp::arg_manifest() const
+const ArgManifest &StackOp::arg_manifest() const
 {
-    return ArgManifest{
+    static const ArgManifest manifest{
         ArgSpec{.name = "buffers", .sequence = true, .help = "buffers to stack"},
         ArgSpec{.name = "method", .default_str = "average"},
     };
+    return manifest;
 }
 
 } // namespace aquila::ops

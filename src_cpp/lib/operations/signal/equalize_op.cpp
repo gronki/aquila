@@ -60,9 +60,9 @@ ValuePtr EqualizeOp::run(Ptr<SequenceValue> channels,
     return Ptr<SequenceValue>::make(std::move(return_bufs));
 }
 
-ArgManifest EqualizeOp::arg_manifest() const
+const ArgManifest &EqualizeOp::arg_manifest() const
 {
-    return ArgManifest{
+    static const ArgManifest manifest{
         ArgSpec{.name = "channels", .sequence = true},
         ArgSpec{.name = "what", .default_str = "both", .help = "bg, stars or both"},
         ArgSpec{.name = "apar", .default_real = 2.0},
@@ -72,6 +72,7 @@ ArgManifest EqualizeOp::arg_manifest() const
         ArgSpec{.name = "niter", .default_int = 32},
         ArgSpec{.name = "margin", .default_int = 32},
     };
+    return manifest;
 }
 
 } // namespace aquila::ops

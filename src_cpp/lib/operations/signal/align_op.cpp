@@ -33,9 +33,9 @@ ValuePtr AlignOp::run(const values::SourceListValue &lst,
     return std::make_unique<values::TransformValue>(trans);
 }
 
-ArgManifest AlignOp::arg_manifest() const
+const ArgManifest &AlignOp::arg_manifest() const
 {
-    return ArgManifest{
+    static const ArgManifest manifest{
         ArgSpec{.name = "stars"},
         ArgSpec{.name = "ref_stars", .help = "star list to align to"},
         ArgSpec{.name = "method",
@@ -46,6 +46,7 @@ ArgManifest AlignOp::arg_manifest() const
             .help = "Prealign using polygons? Useful "
                     "for rotated photos. yes/no"},
     };
+    return manifest;
 }
 
 } // namespace aquila::ops

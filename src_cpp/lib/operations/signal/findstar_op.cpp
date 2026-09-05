@@ -31,9 +31,9 @@ ValuePtr FindstarOp::run(const values::BufferValue &frame,
         std::move(sources), frame.buffer.cols(), frame.buffer.rows());
 }
 
-ArgManifest FindstarOp::arg_manifest() const
+const ArgManifest &FindstarOp::arg_manifest() const
 {
-    return ArgManifest{
+    static const ArgManifest manifest{
         ArgSpec{.name = "frame"},
         ArgSpec{.name = "limit", .default_int = 256},
         ArgSpec{.name = "blur_radius", .default_real = 2.3},
@@ -43,6 +43,7 @@ ArgManifest FindstarOp::arg_manifest() const
         ArgSpec{.name = "rslice", .default_int = 16},
         ArgSpec{.name = "thresh_sd", .default_real = 2.},
     };
+    return manifest;
 }
 
 } // namespace aquila::ops

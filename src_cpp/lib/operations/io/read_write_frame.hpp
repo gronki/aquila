@@ -35,10 +35,11 @@ struct ReadFrame : public Operation
     BIND_ARGS(&ReadFrame::run);
     ValuePtr run(const std::string &fn) const;
 
-    ArgManifest arg_manifest() const override
+    const ArgManifest &arg_manifest() const override
     {
-        return ArgManifest{
+        static const ArgManifest manifest{
             ArgSpec{.name = "filename", .convert = guard(convert::expandGlob)}};
+        return manifest;
     }
     std::string name() const override { return "load"; }
     std::string description() const override { return "Reads a FITS frame"; }
@@ -55,12 +56,13 @@ struct WriteFrame : public Operation
     BIND_ARGS(&WriteFrame::run);
     ValuePtr run(const values::BufferValue &frame, const std::string &fn) const;
 
-    ArgManifest arg_manifest() const override
+    const ArgManifest &arg_manifest() const override
     {
-        return ArgManifest{
+        static const ArgManifest manifest{
             ArgSpec{.name = "frame"},
             ArgSpec{.name = "filename"},
         };
+        return manifest;
     }
     std::string name() const override { return "save"; }
     std::string description() const override

@@ -8,9 +8,9 @@ Aquila is designed to fit into that world: fast, scriptable, and unobtrusive.
 
 Currently, the package consists of following programs:
 
-1. ``aqstack`` (via snap: ``aquila.stack``) — stacking and calibration of monochromatic CCD frames (bias, dark, flat, alignment, sigma-clipping)
-2. ``aqlrgb`` (via snap: ``aquila.lrgb``) — compositing multi-filter data into colour images with luminance, white-balance, and stretching controls
-3. ``aqcli`` (via snap: ``aquila.cli``) — a scripting interpreter for building full end-to-end image processing pipelines
+1. ``aqstack``— stacking and calibration of monochromatic CCD frames (bias, dark, flat, alignment, sigma-clipping)
+2. ``aqlrgb`` — compositing multi-filter data into colour images with luminance, white-balance, and stretching controls
+3. ``aqcli`` — a scripting interpreter for building full end-to-end image processing pipelines
 
 ## Installation
 
@@ -23,14 +23,6 @@ The recommended way to install and use Aquila is to obtain it from the Snap stor
 
 ```sh
 sudo snap install aquila
-```
-
-After installation, run the following commands to create aliases for scripting:
-
-```sh
-sudo snap alias aquila.lrgb aqlrgb
-sudo snap alias aquila.stack aqstack
-sudo snap alias aquila.cli aqcli
 ```
 
 **AppImage**

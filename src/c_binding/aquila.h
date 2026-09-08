@@ -34,12 +34,6 @@ extern "C"
         double kurtosis;
     } source_t;
 
-    enum
-    {
-        FINDSTAR_REJECTION_ABSOLUTE = 1,
-        FINDSTAR_REJECTION_RELATIVE = 2
-    };
-
     typedef struct
     {
         int64_t rslice;
@@ -48,6 +42,7 @@ extern "C"
         double blur_radius;
         double thresh_sd;
         int rejection;
+        bool reject_relative;
         double max_rms;
     } findstar_params_t;
 

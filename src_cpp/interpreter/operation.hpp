@@ -11,6 +11,7 @@
 #include "bind_args.hpp"
 #include "type_converter.hpp"
 #include "value.hpp"
+#include <struct_bind.hpp>
 
 namespace aquila::interpreter
 {
@@ -28,11 +29,13 @@ struct ArgSpec
 
     bool has_default() const;
     std::unique_ptr<Value> build_default() const;
+    bool is_keyword() const;
 
     bool sequence = false;
 
     std::string help = "";
     ConvertFun convert = nullptr;
+    std::shared_ptr<StructFieldBase> field;
 };
 
 using ArgManifest = std::vector<ArgSpec>;
@@ -46,6 +49,8 @@ struct manifest_properties_t
 
 struct Operation
 {
+    manifest_properties_t props;
+    Operation() : props(arg_manifest()) {}
     enum class Tracing
     {
         DEFAULT,

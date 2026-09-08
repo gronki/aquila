@@ -17,12 +17,13 @@ struct AddOp : Operation
         return std::make_unique<RealValue>(a + b);
     }
 
-    ArgManifest arg_manifest() const override
+    const ArgManifest &arg_manifest() const override
     {
-        return ArgManifest{
+        static const ArgManifest manifest{
             {.name = "a", .help = "first number to add"},
             {.name = "b", .help = "second number to add"},
         };
+        return manifest;
     }
 
     std::string name() const override { return "add"; }
@@ -39,12 +40,13 @@ struct MulOp : Operation
         return std::make_unique<RealValue>(a * b);
     }
 
-    ArgManifest arg_manifest() const override
+    const ArgManifest &arg_manifest() const override
     {
-        return ArgManifest{
+        static const ArgManifest manifest{
             {.name = "a", .help = "first number to multiply"},
             {.name = "b", .help = "second number to multiply"},
         };
+        return manifest;
     }
     std::string name() const override { return "mul"; }
 };
@@ -60,12 +62,13 @@ struct PowOp : Operation
         return std::make_unique<RealValue>(std::pow(a, p));
     }
 
-    ArgManifest arg_manifest() const override
+    const ArgManifest &arg_manifest() const override
     {
-        return ArgManifest{
+        static const ArgManifest manifest{
             {.name = "a", .help = "number"},
             {.name = "p", .help = "exponent"},
         };
+        return manifest;
     }
 
     std::string name() const override { return "pow"; }

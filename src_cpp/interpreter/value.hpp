@@ -332,6 +332,11 @@ struct __simpleval_typenames<Real>
 {
     TYPE_NAME("real");
 };
+template <>
+struct __simpleval_typenames<bool>
+{
+    TYPE_NAME("bool");
+};
 
 template <typename T>
 const value_type &value_type_info()
@@ -368,13 +373,13 @@ struct SimpleValue : public ValueBase<SimpleValue<T>>
     }
 };
 
+using StrValue = SimpleValue<Str>;
+
 template <>
 inline void SimpleValue<Str>::write(std::ostream &os) const
 {
     os << "\"" << value << "\"";
 }
-
-using StrValue = SimpleValue<Str>;
 
 template <>
 inline Str *value_cast<Str>(Value *other)
@@ -458,6 +463,40 @@ template <>
 inline const Real &value_cast<Real>(const Value &other)
 {
     return value_cast<SimpleValue<Real>>(other).value;
+}
+using BoolValue = SimpleValue<bool>;
+
+template <>
+inline void SimpleValue<bool>::write(std::ostream &os) const
+{
+    os << (value ? "true" : "false");
+}
+
+template <>
+inline bool *value_cast<bool>(Value *other)
+{
+    auto sv = value_cast<SimpleValue<bool>>(other);
+    if (!sv)
+        return nullptr;
+    return &sv->value;
+}
+template <>
+inline const bool *value_cast<bool>(const Value *other)
+{
+    auto sv = value_cast<SimpleValue<bool>>(other);
+    if (!sv)
+        return nullptr;
+    return &sv->value;
+}
+template <>
+inline bool &value_cast<bool>(Value &other)
+{
+    return value_cast<SimpleValue<bool>>(other).value;
+}
+template <>
+inline const bool &value_cast<bool>(const Value &other)
+{
+    return value_cast<SimpleValue<bool>>(other).value;
 }
 
 using ValuePtrVector = std::vector<ValuePtr>;

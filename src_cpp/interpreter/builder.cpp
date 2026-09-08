@@ -51,6 +51,10 @@ std::unique_ptr<ExecNode> build_exec_tree(
 {
     if (const auto *ast_ref_node = dynamic_cast<const AstRefNode *>(ast.get()))
     {
+        if (ast_ref_node->refname == "true")
+            return std::make_unique<ValueNode>(std::make_unique<BoolValue>(true));
+        if (ast_ref_node->refname == "false")
+            return std::make_unique<ValueNode>(std::make_unique<BoolValue>(false));
         return std::make_unique<RefNode>(ast_ref_node->refname);
     }
 

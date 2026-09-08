@@ -17,7 +17,13 @@ OpDatabase &global_op_db()
 
 bool ArgSpec::has_default() const
 {
-    return default_int.has_value() || default_real.has_value() || default_str.has_value();
+    return default_int.has_value() || default_real.has_value()
+        || default_str.has_value() || this->field;
+}
+
+bool ArgSpec::is_keyword() const
+{
+    return has_default();
 }
 
 std::unique_ptr<Value> ArgSpec::build_default() const
@@ -36,6 +42,8 @@ std::unique_ptr<Value> ArgSpec::build_default() const
         return std::make_unique<RealValue>(default_real.value());
     if (default_str)
         return std::make_unique<StrValue>(default_str.value());
+    if (field)
+        return field->build_default();
 
     return nullptr;
 }
@@ -84,7 +92,7 @@ manifest_properties_t::manifest_properties_t(const std::vector<ArgSpec> &manifes
                 + std::to_string(iarg));
         }
 
-        const bool is_keyword = argspec.has_default();
+        const bool is_keyword = argspec.is_keyword();
         first_keyword = first_keyword || is_keyword;
 
         const bool is_ellipsis = argspec.name == ARG_ELLIPSIS;
@@ -175,7 +183,7 @@ std::vector<ArgMatch> match_arguments(const std::vector<ArgSpec> &manifest,
                     + " not allowed at position: " + std::to_string(iarg + 1));
 
             int match_pos = position_it->second;
-            if (!manifest[match_pos].has_default())
+            if (!manifest[match_pos].is_keyword())
                 throw std::runtime_error(std::string("argument ") + key
                     + " is positional; shall not be defined by key at position "
                     + std::to_string(iarg + 1));

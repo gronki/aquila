@@ -1,22 +1,19 @@
 #pragma once
 
-#include "../../../interpreter/interpreter.hpp"
-#include "../../values/frame.hpp"
+#include <aquila.h>
+#include <bind_new.hpp>
+#include <interpreter.hpp>
+#include <values/frame.hpp>
 
 namespace aquila::ops
 {
 
 struct FindstarOp : public Operation
 {
-    BIND_ARGS(&FindstarOp::run);
+    ValuePtr call(std::vector<ValuePtr>) const override;
     ValuePtr run(const values::BufferValue &frame,
         const std::int64_t &limit,
-        const double &blur_radius,
-        const std::int64_t &margin,
-        const double &max_rms,
-        const std::string &rejection,
-        const std::int64_t &rslice,
-        const double &thresh_sd) const;
+        interpreter::Struct<findstar_params_t> params) const;
 
     const ArgManifest &arg_manifest() const override;
     std::string name() const override { return "findstar"; }

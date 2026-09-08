@@ -7,7 +7,6 @@ use stacking, only: mask_margins, mask_margins_c
 use source_m
 implicit none
 
-integer(c_int), parameter :: findstar_rejection_absolute = 1, findstar_rejection_relative = 2
 
 type, bind(C) :: findstar_params_t
    integer(c_int64_t) :: rslice = 16
@@ -15,7 +14,7 @@ type, bind(C) :: findstar_params_t
    integer(c_int64_t) :: min_star_pixels = 8
    real(c_double) :: blur_radius = 2.3
    real(c_double) :: thresh_sd = 2.
-   integer(c_int) :: rejection = findstar_rejection_absolute
+   logical(c_bool) :: reject_relative = .false.
    real(c_double) :: max_rms = 12.
 end type
 
@@ -135,14 +134,11 @@ subroutine aqfindstar(im, master_mask, ni, nj, list, limit, param, nstar) bind(C
 
       allocate(outlier_mask(nstar))
 
-      select case (param%rejection)
-      case (findstar_rejection_absolute)
-         call cleanup_assymetric_outliers_absolute(list(:nstar), outlier_mask(:nstar))
-      case (findstar_rejection_relative)
+      if (param%reject_relative) then
          call cleanup_assymetric_outliers_relative(list(:nstar), outlier_mask(:nstar))
-      case default
-         error stop "param rejection value incorrect"
-      end select
+      else
+         call cleanup_assymetric_outliers_absolute(list(:nstar), outlier_mask(:nstar))
+      endif
 
       if (cfg_verbose) then
          print '(a)', "*** STAR LIST *** "

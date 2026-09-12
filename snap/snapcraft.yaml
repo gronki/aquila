@@ -11,26 +11,18 @@ description: |
   in **Modern Fortran** with OpenMP parallelism. It fits naturally into shell 
   scripts and automated pipelines.
 
-  **Recommended aliases:**
-
-  `sudo snap alias aquila.lrgb aqlrgb`
-
-  `sudo snap alias aquila.stack aqstack`
-
-  `sudo snap alias aquila.cli aqcli`
-
   The package includes **three programs**:
 
-  * `aqstack` or `aquila.stack`: calibrates and stacks monochromatic CCD frames. Handles bias,
+  * `aqstack`: calibrates and stacks monochromatic CCD frames. Handles bias,
     dark, and flat subtraction, hot pixel correction, frame alignment, and
     combining by average, median, or sigma-clipped mean.
 
-  * `aqlrgb` or `aquila.lrgb`: composites multi-filter data into colour images. Supports the
+  * `aqlrgb`: composites multi-filter data into colour images. Supports the
     classic LRGB workflow as well as narrowband palette mixing, white-balance
     equalisation, background suppression, and nonlinear stretching (asinh,
     sqrt, log) before writing FITS or PNG output.
 
-  * `aqcli` or `aquila.cli`: a scripting interpreter for writing end-to-end image processing
+  * `aqcli`: a scripting interpreter for writing end-to-end image processing
     pipelines. Scripts load frames, run calibration and stacking routines,
     apply convolution kernels and math operations, and save results — all in
     a compact, readable domain-specific language.
@@ -70,6 +62,7 @@ parts:
       - gfortran
       - gcc
       - libx11-dev
+      - libxext-dev
       - libwayland-dev
       - wayland-protocols
       - libxkbcommon-dev

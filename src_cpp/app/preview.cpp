@@ -423,7 +423,6 @@ AquilaWindow::WindowThread::~WindowThread()
 
 void AquilaWindow::update(const Value *v)
 {
-    std::cout << "updating with value" << (v ? v->str().c_str() : "(null)") << std::endl;
     if (const auto *imval = value_cast<values::BufferValue>(v))
     {
         if (!thread || thread->done)

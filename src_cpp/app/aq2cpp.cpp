@@ -302,8 +302,10 @@ int main()
 
             if (result)
             {
-                std::cout << "--> " << result->str() << std::endl
-                          << "--> " << result->get_trace() << std::endl;
+                std::cout << "--> " << result->str() << std::endl;
+#ifndef NDEBUG
+                std::cout << "--> " << result->get_trace() << std::endl;
+#endif
 #if AQUILA_WINDOW
                 dmgr.update(result.get());
 #endif

@@ -69,13 +69,23 @@ parts:
       - g++
       - gfortran
       - gcc
-      - libsdl2-dev
+      - libx11-dev
+      - libwayland-dev
+      - wayland-protocols
+      - libxkbcommon-dev
+      - libdecor-0-dev
     stage-packages:
       - libreadline8
       - libgfortran5
       - zlib1g
       - libgomp1
-      - libsdl2-2.0-0
+      - libx11-6
+      - libxext6
+      - libwayland-client0
+      - libwayland-cursor0
+      - libwayland-egl1
+      - libxkbcommon0
+      - libdecor-0-0
 
 apps:
   stack:
@@ -90,4 +100,5 @@ apps:
     plugs: [ "x11", "wayland" ]
     environment:
       AQUILA_HISTORY_FILE: $SNAP_USER_DATA/aquila_history.txt
+      SDL_VIDEODRIVER: wayland,x11
 

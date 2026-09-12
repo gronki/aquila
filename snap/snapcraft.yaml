@@ -69,14 +69,13 @@ parts:
       - g++
       - gfortran
       - gcc
-      - libx11-dev
+      - libsdl2-dev
     stage-packages:
       - libreadline8
       - libgfortran5
       - zlib1g
       - libgomp1
-      - libx11-6
-      - libxext6
+      - libsdl2-2.0-0
 
 apps:
   stack:
@@ -88,7 +87,7 @@ apps:
   cli:
     command: usr/bin/aqcli
     aliases: [ "aqcli" ]
-    plugs: [ "x11" ]
+    plugs: [ "x11", "wayland" ]
     environment:
       AQUILA_HISTORY_FILE: $SNAP_USER_DATA/aquila_history.txt
 

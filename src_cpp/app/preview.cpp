@@ -467,8 +467,6 @@ void AquilaWindow::WindowThread::update(
 
     for (const auto &im : bufs)
     {
-        // the frames are immutable, so the window can share them with the
-        // interpreter instead of copying megabytes of pixels
         const auto &buf = im->buffer;
         if (width == 0 && height == 0)
         {

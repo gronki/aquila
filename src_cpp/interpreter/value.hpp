@@ -113,24 +113,18 @@ concept ValueConcept = std::derived_from<T, Value>;
 template <ValueConcept T>
 class Ptr;
 
-// value_cast is the only thing allowed to narrow a reference, so it is the
-// only thing that reaches inside one
 template <ValueConcept T, ValueConcept U>
 Ptr<T> value_cast(const Ptr<U> &other);
 
-// A reference to a value, plus the trace of how this reference came to be.
-// Values are immutable once referenced, so references are copied freely and
-// share the pointee; code that needs to write into one asks for clone().
+// A reference to a value, plus the trace of how this particular reference came
+// to be. Values are immutable once they are referenced, so references may be
+// copied freely and share the pointee.
 template <ValueConcept T>
 class Ptr
 {
     std::shared_ptr<const T> ptr;
-    // shared, not copied: references are copied constantly and a trace is a
-    // long nested string
     std::shared_ptr<const value_trace_t> trace;
 
-    // an empty trace says nothing, so it costs a null pointer, not an
-    // allocation
     static std::shared_ptr<const value_trace_t> share_trace(value_trace_t t)
     {
         if (t.content.empty())
@@ -146,17 +140,14 @@ class Ptr
 public:
     Ptr() {}
 
-    // a freshly built value: nobody else can see it, so sealing it as const
-    // costs nothing, and handing the unique_ptr over cannot leak it
+    // a freshly built value: nobody else can see it yet, so sealing it as const
+    // costs nothing
     template <ValueConcept U>
     Ptr(std::unique_ptr<U> owned, value_trace_t trace = {}) :
         ptr(std::move(owned)), trace(share_trace(std::move(trace)))
     {
     }
 
-    // the same object seen as a base type. Only this direction compiles:
-    // seeing a Value as the BufferValue it might be is a claim about the
-    // value, so it goes through value_cast, which checks it first.
     template <ValueConcept U>
     Ptr(const Ptr<U> &other) : ptr(other.ptr), trace(other.trace)
     {
@@ -301,8 +292,6 @@ inline Ptr<T> value_cast(const Ptr<U> &other)
         return {};
     if (!__is_compatible<T>(other->get_type()))
         return {};
-    // checked just above, so retyping the pointer is sound. This is the only
-    // place that may do it.
     Ptr<T> out;
     out.ptr = std::static_pointer_cast<const T>(other.ptr);
     out.trace = other.trace;

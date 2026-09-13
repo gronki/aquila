@@ -112,8 +112,6 @@ static void pick_sequences(std::vector<ValuePtr> &args,
         if (match[iarg].sequence || !arg->is_sequence())
             continue;
 
-        // only a SequenceValue answers true to is_sequence(), so this always
-        // succeeds; value_cast is the one way to narrow a reference
         sequences[iarg] = value_cast<SequenceValue>(arg);
         arg = {};
         auto &seq_arg = sequences[iarg];

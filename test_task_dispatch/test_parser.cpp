@@ -7,6 +7,12 @@
 using namespace aquila;
 using namespace aquila::interpreter;
 
+// the delimiter characters are configurable, so test inputs are built from
+// them instead of spelling the characters out
+static const std::string CHAIN(1, CHAIN_CALL_DELIM);
+static const std::string KWARG(1, KWARG_DELIM);
+static const std::string COMMENT(1, COMMENT_START);
+
 TEST(ident)
 {
     Tokenizer tokenizer("a");
@@ -88,52 +94,6 @@ TEST(call)
     REQUIRE_EQ(*arg_node_2->constant, StrValue("a"));
 }
 
-TEST(call_expand)
-{
-    Tokenizer tokenizer(" ff (3.0, >a  )");
-    LazyTokenArray token_array(std::move(tokenizer));
-    std::unique_ptr<AstNode> root;
-    parse(token_array, root);
-    std::cout << *root << std::endl;
-
-    auto *op_node = dynamic_cast<AstOpNode *>(root.get());
-    REQUIRE_NNUL(op_node);
-    REQUIRE_EQ(op_node->opname, "ff");
-    REQUIRE_EQ(op_node->args.size(), 2);
-    REQUIRE_EQ(op_node->args[1].key, ">");
-
-    auto &args = op_node->args;
-
-    auto *arg_node_1 = dynamic_cast<AstValueNode *>(args[0].arg_val.get());
-    REQUIRE_NNUL(arg_node_1);
-    REQUIRE_EQ(*arg_node_1->constant, RealValue(3.0));
-
-    auto *arg_node_2 = dynamic_cast<AstRefNode *>(args[1].arg_val.get());
-    REQUIRE_NNUL(arg_node_2);
-    REQUIRE_EQ(arg_node_2->refname, "a");
-}
-
-TEST(call_expand_noparen)
-{
-    Tokenizer tokenizer(" ff  >a  ");
-    LazyTokenArray token_array(std::move(tokenizer));
-    std::unique_ptr<AstNode> root;
-    parse(token_array, root);
-    std::cout << *root << std::endl;
-
-    auto *op_node = dynamic_cast<AstOpNode *>(root.get());
-    REQUIRE_NNUL(op_node);
-    REQUIRE_EQ(op_node->opname, "ff");
-    REQUIRE_EQ(op_node->args.size(), 1);
-    REQUIRE_EQ(op_node->args[0].key, ">");
-
-    auto &args = op_node->args;
-
-    auto *arg_node_2 = dynamic_cast<AstRefNode *>(args[0].arg_val.get());
-    REQUIRE_NNUL(arg_node_2);
-    REQUIRE_EQ(arg_node_2->refname, "a");
-}
-
 TEST(call_no_paren)
 {
     Tokenizer tokenizer(" ff 3.0, \"a\"  ");
@@ -195,8 +155,7 @@ TEST(call_no_paren_array_literal)
 
 TEST(call_chain_keys)
 {
-    Tokenizer tokenizer(std::string(" ff (3.0)") + std::string(1, CHAIN_CALL_DELIM)
-        + " gg(key: \"a\"  )");
+    Tokenizer tokenizer(" ff (3.0)" + CHAIN + " gg(key" + KWARG + " \"a\"  )");
     // equivalent to: gg(ff(3.0), key: "a")
 
     LazyTokenArray token_array(std::move(tokenizer));
@@ -230,8 +189,7 @@ TEST(call_chain_keys)
 
 TEST(call_chain_keys_no_paren)
 {
-    Tokenizer tokenizer(
-        std::string(" ff 3.0") + std::string(1, CHAIN_CALL_DELIM) + " gg key: \"a\"  ");
+    Tokenizer tokenizer(" ff 3.0" + CHAIN + " gg key" + KWARG + " \"a\"  ");
     // equivalent to: gg(ff(3.0), key: "a")
 
     LazyTokenArray token_array(std::move(tokenizer));
@@ -265,8 +223,7 @@ TEST(call_chain_keys_no_paren)
 
 TEST(call_chain_keys_2)
 {
-    Tokenizer tokenizer(std::string(" t( ff (3.0) ") + std::string(1, CHAIN_CALL_DELIM)
-        + "gg(key: \"a\"  ) )");
+    Tokenizer tokenizer(" t( ff (3.0) " + CHAIN + "gg(key" + KWARG + " \"a\"  ) )");
     // equivalent to: gg(ff(3.0), key: "a")
 
     LazyTokenArray token_array(std::move(tokenizer));
@@ -307,8 +264,7 @@ TEST(call_chain_keys_2)
 
 TEST(call_chain_keys_3)
 {
-    Tokenizer tokenizer(std::string(" ff (3.0) ") + std::string(1, CHAIN_CALL_DELIM)
-        + " gg( ) " + std::string(1, CHAIN_CALL_DELIM) + "t()");
+    Tokenizer tokenizer(" ff (3.0) " + CHAIN + " gg( ) " + CHAIN + "t()");
     // equivalent to: gg(ff(3.0), key: "a")
 
     LazyTokenArray token_array(std::move(tokenizer));
@@ -340,6 +296,93 @@ TEST(call_chain_keys_3)
     auto *arg_node_11 = dynamic_cast<AstValueNode *>(arg_node_1->args[0].arg_val.get());
     REQUIRE_NNUL(arg_node_11);
     REQUIRE_EQ(*arg_node_11->constant, RealValue(3.0));
+}
+
+TEST(assignment)
+{
+    Tokenizer tokenizer(" x = ff(3.0) ");
+    LazyTokenArray token_array(std::move(tokenizer));
+    std::unique_ptr<AstNode> root;
+    parse(token_array, root);
+    std::cout << *root << std::endl;
+
+    auto *assign_node = dynamic_cast<AstAssignmentNode *>(root.get());
+    REQUIRE_NNUL(assign_node);
+    REQUIRE_EQ(assign_node->lhs, "x");
+
+    auto *op_node = dynamic_cast<AstOpNode *>(assign_node->rhs.get());
+    REQUIRE_NNUL(op_node);
+    REQUIRE_EQ(op_node->opname, "ff");
+    REQUIRE_EQ(op_node->args.size(), 1);
+
+    auto *arg_node_1 = dynamic_cast<AstValueNode *>(op_node->args[0].arg_val.get());
+    REQUIRE_NNUL(arg_node_1);
+    REQUIRE_EQ(*arg_node_1->constant, RealValue(3.0));
+}
+
+TEST(assignment_no_rhs)
+{
+    EXPECT_ERROR("Expression expected after =", [] {
+        Tokenizer tokenizer(" x = ");
+        LazyTokenArray token_array(std::move(tokenizer));
+        std::unique_ptr<AstNode> root;
+        parse(token_array, root);
+    });
+}
+
+TEST(comment_is_ignored)
+{
+    Tokenizer tokenizer(" ff(3.0) " + COMMENT + " gg(4.0) ");
+    // everything after the comment character is not parsed at all
+
+    LazyTokenArray token_array(std::move(tokenizer));
+    std::unique_ptr<AstNode> root;
+    parse(token_array, root);
+    std::cout << *root << std::endl;
+
+    auto *op_node = dynamic_cast<AstOpNode *>(root.get());
+    REQUIRE_NNUL(op_node);
+    REQUIRE_EQ(op_node->opname, "ff");
+    REQUIRE_EQ(op_node->args.size(), 1);
+
+    auto *arg_node_1 = dynamic_cast<AstValueNode *>(op_node->args[0].arg_val.get());
+    REQUIRE_NNUL(arg_node_1);
+    REQUIRE_EQ(*arg_node_1->constant, RealValue(3.0));
+}
+
+TEST(array_literal_empty)
+{
+    Tokenizer tokenizer(" [] ");
+    LazyTokenArray token_array(std::move(tokenizer));
+    std::unique_ptr<AstNode> root;
+    parse(token_array, root);
+    std::cout << *root << std::endl;
+
+    auto *op_node = dynamic_cast<AstOpNode *>(root.get());
+    REQUIRE_NNUL(op_node);
+    REQUIRE_EQ(op_node->opname, "seq");
+    REQUIRE_EQ(op_node->args.size(), 0);
+}
+
+TEST(nested_call_needs_paren)
+{
+    // the no-paren call syntax is only allowed at the top level
+    EXPECT_ERROR("You must use () for nested operation call", [] {
+        Tokenizer tokenizer(" ff( gg 3.0 ) ");
+        LazyTokenArray token_array(std::move(tokenizer));
+        std::unique_ptr<AstNode> root;
+        parse(token_array, root);
+    });
+}
+
+TEST(trailing_tokens)
+{
+    EXPECT_ERROR("end of line expected", [] {
+        Tokenizer tokenizer(" ff(3.0) 4.0 ");
+        LazyTokenArray token_array(std::move(tokenizer));
+        std::unique_ptr<AstNode> root;
+        parse(token_array, root);
+    });
 }
 
 int main(int argc, char **argv)

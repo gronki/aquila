@@ -170,7 +170,7 @@ public:
     {
         if (!ptr)
             return {};
-        return trace ? *trace : ptr->implicit_trace();
+        return trace ? *trace : ptr->get_trace();
     }
 
     Ptr with_trace(value_trace_t t) const
@@ -204,7 +204,7 @@ struct Value
     virtual int64_t mem_size() const { return 0; }
     virtual int64_t sequence_depth() const { return 0; }
     // the trace a value implies when the reference to it carries none of its own
-    virtual value_trace_t implicit_trace() const { return str(); }
+    virtual value_trace_t get_trace() const { return str(); }
     std::string str() const
     {
         std::stringstream ss;
@@ -520,7 +520,7 @@ struct SequenceValue : public ValueBase<SequenceValue>
         return children_depth + 1;
     }
 
-    value_trace_t implicit_trace() const override
+    value_trace_t get_trace() const override
     {
         std::stringstream ss;
         ss << "[";

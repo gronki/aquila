@@ -7,6 +7,12 @@
 using namespace aquila;
 using namespace aquila::interpreter;
 
+// the delimiter characters are configurable, so test inputs are built from
+// them instead of spelling the characters out
+static const std::string CHAIN(1, CHAIN_CALL_DELIM);
+static const std::string KWARG(1, KWARG_DELIM);
+static const std::string COMMENT(1, COMMENT_START);
+
 TEST(ident)
 {
     Tokenizer tokenizer("a");
@@ -149,8 +155,7 @@ TEST(call_no_paren_array_literal)
 
 TEST(call_chain_keys)
 {
-    Tokenizer tokenizer(std::string(" ff (3.0)") + std::string(1, CHAIN_CALL_DELIM)
-        + " gg(key: \"a\"  )");
+    Tokenizer tokenizer(" ff (3.0)" + CHAIN + " gg(key" + KWARG + " \"a\"  )");
     // equivalent to: gg(ff(3.0), key: "a")
 
     LazyTokenArray token_array(std::move(tokenizer));
@@ -184,8 +189,7 @@ TEST(call_chain_keys)
 
 TEST(call_chain_keys_no_paren)
 {
-    Tokenizer tokenizer(
-        std::string(" ff 3.0") + std::string(1, CHAIN_CALL_DELIM) + " gg key: \"a\"  ");
+    Tokenizer tokenizer(" ff 3.0" + CHAIN + " gg key" + KWARG + " \"a\"  ");
     // equivalent to: gg(ff(3.0), key: "a")
 
     LazyTokenArray token_array(std::move(tokenizer));
@@ -219,8 +223,7 @@ TEST(call_chain_keys_no_paren)
 
 TEST(call_chain_keys_2)
 {
-    Tokenizer tokenizer(std::string(" t( ff (3.0) ") + std::string(1, CHAIN_CALL_DELIM)
-        + "gg(key: \"a\"  ) )");
+    Tokenizer tokenizer(" t( ff (3.0) " + CHAIN + "gg(key" + KWARG + " \"a\"  ) )");
     // equivalent to: gg(ff(3.0), key: "a")
 
     LazyTokenArray token_array(std::move(tokenizer));
@@ -261,8 +264,7 @@ TEST(call_chain_keys_2)
 
 TEST(call_chain_keys_3)
 {
-    Tokenizer tokenizer(std::string(" ff (3.0) ") + std::string(1, CHAIN_CALL_DELIM)
-        + " gg( ) " + std::string(1, CHAIN_CALL_DELIM) + "t()");
+    Tokenizer tokenizer(" ff (3.0) " + CHAIN + " gg( ) " + CHAIN + "t()");
     // equivalent to: gg(ff(3.0), key: "a")
 
     LazyTokenArray token_array(std::move(tokenizer));
@@ -330,8 +332,7 @@ TEST(assignment_no_rhs)
 
 TEST(comment_is_ignored)
 {
-    Tokenizer tokenizer(
-        std::string(" ff(3.0) ") + std::string(1, COMMENT_START) + " gg(4.0) ");
+    Tokenizer tokenizer(" ff(3.0) " + COMMENT + " gg(4.0) ");
     // everything after the comment character is not parsed at all
 
     LazyTokenArray token_array(std::move(tokenizer));

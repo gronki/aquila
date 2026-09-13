@@ -139,7 +139,9 @@ public:
     ValueRef(std::unique_ptr<U> owned, value_trace_t trace = {}) : trace(std::move(trace))
     {
         if (owned)
-            ptr = std::shared_ptr<const T>(static_cast<const T *>(owned.release()));
+            // hand ownership over as a unique_ptr, so that a throwing
+            // control-block allocation does not lose the object
+            ptr = std::unique_ptr<const T>(static_cast<const T *>(owned.release()));
     }
 
     template <ValueConcept U>

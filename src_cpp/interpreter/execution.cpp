@@ -189,7 +189,10 @@ static ValuePtr run_op_with_trace(
     {
         trace = op.custom_trace(nullptr, result.get());
     }
-    result.set_trace(trace);
+    // an untraceable operation has nothing to say about its result, so leave
+    // whatever trace the result already carries alone
+    if (op.tracing_mode() != Operation::Tracing::UNTRACEABLE)
+        result.set_trace(trace);
     return result;
 }
 

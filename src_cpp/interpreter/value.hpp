@@ -140,13 +140,6 @@ public:
     ValueRef() {}
     ValueRef(std::nullptr_t) {}
 
-    template <ValueConcept U>
-    ValueRef(std::shared_ptr<const U> other, value_trace_t trace = {}) :
-        ptr(std::static_pointer_cast<const T>(std::move(other))),
-        trace(share_trace(std::move(trace)))
-    {
-    }
-
     // a freshly built value: nobody else can see it yet, so sealing it as const
     // costs nothing
     template <ValueConcept U>
@@ -159,24 +152,21 @@ public:
             ptr = std::unique_ptr<const T>(static_cast<const T *>(owned.release()));
     }
 
+    // Converts a reference to one value type into a reference to another:
+    // the same object, seen as a different type, with the two references
+    // sharing one refcount so the object lives as long as either of them.
+    //
+    // static_pointer_cast is the shared_ptr equivalent of static_cast: it
+    // changes the type at compile time and performs NO runtime check.
+    // Widening (a BufferValue seen as a Value) is always correct. Narrowing
+    // (a Value seen as a BufferValue) is only correct if the value really is
+    // one, and nothing here verifies that -- go through value_cast below,
+    // which checks the type first and hands back an empty reference when it
+    // does not match.
     template <ValueConcept U>
     ValueRef(const ValueRef<U> &other) :
         ptr(std::static_pointer_cast<const T>(other.ptr)), trace(other.trace)
     {
-    }
-
-    template <ValueConcept U>
-    ValueRef(ValueRef<U> &&other) :
-        ptr(std::static_pointer_cast<const T>(std::move(other.ptr))),
-        trace(std::move(other.trace))
-    {
-    }
-
-    ValueRef &operator=(std::nullptr_t)
-    {
-        ptr = nullptr;
-        trace = {};
-        return *this;
     }
 
     const T &operator*() const

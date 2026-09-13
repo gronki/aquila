@@ -118,7 +118,20 @@ template <ValueConcept T>
 class ValueRef
 {
     std::shared_ptr<const T> ptr;
-    value_trace_t trace;
+    // the trace is held by pointer, not by value: copying a reference is a
+    // common operation and a trace can be a long nested string, so all the
+    // references that share a trace share one copy of it
+    std::shared_ptr<const value_trace_t> trace;
+
+    // wraps a trace for sharing. An empty trace carries no information (see
+    // get_trace below, which falls back to the value itself), so it is stored
+    // as a null pointer rather than paying for an allocation.
+    static std::shared_ptr<const value_trace_t> share_trace(value_trace_t t)
+    {
+        if (t.content.empty())
+            return nullptr;
+        return std::make_shared<const value_trace_t>(std::move(t));
+    }
 
 public:
     template <ValueConcept U>
@@ -129,14 +142,16 @@ public:
 
     template <ValueConcept U>
     ValueRef(std::shared_ptr<const U> other, value_trace_t trace = {}) :
-        ptr(std::static_pointer_cast<const T>(std::move(other))), trace(std::move(trace))
+        ptr(std::static_pointer_cast<const T>(std::move(other))),
+        trace(share_trace(std::move(trace)))
     {
     }
 
     // a freshly built value: nobody else can see it yet, so sealing it as const
     // costs nothing
     template <ValueConcept U>
-    ValueRef(std::unique_ptr<U> owned, value_trace_t trace = {}) : trace(std::move(trace))
+    ValueRef(std::unique_ptr<U> owned, value_trace_t trace = {}) :
+        trace(share_trace(std::move(trace)))
     {
         if (owned)
             // hand ownership over as a unique_ptr, so that a throwing
@@ -190,12 +205,12 @@ public:
     // about itself (a literal traces as itself, a sequence as its items)
     value_trace_t get_trace() const;
 
-    void set_trace(value_trace_t new_trace) { trace = std::move(new_trace); }
+    void set_trace(value_trace_t new_trace) { trace = share_trace(std::move(new_trace)); }
 
     ValueRef with_trace(value_trace_t new_trace) const
     {
         ValueRef copy(*this);
-        copy.trace = std::move(new_trace);
+        copy.trace = share_trace(std::move(new_trace));
         return copy;
     }
 
@@ -238,8 +253,8 @@ value_trace_t ValueRef<T>::get_trace() const
 {
     if (!ptr)
         return {};
-    if (!trace.content.empty())
-        return trace;
+    if (trace)
+        return *trace;
     return ptr->implicit_trace();
 }
 

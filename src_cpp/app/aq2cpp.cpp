@@ -307,7 +307,7 @@ int main()
                 std::cout << "--> " << result.get_trace() << std::endl;
 #endif
 #if AQUILA_WINDOW
-                dmgr.update(result.get());
+                dmgr.update(result);
 #endif
             }
             else

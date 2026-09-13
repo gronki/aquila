@@ -138,16 +138,16 @@ bool get_current_dims(
 
     if (payload->matching_size && payload->bufs.size() > 0)
     {
-        width = payload->bufs[0].cols();
-        height = payload->bufs[0].rows();
+        width = payload->bufs[0]->buffer.cols();
+        height = payload->bufs[0]->buffer.rows();
         return true;
     }
 
     if (view.current_buf < 0 && view.current_buf >= payload->bufs.size())
         return false;
 
-    width = payload->bufs[view.current_buf].cols();
-    height = payload->bufs[view.current_buf].rows();
+    width = payload->bufs[view.current_buf]->buffer.cols();
+    height = payload->bufs[view.current_buf]->buffer.rows();
 
     return true;
 }
@@ -179,12 +179,16 @@ void redraw_buffer(const image_payload_t *payload,
 
     if (view.display == MONO)
     {
-        rendered = render_grayscale(payload->bufs[view.current_buf], view.lo, view.hi);
+        rendered =
+            render_grayscale(payload->bufs[view.current_buf]->buffer, view.lo, view.hi);
     }
     else
     {
-        rendered = render_rgb(
-            payload->bufs[0], payload->bufs[1], payload->bufs[2], view.lo, view.hi);
+        rendered = render_rgb(payload->bufs[0]->buffer,
+            payload->bufs[1]->buffer,
+            payload->bufs[2]->buffer,
+            view.lo,
+            view.hi);
     }
 
     texture = TexturePtr{
@@ -421,23 +425,23 @@ AquilaWindow::WindowThread::~WindowThread()
     window_thread.join();
 }
 
-void AquilaWindow::update(const Value *v)
+void AquilaWindow::update(const ValuePtr &v)
 {
-    if (const auto *imval = value_cast<values::BufferValue>(v))
+    if (auto imval = value_cast<values::BufferValue>(v))
     {
         if (!thread || thread->done)
             thread = std::make_unique<WindowThread>();
         thread->update({imval});
         return;
     }
-    if (const auto *seq = value_cast<SequenceValue>(v))
+    if (const auto *seq = value_cast<SequenceValue>(v.get()))
     {
-        std::vector<const values::BufferValue *> bufs;
+        std::vector<ValueRef<values::BufferValue>> bufs;
         for (const auto &item : seq->items)
         {
-            auto im = value_cast<values::BufferValue>(item.get());
+            auto im = value_cast<values::BufferValue>(item);
             if (im)
-                bufs.push_back(im);
+                bufs.push_back(std::move(im));
         }
         if (bufs.size() > 0)
         {
@@ -449,7 +453,8 @@ void AquilaWindow::update(const Value *v)
     }
 }
 
-void AquilaWindow::WindowThread::update(const std::vector<const values::BufferValue *> &bufs)
+void AquilaWindow::WindowThread::update(
+    const std::vector<ValueRef<values::BufferValue>> &bufs)
 {
     std::lock_guard lock(payload_mutex);
     payload.bufs.clear();
@@ -460,9 +465,11 @@ void AquilaWindow::WindowThread::update(const std::vector<const values::BufferVa
     int64_t width = 0, height = 0;
     payload.matching_size = true;
 
-    for (auto im : bufs)
+    for (const auto &im : bufs)
     {
-        Buffer<real_buf_t> buf(im->buffer);
+        // the frames are immutable, so the window can share them with the
+        // interpreter instead of copying megabytes of pixels
+        const auto &buf = im->buffer;
         if (width == 0 && height == 0)
         {
             width = buf.cols();
@@ -477,7 +484,7 @@ void AquilaWindow::WindowThread::update(const std::vector<const values::BufferVa
         avsd_2d(c_const_buf(buf), &av, &sd);
         av_tot += av;
         sd_tot += sd * sd;
-        payload.bufs.push_back(std::move(buf));
+        payload.bufs.push_back(im);
     }
 
     payload.im_av = av_tot / bufs.size();

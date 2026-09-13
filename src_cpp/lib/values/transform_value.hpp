@@ -11,10 +11,7 @@ struct TransformValue : public ValueBase<TransformValue>
     TYPE_NAME("transform");
     transform_t transform;
     TransformValue(const transform_t &transform) : transform(transform) {}
-    TransformValue(const TransformValue &other) : transform(other.transform)
-    {
-        trace = other.trace;
-    }
+    TransformValue(const TransformValue &other) : transform(other.transform) {}
     void write(std::ostream &os) const
     {
         os << "transform(" << std::string(transform.type, 7)

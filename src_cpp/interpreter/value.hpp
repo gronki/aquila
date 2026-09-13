@@ -72,97 +72,11 @@ struct value_type
     }
 };
 
-struct Value;
-
-template <typename T>
-concept ValueConcept = std::derived_from<T, Value>;
-
-template <ValueConcept T>
-class Ptr
-{
-    std::unique_ptr<T> owned;
-    const T *ref;
-
-public:
-    template <ValueConcept U>
-    friend class Ptr;
-
-    Ptr() : owned(nullptr), ref(nullptr) {};
-    Ptr(std::nullptr_t) : owned(nullptr), ref(nullptr) {};
-
-    template <ValueConcept U>
-    Ptr(const U *ref) : owned(nullptr), ref(static_cast<const T *>(ref))
-    {
-    }
-
-    template <ValueConcept U>
-    Ptr(std::unique_ptr<U> owned) :
-        owned(owned ? static_cast<T *>(owned.release()) : nullptr), ref(nullptr)
-    {
-    }
-
-    template <ValueConcept U>
-    Ptr(Ptr<U> &&other) :
-        owned(other.owned ? std::unique_ptr<T>(static_cast<T *>(other.owned.release()))
-                          : nullptr),
-        ref(static_cast<const T *>(other.ref))
-    {
-    }
-
-    template <ValueConcept U>
-    Ptr &operator=(Ptr<U> &&other)
-    {
-        owned = other.owned ? std::unique_ptr<T>(static_cast<T *>(other.owned.release()))
-                            : nullptr;
-        ref = static_cast<const T *>(other.ref);
-        return *this;
-    }
-
-    Ptr &operator=(std::nullptr_t)
-    {
-        owned = nullptr;
-        ref = nullptr;
-        return *this;
-    }
-
-    std::unique_ptr<T> own()
-    {
-        if (owned)
-        {
-            ref = owned.get();
-            return std::move(owned);
-        }
-        if (!ref)
-            throw std::runtime_error("trying to dereferenc empty pointer!");
-        std::unique_ptr<Value> cloned = ref->clone();
-        return std::unique_ptr<T>(static_cast<T *>(cloned.release()));
-    }
-
-    bool is_owned() const noexcept { return (bool)owned; }
-
-    const T &operator*() const
-    {
-        if (owned)
-            return *owned;
-        if (!ref)
-            throw std::runtime_error("trying to dereferenc empty pointer!");
-        return *ref;
-    }
-
-    template <typename... Args>
-    static Ptr make(Args &&...args)
-    {
-        return std::make_unique<T>(std::forward<Args>(args)...);
-    }
-
-    const T *operator->() const noexcept { return owned ? owned.get() : ref; }
-    const T *get() const noexcept { return owned ? owned.get() : ref; }
-    T *get_mut() const noexcept { return owned ? owned.get() : nullptr; }
-    explicit operator bool() const noexcept { return owned || ref; }
-};
-
-using ValuePtr = Ptr<Value>;
-
+// A trace records *how a value was obtained*: "stack{normalize{...}}". It is
+// the key under which results are memoised (see cache.hpp), so two values
+// reached by different routes must not share one. That is why a trace belongs
+// to the reference (ValueRef below) and not to the value itself: the very same
+// frame may be reachable both as "x" and as "item{seq{...}; 1}".
 struct value_trace_t
 {
     std::string content;
@@ -191,6 +105,109 @@ inline std::ostream &operator<<(std::ostream &os, const value_trace_t &trace)
     return os;
 }
 
+struct Value;
+
+template <typename T>
+concept ValueConcept = std::derived_from<T, Value>;
+
+// A reference to a value, plus the trace of how this particular reference came
+// to be. Values are immutable once they are referenced, so references may be
+// copied freely and share the pointee; an operation that needs something it can
+// write into asks for clone() and says so.
+template <ValueConcept T>
+class ValueRef
+{
+    std::shared_ptr<const T> ptr;
+    value_trace_t trace;
+
+public:
+    template <ValueConcept U>
+    friend class ValueRef;
+
+    ValueRef() {}
+    ValueRef(std::nullptr_t) {}
+
+    template <ValueConcept U>
+    ValueRef(std::shared_ptr<const U> other, value_trace_t trace = {}) :
+        ptr(std::static_pointer_cast<const T>(std::move(other))), trace(std::move(trace))
+    {
+    }
+
+    // a freshly built value: nobody else can see it yet, so sealing it as const
+    // costs nothing
+    template <ValueConcept U>
+    ValueRef(std::unique_ptr<U> owned, value_trace_t trace = {}) : trace(std::move(trace))
+    {
+        if (owned)
+            ptr = std::shared_ptr<const T>(static_cast<const T *>(owned.release()));
+    }
+
+    template <ValueConcept U>
+    ValueRef(const ValueRef<U> &other) :
+        ptr(std::static_pointer_cast<const T>(other.ptr)), trace(other.trace)
+    {
+    }
+
+    template <ValueConcept U>
+    ValueRef(ValueRef<U> &&other) :
+        ptr(std::static_pointer_cast<const T>(std::move(other.ptr))),
+        trace(std::move(other.trace))
+    {
+    }
+
+    ValueRef &operator=(std::nullptr_t)
+    {
+        ptr = nullptr;
+        trace = {};
+        return *this;
+    }
+
+    const T &operator*() const
+    {
+        if (!ptr)
+            throw std::runtime_error("trying to dereference empty value reference!");
+        return *ptr;
+    }
+
+    const T *operator->() const noexcept { return ptr.get(); }
+    const T *get() const noexcept { return ptr.get(); }
+    explicit operator bool() const noexcept { return (bool)ptr; }
+    bool operator==(std::nullptr_t) const noexcept { return !ptr; }
+
+    // an independent, writable copy. The only way to a mutable value, and
+    // deliberately explicit: it deep-copies, which for a frame means megabytes.
+    std::unique_ptr<T> clone() const
+    {
+        if (!ptr)
+            throw std::runtime_error("trying to clone empty value reference!");
+        std::unique_ptr<Value> cloned = ptr->clone();
+        return std::unique_ptr<T>(static_cast<T *>(cloned.release()));
+    }
+
+    // how this reference was obtained; falls back to what the value can say
+    // about itself (a literal traces as itself, a sequence as its items)
+    value_trace_t get_trace() const;
+
+    void set_trace(value_trace_t new_trace) { trace = std::move(new_trace); }
+
+    ValueRef with_trace(value_trace_t new_trace) const
+    {
+        ValueRef copy(*this);
+        copy.trace = std::move(new_trace);
+        return copy;
+    }
+
+    template <typename... Args>
+    static ValueRef make(Args &&...args)
+    {
+        ValueRef out;
+        out.ptr = std::make_shared<const T>(std::forward<Args>(args)...);
+        return out;
+    }
+};
+
+using ValuePtr = ValueRef<Value>;
+
 struct Value
 {
     Value() {}
@@ -200,19 +217,12 @@ struct Value
     virtual void write(std::ostream &os) const = 0;
     virtual ~Value() = default;
     virtual const value_type &get_type() const = 0;
-    virtual void materialize() {}
     virtual bool is_sequence() const { return false; }
     virtual int64_t sequence_len() const { return -1; }
-    virtual ValuePtr shallow() const { return {this}; }
     virtual int64_t mem_size() const { return 0; }
     virtual int64_t sequence_depth() const { return 0; }
-    value_trace_t trace;
-    virtual value_trace_t get_trace() const
-    {
-        if (!trace.content.empty())
-            return trace;
-        return str();
-    }
+    // the trace a value implies when the reference to it carries none of its own
+    virtual value_trace_t implicit_trace() const { return str(); }
     std::string str() const
     {
         std::stringstream ss;
@@ -220,6 +230,16 @@ struct Value
         return ss.str();
     }
 };
+
+template <ValueConcept T>
+value_trace_t ValueRef<T>::get_trace() const
+{
+    if (!ptr)
+        return {};
+    if (!trace.content.empty())
+        return trace;
+    return ptr->implicit_trace();
+}
 
 #define TYPE_NAME(x)                                                                   \
     constexpr static aquila::interpreter::value_type type_name                         \
@@ -294,13 +314,13 @@ inline const T &value_cast(const Value &other)
 }
 
 template <ValueConcept T, ValueConcept U>
-inline Ptr<T> value_cast(Ptr<U> &other)
+inline ValueRef<T> value_cast(const ValueRef<U> &other)
 {
     if (!other)
         return {};
     if (!__is_compatible<T>(other->get_type()))
         return {};
-    return std::move(other);
+    return ValueRef<T>(other);
 }
 
 using Real = double;
@@ -351,14 +371,8 @@ struct SimpleValue : public ValueBase<SimpleValue<T>>
 
     T value;
 
-    SimpleValue(const T &value, const value_trace_t &trace = {}) : value(value)
-    {
-        this->trace = trace;
-    }
-    SimpleValue(const SimpleValue<T> &other) : value(other.value)
-    {
-        this->trace = other.trace;
-    }
+    SimpleValue(const T &value) : value(value) {}
+    SimpleValue(const SimpleValue<T> &other) : value(other.value) {}
 
     void write(std::ostream &os) const override { os << value; }
 
@@ -505,23 +519,13 @@ struct SequenceValue : public ValueBase<SequenceValue>
 {
     TYPE_NAME("sequence");
 
-    std::vector<Ptr<Value>> items;
+    std::vector<ValuePtr> items;
 
-    SequenceValue(const SequenceValue &other)
-    {
-        items.reserve(other.items.size());
-        for (const auto &item : other.items)
-        {
-            items.push_back(item->clone());
-        }
-        trace = other.trace;
-    }
-    SequenceValue(std::vector<Ptr<Value>> items, const value_trace_t &trace = {}) :
-        items(std::move(items))
-    {
-        this->trace = trace;
-    }
-    SequenceValue() : items(0) {}
+    // the items are immutable and reference-counted, so copying the sequence
+    // copies references, not frames
+    SequenceValue(const SequenceValue &other) : items(other.items) {}
+    SequenceValue(std::vector<ValuePtr> items) : items(std::move(items)) {}
+    SequenceValue() {}
 
     size_t size() const { return items.size(); }
     virtual bool is_sequence() const override { return true; }
@@ -541,22 +545,8 @@ struct SequenceValue : public ValueBase<SequenceValue>
         return children_depth + 1;
     }
 
-    void materialize() override
+    value_trace_t implicit_trace() const override
     {
-        for (auto &item : items)
-        {
-            auto owned = item.own();
-            owned->materialize();
-            item = std::move(owned);
-        }
-    }
-
-    value_trace_t get_trace() const override
-    {
-        if (!trace.content.empty())
-        {
-            return trace;
-        }
         std::stringstream ss;
         ss << "[";
         bool first = true;
@@ -572,7 +562,7 @@ struct SequenceValue : public ValueBase<SequenceValue>
             }
             if (item)
             {
-                ss << item->get_trace();
+                ss << item.get_trace();
             }
             else
             {
@@ -581,23 +571,6 @@ struct SequenceValue : public ValueBase<SequenceValue>
         }
         ss << "]";
         return ss.str();
-    }
-
-    virtual ValuePtr shallow() const override
-    {
-        ValuePtrVector shallow_items;
-        for (const auto &item : items)
-        {
-            if (!item)
-            {
-                shallow_items.emplace_back(nullptr);
-            }
-            else
-            {
-                shallow_items.emplace_back(item->shallow());
-            }
-        }
-        return Ptr<SequenceValue>::make(std::move(shallow_items), trace);
     }
 
     int64_t mem_size() const override
@@ -652,10 +625,10 @@ using interpreter::Str;
 using interpreter::StrValue;
 using interpreter::Value;
 
-using interpreter::Ptr;
 using interpreter::value_cast;
 using interpreter::value_type;
 using interpreter::ValueBase;
 using interpreter::ValuePtr;
+using interpreter::ValueRef;
 
 } // namespace aquila

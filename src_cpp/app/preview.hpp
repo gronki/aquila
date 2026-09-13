@@ -31,7 +31,7 @@ struct view_param_t
 
 struct image_payload_t
 {
-    std::vector<ValueRef<values::BufferValue>> bufs;
+    std::vector<Ptr<values::BufferValue>> bufs;
     float im_av = 0, im_sd = 1;
     bool matching_size;
 };
@@ -46,7 +46,7 @@ class AquilaWindow
         std::atomic_bool done{false};
         std::mutex payload_mutex;
         image_payload_t payload;
-        void update(const std::vector<ValueRef<values::BufferValue>> &);
+        void update(const std::vector<Ptr<values::BufferValue>> &);
     };
 
     std::unique_ptr<WindowThread> thread;

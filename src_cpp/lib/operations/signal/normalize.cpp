@@ -6,7 +6,7 @@ namespace aquila::ops
 {
 
 REGISTER(NormalizeOp);
-ValuePtr NormalizeOp::run(ValueRef<SequenceValue> buffers, const Real &margin) const
+ValuePtr NormalizeOp::run(Ptr<SequenceValue> buffers, const Real &margin) const
 {
     std::vector<ValuePtr> items;
     std::vector<const_buffer_descriptor_r32_t> buf_inputs;
@@ -28,7 +28,7 @@ ValuePtr NormalizeOp::run(ValueRef<SequenceValue> buffers, const Real &margin) c
         buf_inputs.data(), buf_outputs.data(), buf_inputs.size(), margin, &err);
     if (err.status)
         throw std::string(err.message);
-    return ValueRef<SequenceValue>::make(std::move(items));
+    return Ptr<SequenceValue>::make(std::move(items));
 }
 
 const ArgManifest &NormalizeOp::arg_manifest() const

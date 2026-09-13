@@ -7,7 +7,7 @@ namespace aquila::ops
 {
 
 REGISTER(AddOp);
-ValueRef<Value> AddOp::run(std::vector<const Value *> args) const
+Ptr<Value> AddOp::run(std::vector<const Value *> args) const
 {
     std::unique_ptr<Value> result = std::make_unique<RealValue>(0);
     for (const Value *arg : args)
@@ -26,7 +26,7 @@ const ArgManifest &AddOp::arg_manifest() const
 }
 
 REGISTER(SubOp);
-ValueRef<Value> SubOp::run(ValueRef<Value> first, std::vector<const Value *> args) const
+Ptr<Value> SubOp::run(Ptr<Value> first, std::vector<const Value *> args) const
 {
     auto result = first.clone();
     for (std::size_t iarg = 0; iarg < args.size(); iarg++)
@@ -46,7 +46,7 @@ const ArgManifest &SubOp::arg_manifest() const
 }
 
 REGISTER(MulOp);
-ValueRef<Value> MulOp::run(std::vector<const Value *> args) const
+Ptr<Value> MulOp::run(std::vector<const Value *> args) const
 {
     std::unique_ptr<Value> result = std::make_unique<RealValue>(1);
     for (const Value *arg : args)
@@ -65,7 +65,7 @@ const ArgManifest &MulOp::arg_manifest() const
 }
 
 REGISTER(DivOp);
-ValueRef<Value> DivOp::run(ValueRef<Value> first, std::vector<const Value *> args) const
+Ptr<Value> DivOp::run(Ptr<Value> first, std::vector<const Value *> args) const
 {
     if (args.size() == 0)
         return first;
@@ -86,7 +86,7 @@ const ArgManifest &DivOp::arg_manifest() const
     return manifest;
 }
 REGISTER(MixOp);
-ValueRef<Value> MixOp::run(std::vector<const Value *> args) const
+Ptr<Value> MixOp::run(std::vector<const Value *> args) const
 {
     if (args.size() % 2)
         throw std::runtime_error(
@@ -112,7 +112,7 @@ const ArgManifest &MixOp::arg_manifest() const
 }
 
 REGISTER(LrgbOp);
-ValueRef<Value> LrgbOp::run(ValueRef<Value> lum, std::vector<const Value *> args) const
+Ptr<Value> LrgbOp::run(Ptr<Value> lum, std::vector<const Value *> args) const
 {
     if (args.size() == 0)
         return lum;

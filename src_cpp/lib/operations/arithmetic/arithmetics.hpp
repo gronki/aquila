@@ -9,7 +9,7 @@ namespace aquila::ops
 struct AddOp : public Operation
 {
     BIND_ARGS(&AddOp::run);
-    ValueRef<Value> run(std::vector<const Value *> args) const;
+    Ptr<Value> run(std::vector<const Value *> args) const;
     const ArgManifest &arg_manifest() const override;
     std::string name() const { return "add"; }
     std::string description() const override
@@ -21,7 +21,7 @@ struct AddOp : public Operation
 struct SubOp : public Operation
 {
     BIND_ARGS(&SubOp::run);
-    ValueRef<Value> run(ValueRef<Value> first, std::vector<const Value *> args) const;
+    Ptr<Value> run(Ptr<Value> first, std::vector<const Value *> args) const;
 
     const ArgManifest &arg_manifest() const override;
     std::string name() const { return "sub"; }
@@ -34,7 +34,7 @@ struct SubOp : public Operation
 struct MulOp : public Operation
 {
     BIND_ARGS(&MulOp::run);
-    ValueRef<Value> run(std::vector<const Value *> args) const;
+    Ptr<Value> run(std::vector<const Value *> args) const;
     const ArgManifest &arg_manifest() const override;
     std::string name() const { return "mul"; }
     std::string description() const override
@@ -46,7 +46,7 @@ struct MulOp : public Operation
 struct DivOp : public Operation
 {
     BIND_ARGS(&DivOp::run);
-    ValueRef<Value> run(ValueRef<Value> first, std::vector<const Value *> args) const;
+    Ptr<Value> run(Ptr<Value> first, std::vector<const Value *> args) const;
 
     const ArgManifest &arg_manifest() const override;
     std::string name() const { return "div"; }
@@ -59,7 +59,7 @@ struct DivOp : public Operation
 struct MixOp : public Operation
 {
     BIND_ARGS(&MixOp::run);
-    ValueRef<Value> run(std::vector<const Value *> args) const;
+    Ptr<Value> run(std::vector<const Value *> args) const;
     const ArgManifest &arg_manifest() const override;
     std::string name() const { return "mix"; }
     std::string description() const override
@@ -71,7 +71,7 @@ struct MixOp : public Operation
 struct LrgbOp : public Operation
 {
     BIND_ARGS(&LrgbOp::run);
-    ValueRef<Value> run(ValueRef<Value> lum, std::vector<const Value *> args) const;
+    Ptr<Value> run(Ptr<Value> lum, std::vector<const Value *> args) const;
 
     const ArgManifest &arg_manifest() const override;
     std::string name() const { return "lrgb"; }

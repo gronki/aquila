@@ -12,7 +12,7 @@ ValuePtr SequenceOp::call(std::vector<ValuePtr> args) const
     {
         items[i] = std::move(args[i]);
     }
-    return ValueRef<SequenceValue>::make(std::move(items));
+    return Ptr<SequenceValue>::make(std::move(items));
 }
 
 const ArgManifest &SequenceOp::arg_manifest() const
@@ -24,13 +24,13 @@ const ArgManifest &SequenceOp::arg_manifest() const
 }
 
 REGISTER(ItemOp);
-ValuePtr ItemOp::run(ValueRef<SequenceValue> seq, Real ix) const
+ValuePtr ItemOp::run(Ptr<SequenceValue> seq, Real ix) const
 {
     int64_t idx = int64_t(ix) - 1;
     if (idx < 0 || size_t(idx) >= seq->items.size())
         throw std::runtime_error("Index out of bounds");
     if (!seq->items[idx])
-        return {nullptr};
+        return {};
     return seq->items[idx];
 }
 
@@ -57,7 +57,7 @@ ValuePtr ZipOp::call(std::vector<ValuePtr> args) const
     {
         items[i] = std::move(args[i]);
     }
-    return ValueRef<SequenceValue>::make(std::move(items));
+    return Ptr<SequenceValue>::make(std::move(items));
 }
 
 const ArgManifest &ZipOp::arg_manifest() const

@@ -11,7 +11,7 @@ struct EqualizeOp : public Operation
 {
 
     BIND_ARGS(&EqualizeOp::run);
-    ValuePtr run(ValueRef<SequenceValue> bufs,
+    ValuePtr run(Ptr<SequenceValue> bufs,
         const Str &what,
         const Real &apar,
         const Real &bpar,

@@ -90,7 +90,7 @@ struct ArgMatch
 {
     bool matched = false;
     size_t pos;
-    ValuePtr deftgt = nullptr;
+    ValuePtr deftgt;
     ConvertFun convert = nullptr;
     bool sequence = false;
 };

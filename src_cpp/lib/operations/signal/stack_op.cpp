@@ -6,7 +6,7 @@ namespace aquila::ops
 {
 
 REGISTER(StackOp);
-ValuePtr StackOp::run(ValueRef<SequenceValue> buffers, const std::string &method) const
+ValuePtr StackOp::run(Ptr<SequenceValue> buffers, const std::string &method) const
 {
     if (buffers->size() == 0)
         return nullptr;

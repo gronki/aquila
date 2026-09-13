@@ -75,7 +75,7 @@ struct value_type
 // A trace records *how a value was obtained*: "stack{normalize{...}}". It is
 // the key under which results are memoised (see cache.hpp), so two values
 // reached by different routes must not share one. That is why a trace belongs
-// to the reference (ValueRef below) and not to the value itself: the very same
+// to the reference (Ptr below) and not to the value itself: the very same
 // frame may be reachable both as "x" and as "item{seq{...}; 1}".
 struct value_trace_t
 {
@@ -110,22 +110,27 @@ struct Value;
 template <typename T>
 concept ValueConcept = std::derived_from<T, Value>;
 
-// A reference to a value, plus the trace of how this particular reference came
-// to be. Values are immutable once they are referenced, so references may be
-// copied freely and share the pointee; an operation that needs something it can
-// write into asks for clone() and says so.
 template <ValueConcept T>
-class ValueRef
+class Ptr;
+
+// value_cast is the only thing allowed to narrow a reference, so it is the
+// only thing that reaches inside one
+template <ValueConcept T, ValueConcept U>
+Ptr<T> value_cast(const Ptr<U> &other);
+
+// A reference to a value, plus the trace of how this reference came to be.
+// Values are immutable once referenced, so references are copied freely and
+// share the pointee; code that needs to write into one asks for clone().
+template <ValueConcept T>
+class Ptr
 {
     std::shared_ptr<const T> ptr;
-    // the trace is held by pointer, not by value: copying a reference is a
-    // common operation and a trace can be a long nested string, so all the
-    // references that share a trace share one copy of it
+    // shared, not copied: references are copied constantly and a trace is a
+    // long nested string
     std::shared_ptr<const value_trace_t> trace;
 
-    // wraps a trace for sharing. An empty trace carries no information (see
-    // get_trace below, which falls back to the value itself), so it is stored
-    // as a null pointer rather than paying for an allocation.
+    // an empty trace says nothing, so it costs a null pointer, not an
+    // allocation
     static std::shared_ptr<const value_trace_t> share_trace(value_trace_t t)
     {
         if (t.content.empty())
@@ -133,39 +138,28 @@ class ValueRef
         return std::make_shared<const value_trace_t>(std::move(t));
     }
 
+    template <ValueConcept U>
+    friend class Ptr;
+    template <ValueConcept T2, ValueConcept U2>
+    friend Ptr<T2> value_cast(const Ptr<U2> &other);
+
 public:
-    template <ValueConcept U>
-    friend class ValueRef;
+    Ptr() {}
+    Ptr(std::nullptr_t) {}
 
-    ValueRef() {}
-    ValueRef(std::nullptr_t) {}
-
-    // a freshly built value: nobody else can see it yet, so sealing it as const
-    // costs nothing
+    // a freshly built value: nobody else can see it, so sealing it as const
+    // costs nothing, and handing the unique_ptr over cannot leak it
     template <ValueConcept U>
-    ValueRef(std::unique_ptr<U> owned, value_trace_t trace = {}) :
-        trace(share_trace(std::move(trace)))
+    Ptr(std::unique_ptr<U> owned, value_trace_t trace = {}) :
+        ptr(std::move(owned)), trace(share_trace(std::move(trace)))
     {
-        if (owned)
-            // hand ownership over as a unique_ptr, so that a throwing
-            // control-block allocation does not lose the object
-            ptr = std::unique_ptr<const T>(static_cast<const T *>(owned.release()));
     }
 
-    // Converts a reference to one value type into a reference to another:
-    // the same object, seen as a different type, with the two references
-    // sharing one refcount so the object lives as long as either of them.
-    //
-    // static_pointer_cast is the shared_ptr equivalent of static_cast: it
-    // changes the type at compile time and performs NO runtime check.
-    // Widening (a BufferValue seen as a Value) is always correct. Narrowing
-    // (a Value seen as a BufferValue) is only correct if the value really is
-    // one, and nothing here verifies that -- go through value_cast below,
-    // which checks the type first and hands back an empty reference when it
-    // does not match.
+    // the same object seen as a base type. Only this direction compiles:
+    // seeing a Value as the BufferValue it might be is a claim about the
+    // value, so it goes through value_cast, which checks it first.
     template <ValueConcept U>
-    ValueRef(const ValueRef<U> &other) :
-        ptr(std::static_pointer_cast<const T>(other.ptr)), trace(other.trace)
+    Ptr(const Ptr<U> &other) : ptr(other.ptr), trace(other.trace)
     {
     }
 
@@ -181,39 +175,40 @@ public:
     explicit operator bool() const noexcept { return (bool)ptr; }
     bool operator==(std::nullptr_t) const noexcept { return !ptr; }
 
-    // an independent, writable copy. The only way to a mutable value, and
-    // deliberately explicit: it deep-copies, which for a frame means megabytes.
+    // an independent, writable copy. Deliberately explicit: it deep-copies,
+    // which for a frame means megabytes.
     std::unique_ptr<T> clone() const
     {
         if (!ptr)
             throw std::runtime_error("trying to clone empty value reference!");
-        std::unique_ptr<Value> cloned = ptr->clone();
-        return std::unique_ptr<T>(static_cast<T *>(cloned.release()));
+        return std::unique_ptr<T>(static_cast<T *>(ptr->clone().release()));
     }
 
     // how this reference was obtained; falls back to what the value can say
     // about itself (a literal traces as itself, a sequence as its items)
-    value_trace_t get_trace() const;
-
-    void set_trace(value_trace_t new_trace) { trace = share_trace(std::move(new_trace)); }
-
-    ValueRef with_trace(value_trace_t new_trace) const
+    value_trace_t get_trace() const
     {
-        ValueRef copy(*this);
-        copy.trace = share_trace(std::move(new_trace));
+        if (!ptr)
+            return {};
+        return trace ? *trace : ptr->implicit_trace();
+    }
+
+    Ptr with_trace(value_trace_t t) const
+    {
+        Ptr copy(*this);
+        copy.trace = share_trace(std::move(t));
         return copy;
     }
 
     template <typename... Args>
-    static ValueRef make(Args &&...args)
+    static Ptr make(Args &&...args)
     {
-        ValueRef out;
+        Ptr out;
         out.ptr = std::make_shared<const T>(std::forward<Args>(args)...);
         return out;
     }
 };
-
-using ValuePtr = ValueRef<Value>;
+using ValuePtr = Ptr<Value>;
 
 struct Value
 {
@@ -237,16 +232,6 @@ struct Value
         return ss.str();
     }
 };
-
-template <ValueConcept T>
-value_trace_t ValueRef<T>::get_trace() const
-{
-    if (!ptr)
-        return {};
-    if (trace)
-        return *trace;
-    return ptr->implicit_trace();
-}
 
 #define TYPE_NAME(x)                                                                   \
     constexpr static aquila::interpreter::value_type type_name                         \
@@ -321,13 +306,18 @@ inline const T &value_cast(const Value &other)
 }
 
 template <ValueConcept T, ValueConcept U>
-inline ValueRef<T> value_cast(const ValueRef<U> &other)
+inline Ptr<T> value_cast(const Ptr<U> &other)
 {
     if (!other)
         return {};
     if (!__is_compatible<T>(other->get_type()))
         return {};
-    return ValueRef<T>(other);
+    // checked just above, so retyping the pointer is sound. This is the only
+    // place that may do it.
+    Ptr<T> out;
+    out.ptr = std::static_pointer_cast<const T>(other.ptr);
+    out.trace = other.trace;
+    return out;
 }
 
 using Real = double;
@@ -636,6 +626,6 @@ using interpreter::value_cast;
 using interpreter::value_type;
 using interpreter::ValueBase;
 using interpreter::ValuePtr;
-using interpreter::ValueRef;
+using interpreter::Ptr;
 
 } // namespace aquila

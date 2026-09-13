@@ -25,7 +25,7 @@ OpNode::OpNode(std::unique_ptr<Operation> op,
 }
 
 static std::vector<ValuePtr> make_ith_argument(const std::vector<ValuePtr> &args,
-    std::vector<ValueRef<SequenceValue>> &sequences,
+    std::vector<Ptr<SequenceValue>> &sequences,
     std::int64_t iseq)
 {
     std::vector<ValuePtr> argvec(args.size());
@@ -39,7 +39,7 @@ static std::vector<ValuePtr> make_ith_argument(const std::vector<ValuePtr> &args
     return argvec;
 }
 
-static ValuePtr op_call_with_debug(const Operation &op, std::vector<ValueRef<Value>> args)
+static ValuePtr op_call_with_debug(const Operation &op, std::vector<Ptr<Value>> args)
 {
 #ifndef NDEBUG
     std::cout << "running " << op.name() << "(";
@@ -69,10 +69,10 @@ static ValuePtr op_call_with_debug(const Operation &op, std::vector<ValueRef<Val
     }
 }
 
-static ValueRef<Value> run_sanitizer(ValueRef<Value> arg, const ConvertFun &conv)
+static Ptr<Value> run_sanitizer(Ptr<Value> arg, const ConvertFun &conv)
 {
     if (!arg)
-        return {nullptr};
+        return {};
     auto converted = conv(*arg);
     if (converted)
         return converted;
@@ -97,7 +97,7 @@ static value_trace_t default_op_trace(
 static constexpr int64_t SEQUENCE_NOT_FOUND = -1;
 
 static void pick_sequences(std::vector<ValuePtr> &args,
-    std::vector<ValueRef<SequenceValue>> &sequences,
+    std::vector<Ptr<SequenceValue>> &sequences,
     const std::vector<ArgMatch> &match,
     int64_t &sequence_len)
 {
@@ -112,7 +112,10 @@ static void pick_sequences(std::vector<ValuePtr> &args,
         if (match[iarg].sequence || !arg->is_sequence())
             continue;
 
-        sequences[iarg] = std::move(arg);
+        // only a SequenceValue answers true to is_sequence(), so this always
+        // succeeds; value_cast is the one way to narrow a reference
+        sequences[iarg] = value_cast<SequenceValue>(arg);
+        arg = {};
         auto &seq_arg = sequences[iarg];
 
         if (sequence_len == SEQUENCE_NOT_FOUND)
@@ -183,7 +186,7 @@ static ValuePtr run_op_with_trace(
         trace = default_op_trace(op, collect_traces(args));
     }
     if (trace_only)
-        return ValueRef<dummy_value_t>::make().with_trace(trace);
+        return Ptr<dummy_value_t>::make().with_trace(trace);
     auto result = op_call_with_debug(op, std::move(args));
     if (op.tracing_mode() == Operation::Tracing::FROM_RETVAL)
     {
@@ -192,7 +195,7 @@ static ValuePtr run_op_with_trace(
     // an untraceable operation has nothing to say about its result, so leave
     // whatever trace the result already carries alone
     if (op.tracing_mode() != Operation::Tracing::UNTRACEABLE)
-        result.set_trace(trace);
+        result = result.with_trace(trace);
     return result;
 }
 
@@ -207,7 +210,7 @@ static ValuePtr op_call_with_sequencing(const Operation &op,
         return run_op_with_trace(op, args, trace_only);
 
     int64_t sequence_len = SEQUENCE_NOT_FOUND;
-    std::vector<ValueRef<SequenceValue>> sequences(args.size());
+    std::vector<Ptr<SequenceValue>> sequences(args.size());
 
     pick_sequences(args, sequences, match, sequence_len);
 
@@ -229,7 +232,7 @@ static ValuePtr op_call_with_sequencing(const Operation &op,
     }
 
     if (sequence_len == 0)
-        return ValueRef<SequenceValue>::make(std::vector<ValuePtr>{});
+        return Ptr<SequenceValue>::make(std::vector<ValuePtr>{});
 
     std::vector<ValuePtr> result(sequence_len);
     std::vector<value_trace_t> arg_traces(args.size());
@@ -326,13 +329,13 @@ static ValuePtr op_call_with_sequencing(const Operation &op,
 
     if (op.tracing_mode() == Operation::Tracing::DEFAULT)
     {
-        return ValueRef<SequenceValue>::make(std::move(result))
+        return Ptr<SequenceValue>::make(std::move(result))
             .with_trace(default_op_trace(op, arg_traces));
     }
 
-    return ValueRef<SequenceValue>::make(std::move(result));
+    return Ptr<SequenceValue>::make(std::move(result));
 }
-ValueRef<Value> OpNode::yield(ExecCtx ctx) const
+Ptr<Value> OpNode::yield(ExecCtx ctx) const
 {
     if (ctx.cache && op->cacheable())
     {
@@ -353,7 +356,7 @@ ValueRef<Value> OpNode::yield(ExecCtx ctx) const
 #endif
     }
 
-    std::vector<ValueRef<Value>> arg_results;
+    std::vector<Ptr<Value>> arg_results;
     for (size_t iarg = 0; iarg < args.size(); iarg++)
     {
         arg_results.push_back(args[iarg]->yield(ctx));
@@ -418,7 +421,7 @@ value_trace_t OpNode::trace(ExecCtx ctx) const
         }
     }
 
-    std::vector<ValueRef<Value>> arg_results;
+    std::vector<Ptr<Value>> arg_results;
     for (size_t iarg = 0; iarg < args.size(); iarg++)
     {
         arg_results.push_back(args[iarg]->yield(ctx));

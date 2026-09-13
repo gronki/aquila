@@ -18,10 +18,10 @@ inline std::unique_ptr<Value> expandGlob(const StrValue &s)
     if (paths.size() <= 1)
         return nullptr;
 
-    std::vector<ValueRef<Value>> items;
+    std::vector<Ptr<Value>> items;
     items.reserve(paths.size());
     for (const auto &p : paths)
-        items.push_back(ValueRef<StrValue>::make(p.string()));
+        items.push_back(Ptr<StrValue>::make(p.string()));
     return std::make_unique<SequenceValue>(std::move(items));
 }
 

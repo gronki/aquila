@@ -25,7 +25,7 @@ protected:
 
 public:
     virtual void set_depth(int newdepth = 0) { depth = newdepth; }
-    virtual ValueRef<Value> yield(ExecCtx ctx) const = 0;
+    virtual Ptr<Value> yield(ExecCtx ctx) const = 0;
     virtual void trigger_sideeffects(ExecCtx ctx) const {}
     virtual value_trace_t trace(ExecCtx ctx) const = 0;
     virtual std::optional<std::string> get_refname() const { return std::nullopt; }
@@ -42,7 +42,7 @@ class RefNode : public ExecNode
 public:
     RefNode(const std::string &refname) : refname(refname) {}
 
-    ValueRef<Value> yield(ExecCtx ctx) const override { return ctx.ns.get(refname); }
+    Ptr<Value> yield(ExecCtx ctx) const override { return ctx.ns.get(refname); }
     value_trace_t trace(ExecCtx ctx) const override
     {
         // we do not trace references. example:
@@ -76,7 +76,7 @@ public:
     {
     }
 
-    ValueRef<Value> yield(ExecCtx ctx) const override;
+    Ptr<Value> yield(ExecCtx ctx) const override;
     value_trace_t trace(ExecCtx ctx) const override { return rhs->trace(ctx); }
     void trigger_sideeffects(ExecCtx ctx) const override { yield(ctx); }
     void set_depth(int newdepth = 0) override
@@ -116,7 +116,7 @@ public:
     OpNode(std::unique_ptr<Operation> op,
         std::vector<std::unique_ptr<ExecNode>> args,
         std::vector<std::string> keys);
-    ValueRef<Value> yield(ExecCtx ctx) const override;
+    Ptr<Value> yield(ExecCtx ctx) const override;
     value_trace_t trace(ExecCtx ctx) const override;
     bool trivial() const override
     {
@@ -153,7 +153,7 @@ public:
     {
     }
 
-    ValueRef<Value> yield(ExecCtx ctx) const override;
+    Ptr<Value> yield(ExecCtx ctx) const override;
     value_trace_t trace(ExecCtx ctx) const override { return arg->trace(ctx); }
     void trigger_sideeffects(ExecCtx ctx) const override { yield(ctx); }
     void set_depth(int newdepth = 0) override

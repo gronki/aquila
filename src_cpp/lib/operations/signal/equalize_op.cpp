@@ -7,7 +7,7 @@ namespace aquila::ops
 
 REGISTER(EqualizeOp);
 
-ValuePtr EqualizeOp::run(ValueRef<SequenceValue> channels,
+ValuePtr EqualizeOp::run(Ptr<SequenceValue> channels,
     const Str &what,
     const Real &apar,
     const Real &bpar,
@@ -48,12 +48,12 @@ ValuePtr EqualizeOp::run(ValueRef<SequenceValue> channels,
         throw std::runtime_error(std::string("equalize_background failed: ") + err.message);
     }
 
-    std::vector<ValueRef<Value>> return_bufs;
+    std::vector<Ptr<Value>> return_bufs;
     for (auto &buf : out_bufs)
     {
         return_bufs.push_back(std::move(buf));
     }
-    return ValueRef<SequenceValue>::make(std::move(return_bufs));
+    return Ptr<SequenceValue>::make(std::move(return_bufs));
 }
 
 const ArgManifest &EqualizeOp::arg_manifest() const

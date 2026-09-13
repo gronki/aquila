@@ -87,9 +87,9 @@ struct __cast_helper<const T *>
 };
 
 template <typename T>
-struct __cast_helper<ValueRef<T>>
+struct __cast_helper<Ptr<T>>
 {
-    static ValueRef<T> cast(ValuePtr &arg)
+    static Ptr<T> cast(ValuePtr &arg)
     {
         if (!arg)
             return {};

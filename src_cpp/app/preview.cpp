@@ -436,7 +436,7 @@ void AquilaWindow::update(const ValuePtr &v)
     }
     if (const auto *seq = value_cast<SequenceValue>(v.get()))
     {
-        std::vector<ValueRef<values::BufferValue>> bufs;
+        std::vector<Ptr<values::BufferValue>> bufs;
         for (const auto &item : seq->items)
         {
             auto im = value_cast<values::BufferValue>(item);
@@ -454,7 +454,7 @@ void AquilaWindow::update(const ValuePtr &v)
 }
 
 void AquilaWindow::WindowThread::update(
-    const std::vector<ValueRef<values::BufferValue>> &bufs)
+    const std::vector<Ptr<values::BufferValue>> &bufs)
 {
     std::lock_guard lock(payload_mutex);
     payload.bufs.clear();

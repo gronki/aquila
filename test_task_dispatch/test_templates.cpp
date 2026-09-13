@@ -72,9 +72,9 @@ TEST(normal)
     StrValue s{"three"};
 
     std::vector<ValuePtr> inputs;
-    inputs.emplace_back(&r);
-    inputs.emplace_back(&i);
-    inputs.emplace_back(&s);
+    inputs.emplace_back(r.clone());
+    inputs.emplace_back(i.clone());
+    inputs.emplace_back(s.clone());
 
     TestOperation addop;
     auto result = addop.call(std::move(inputs));
@@ -88,8 +88,8 @@ TEST(direct)
     IntValue i{2};
 
     std::vector<ValuePtr> inputs;
-    inputs.emplace_back(&r);
-    inputs.emplace_back(&i);
+    inputs.emplace_back(r.clone());
+    inputs.emplace_back(i.clone());
 
     DirectCastOp addop;
     auto result = addop.call(std::move(inputs));
@@ -113,9 +113,9 @@ TEST(wrongtype)
     StrValue s{"three"};
 
     std::vector<ValuePtr> inputs;
-    inputs.emplace_back(&r);
-    inputs.emplace_back(&i);
-    inputs.emplace_back(&s);
+    inputs.emplace_back(r.clone());
+    inputs.emplace_back(i.clone());
+    inputs.emplace_back(s.clone());
 
     TestOperation addop;
 
@@ -136,10 +136,10 @@ TEST(toomany)
     StrValue f{"oops"};
 
     std::vector<ValuePtr> inputs;
-    inputs.emplace_back(&r);
-    inputs.emplace_back(&i);
-    inputs.emplace_back(&s);
-    inputs.emplace_back(&f);
+    inputs.emplace_back(r.clone());
+    inputs.emplace_back(i.clone());
+    inputs.emplace_back(s.clone());
+    inputs.emplace_back(f.clone());
 
     TestOperation addop;
 
@@ -158,8 +158,8 @@ TEST(notenough)
     IntValue i{2};
 
     std::vector<ValuePtr> inputs;
-    inputs.emplace_back(&r);
-    inputs.emplace_back(&i);
+    inputs.emplace_back(r.clone());
+    inputs.emplace_back(i.clone());
 
     TestOperation addop;
 

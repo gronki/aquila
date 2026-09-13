@@ -7,7 +7,7 @@ namespace aquila::ops
 
 REGISTER(EqualizeOp);
 
-ValuePtr EqualizeOp::run(Ptr<SequenceValue> channels,
+ValuePtr EqualizeOp::run(ValueRef<SequenceValue> channels,
     const Str &what,
     const Real &apar,
     const Real &bpar,
@@ -16,15 +16,6 @@ ValuePtr EqualizeOp::run(Ptr<SequenceValue> channels,
     const Int &niter,
     const Int &margin) const
 {
-    std::vector<Ptr<values::BufferValue>> bufs;
-    for (const auto &item : channels->items)
-    {
-        const auto *casted = value_cast<values::BufferValue>(item.get());
-        if (!casted)
-            throw std::runtime_error("wb: expected buffer in sequence");
-        bufs.push_back(casted);
-    }
-
     bkeq_param_t params;
     params.background = what == "bg" || what == "both";
     params.stars = what == "stars" || what == "both";
@@ -35,12 +26,17 @@ ValuePtr EqualizeOp::run(Ptr<SequenceValue> channels,
     params.niter = static_cast<int32_t>(niter);
     params.margin = static_cast<int32_t>(margin);
 
+    // equalize_background writes into the buffers it is handed, so every
+    // channel is copied into one we own
     std::vector<std::unique_ptr<values::BufferValue>> out_bufs;
     std::vector<buffer_descriptor_r32_t> c_bufs;
 
-    for (auto &buf : bufs)
+    for (const auto &item : channels->items)
     {
-        out_bufs.push_back(buf.own());
+        auto buf = value_cast<values::BufferValue>(item);
+        if (!buf)
+            throw std::runtime_error("wb: expected buffer in sequence");
+        out_bufs.push_back(buf.clone());
         c_bufs.push_back(c_buf(out_bufs.back()->buffer));
     }
 
@@ -52,12 +48,12 @@ ValuePtr EqualizeOp::run(Ptr<SequenceValue> channels,
         throw std::runtime_error(std::string("equalize_background failed: ") + err.message);
     }
 
-    std::vector<Ptr<Value>> return_bufs;
+    std::vector<ValueRef<Value>> return_bufs;
     for (auto &buf : out_bufs)
     {
         return_bufs.push_back(std::move(buf));
     }
-    return Ptr<SequenceValue>::make(std::move(return_bufs));
+    return ValueRef<SequenceValue>::make(std::move(return_bufs));
 }
 
 const ArgManifest &EqualizeOp::arg_manifest() const

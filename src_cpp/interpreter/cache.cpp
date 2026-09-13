@@ -14,15 +14,13 @@ static std::uint64_t fnv1a(std::string s)
     return h;
 }
 
-ValuePtr CacheSpace::push(
-    const value_trace_t &trace, std::unique_ptr<Value> v, int64_t initial_score)
+ValuePtr CacheSpace::push(const value_trace_t &trace, ValuePtr v, int64_t initial_score)
 {
     if (trace.is_corrupt || trace.content.empty() || !v)
         return {};
-    v->materialize();
     auto [it, replaced] =
         vault.insert_or_assign(trace.flatten(), CacheEntry{std::move(v), initial_score});
-    return it->second.val->shallow();
+    return it->second.val;
 }
 
 ValuePtr CacheSpace::get(const value_trace_t &trace) const
@@ -31,7 +29,7 @@ ValuePtr CacheSpace::get(const value_trace_t &trace) const
         return {};
     auto it = vault.find(trace.flatten());
     if (it != vault.end())
-        return it->second.val->shallow();
+        return it->second.val;
     return {};
 }
 
@@ -43,7 +41,7 @@ ValuePtr CacheSpace::get_and_score(const value_trace_t &trace, int64_t score)
     if (it != vault.end())
     {
         it->second.score += score;
-        return it->second.val->shallow();
+        return it->second.val;
     }
     return {};
 }

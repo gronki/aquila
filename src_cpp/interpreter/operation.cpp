@@ -269,7 +269,7 @@ std::vector<ValuePtr> build_ptrs_from_match(
         }
         if (match[ispec].deftgt)
         {
-            args[ispec] = match[ispec].deftgt.get();
+            args[ispec] = match[ispec].deftgt;
             continue;
         }
         std::cout << "Warning! empty argument " << ispec << std::endl;
@@ -294,7 +294,7 @@ std::vector<value_trace_t> build_traces_from_match(
         }
         if (match[ispec].deftgt)
         {
-            out_traces[ispec] = match[ispec].deftgt->get_trace();
+            out_traces[ispec] = match[ispec].deftgt.get_trace();
             continue;
         }
         std::cout << "Warning! empty argument " << ispec << std::endl;

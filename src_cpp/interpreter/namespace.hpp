@@ -9,14 +9,14 @@ namespace aquila::interpreter
 
 class Namespace
 {
-    std::map<std::string, std::unique_ptr<Value>> vault;
+    std::map<std::string, ValuePtr> vault;
     const Namespace *global = nullptr;
 
 public:
     Namespace() {}
     Namespace(const Namespace *global) : global(global) {}
 
-    ValuePtr push(const std::string &name, std::unique_ptr<Value> v);
+    ValuePtr push(const std::string &name, ValuePtr v);
     ValuePtr get(const std::string &name) const;
     bool contains(const std::string &name) const;
     void merge(Namespace other);

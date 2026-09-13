@@ -17,7 +17,7 @@ struct ItemOp : public Operation
 {
 
     BIND_ARGS(&ItemOp::run);
-    ValuePtr run(Ptr<SequenceValue> seq, Real ix) const;
+    ValuePtr run(ValueRef<SequenceValue> seq, Real ix) const;
 
     std::string name() const override { return "item"; }
 

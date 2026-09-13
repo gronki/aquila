@@ -24,36 +24,22 @@ OpNode::OpNode(std::unique_ptr<Operation> op,
 {
 }
 
-static std::vector<Ptr<Value>> make_ith_argument(const std::vector<Ptr<Value>> &args,
-    std::vector<Ptr<SequenceValue>> &sequences,
+static std::vector<ValuePtr> make_ith_argument(const std::vector<ValuePtr> &args,
+    std::vector<ValueRef<SequenceValue>> &sequences,
     std::int64_t iseq)
 {
-    std::vector<Ptr<Value>> argvec(args.size());
+    std::vector<ValuePtr> argvec(args.size());
 
     for (size_t iarg = 0; iarg < args.size(); iarg++)
     {
         auto &seq = sequences[iarg];
-        if (seq)
-        {
-            if (auto seq_mut = seq.get_mut())
-            {
-                argvec[iarg] = seq_mut->items[iseq].own();
-            }
-            else
-            {
-                argvec[iarg] = seq->items[iseq].get();
-            }
-        }
-        else
-        {
-            argvec[iarg] = args[iarg].get();
-        }
+        argvec[iarg] = seq ? seq->items[iseq] : args[iarg];
     }
 
     return argvec;
 }
 
-static ValuePtr op_call_with_debug(const Operation &op, std::vector<Ptr<Value>> args)
+static ValuePtr op_call_with_debug(const Operation &op, std::vector<ValueRef<Value>> args)
 {
 #ifndef NDEBUG
     std::cout << "running " << op.name() << "(";
@@ -83,7 +69,7 @@ static ValuePtr op_call_with_debug(const Operation &op, std::vector<Ptr<Value>> 
     }
 }
 
-static Ptr<Value> run_sanitizer(Ptr<Value> arg, const ConvertFun &conv)
+static ValueRef<Value> run_sanitizer(ValueRef<Value> arg, const ConvertFun &conv)
 {
     if (!arg)
         return {nullptr};
@@ -111,7 +97,7 @@ static value_trace_t default_op_trace(
 static constexpr int64_t SEQUENCE_NOT_FOUND = -1;
 
 static void pick_sequences(std::vector<ValuePtr> &args,
-    std::vector<Ptr<SequenceValue>> &sequences,
+    std::vector<ValueRef<SequenceValue>> &sequences,
     const std::vector<ArgMatch> &match,
     int64_t &sequence_len)
 {
@@ -145,8 +131,8 @@ static void pick_sequences(std::vector<ValuePtr> &args,
 struct dummy_value_t : public ValueBase<dummy_value_t>
 {
     TYPE_NAME("dummy");
-    dummy_value_t(const value_trace_t &trace) { this->trace = trace; }
-    dummy_value_t(const dummy_value_t &other) { this->trace = other.trace; }
+    dummy_value_t() {}
+    dummy_value_t(const dummy_value_t &other) {}
     void write(std::ostream &os) const override {}
 };
 
@@ -161,7 +147,7 @@ static std::vector<value_trace_t> collect_traces(const std::vector<ValuePtr> &ar
             traces.push_back({});
             continue;
         }
-        traces.push_back(arg->get_trace());
+        traces.push_back(arg.get_trace());
     }
     return traces;
 }
@@ -197,16 +183,13 @@ static ValuePtr run_op_with_trace(
         trace = default_op_trace(op, collect_traces(args));
     }
     if (trace_only)
-        return Ptr<dummy_value_t>::make(trace);
+        return ValueRef<dummy_value_t>::make().with_trace(trace);
     auto result = op_call_with_debug(op, std::move(args));
     if (op.tracing_mode() == Operation::Tracing::FROM_RETVAL)
     {
         trace = op.custom_trace(nullptr, result.get());
     }
-    if (auto mut = result.get_mut())
-    {
-        mut->trace = trace;
-    }
+    result.set_trace(trace);
     return result;
 }
 
@@ -221,7 +204,7 @@ static ValuePtr op_call_with_sequencing(const Operation &op,
         return run_op_with_trace(op, args, trace_only);
 
     int64_t sequence_len = SEQUENCE_NOT_FOUND;
-    std::vector<Ptr<SequenceValue>> sequences(args.size());
+    std::vector<ValueRef<SequenceValue>> sequences(args.size());
 
     pick_sequences(args, sequences, match, sequence_len);
 
@@ -243,7 +226,7 @@ static ValuePtr op_call_with_sequencing(const Operation &op,
     }
 
     if (sequence_len == 0)
-        return Ptr<SequenceValue>::make(std::vector<ValuePtr>{});
+        return ValueRef<SequenceValue>::make(std::vector<ValuePtr>{});
 
     std::vector<ValuePtr> result(sequence_len);
     std::vector<value_trace_t> arg_traces(args.size());
@@ -251,11 +234,11 @@ static ValuePtr op_call_with_sequencing(const Operation &op,
     {
         if (sequences[iarg])
         {
-            arg_traces[iarg] = sequences[iarg]->get_trace();
+            arg_traces[iarg] = sequences[iarg].get_trace();
         }
         else if (args[iarg])
         {
-            arg_traces[iarg] = args[iarg]->get_trace();
+            arg_traces[iarg] = args[iarg].get_trace();
         }
     }
 
@@ -340,13 +323,13 @@ static ValuePtr op_call_with_sequencing(const Operation &op,
 
     if (op.tracing_mode() == Operation::Tracing::DEFAULT)
     {
-        return Ptr<SequenceValue>::make(
-            std::move(result), default_op_trace(op, arg_traces));
+        return ValueRef<SequenceValue>::make(std::move(result))
+            .with_trace(default_op_trace(op, arg_traces));
     }
 
-    return Ptr<SequenceValue>::make(std::move(result));
+    return ValueRef<SequenceValue>::make(std::move(result));
 }
-Ptr<Value> OpNode::yield(ExecCtx ctx) const
+ValueRef<Value> OpNode::yield(ExecCtx ctx) const
 {
     if (ctx.cache && op->cacheable())
     {
@@ -367,7 +350,7 @@ Ptr<Value> OpNode::yield(ExecCtx ctx) const
 #endif
     }
 
-    std::vector<Ptr<Value>> arg_results;
+    std::vector<ValueRef<Value>> arg_results;
     for (size_t iarg = 0; iarg < args.size(); iarg++)
     {
         arg_results.push_back(args[iarg]->yield(ctx));
@@ -379,13 +362,13 @@ Ptr<Value> OpNode::yield(ExecCtx ctx) const
         if (ctx.cache && result && depth < 3 && op->cacheable()
             && result->sequence_len() < 10)
         {
-            auto result_trace = result->get_trace();
+            auto result_trace = result.get_trace();
             if (!result_trace.is_corrupt)
             {
 #ifndef NDEBUG
                 std::cout << "writing to cache: " << result_trace << std::endl;
 #endif
-                ctx.cache->push(result_trace, result->clone());
+                ctx.cache->push(result_trace, result);
             }
         }
         return result;
@@ -432,7 +415,7 @@ value_trace_t OpNode::trace(ExecCtx ctx) const
         }
     }
 
-    std::vector<Ptr<Value>> arg_results;
+    std::vector<ValueRef<Value>> arg_results;
     for (size_t iarg = 0; iarg < args.size(); iarg++)
     {
         arg_results.push_back(args[iarg]->yield(ctx));
@@ -447,21 +430,21 @@ value_trace_t OpNode::trace(ExecCtx ctx) const
     if (!result)
         throw std::runtime_error("Error in evaluating trace for operation " + op->name());
 
-    return result->get_trace();
+    return result.get_trace();
 }
 
-Ptr<Value> AssignmentNode::yield(ExecCtx ctx) const
+ValuePtr AssignmentNode::yield(ExecCtx ctx) const
 {
-    Ptr<Value> rhs_yield = rhs->yield(ctx);
+    ValuePtr rhs_yield = rhs->yield(ctx);
     if (!rhs_yield)
         return {};
-    return ctx.ns.push(lhs, rhs_yield.own());
+    return ctx.ns.push(lhs, rhs_yield);
 }
 
-Ptr<Value> InlineAssignmentNode::yield(ExecCtx ctx) const
+ValuePtr InlineAssignmentNode::yield(ExecCtx ctx) const
 {
 
-    Ptr<Value> in = arg->yield(ctx);
+    ValuePtr in = arg->yield(ctx);
 
     if (!in)
         throw std::runtime_error("empty value may not be assigned");
@@ -469,25 +452,24 @@ Ptr<Value> InlineAssignmentNode::yield(ExecCtx ctx) const
     if (idents.size() == 1)
     {
         std::cout << "Pushing: " << idents[0] << std::endl;
-        return ctx.ns.push(idents[0], in.own());
+        return ctx.ns.push(idents[0], in);
     }
 
-    auto seq_trace = in->get_trace();
-    auto owned = in.own();
-    SequenceValue &sqv = value_cast<SequenceValue>(*owned);
+    auto seq_trace = in.get_trace();
+    const SequenceValue &sqv = value_cast<SequenceValue>(*in);
     if (sqv.size() != idents.size())
         throw std::runtime_error("expected sequence of length "
             + std::to_string(idents.size()) + ", got: " + std::to_string(sqv.size()));
     auto sq_ret = std::make_unique<SequenceValue>();
-    sq_ret->trace = seq_trace;
     for (std::size_t iarg = 0; iarg < idents.size(); iarg++)
     {
-        auto peeled = sqv.items[iarg].own();
-        peeled->trace = "item{" + seq_trace.content + "; " + std::to_string(iarg + 1) + "}";
+        // every name gets the same value, but its own account of where it came from
+        auto peeled = sqv.items[iarg].with_trace(
+            "item{" + seq_trace.content + "; " + std::to_string(iarg + 1) + "}");
         sq_ret->items.push_back(ctx.ns.push(idents[iarg], std::move(peeled)));
     }
 
-    return sq_ret;
+    return ValuePtr(std::move(sq_ret), seq_trace);
 }
 
 } // namespace aquila::interpreter

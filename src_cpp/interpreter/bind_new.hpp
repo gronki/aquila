@@ -17,9 +17,9 @@ struct __castng_helper
 {
 };
 template <typename T>
-struct __castng_helper<Ptr<T>>
+struct __castng_helper<ValueRef<T>>
 {
-    static Ptr<T> cast(ValuePtr &ptr)
+    static ValueRef<T> cast(ValuePtr &ptr)
     {
         auto casted = value_cast<T>(ptr);
         if (!casted)
@@ -105,7 +105,7 @@ struct Struct
 
 template <typename TS>
 TS __collect_struct(
-    const std::vector<Ptr<Value>> &vals, const ArgManifest &manifest, int struct_nr = 0)
+    const std::vector<ValueRef<Value>> &vals, const ArgManifest &manifest, int struct_nr = 0)
 {
     TS result;
     if (vals.size() < manifest.size())

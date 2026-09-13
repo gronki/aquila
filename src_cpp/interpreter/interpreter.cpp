@@ -17,7 +17,7 @@ std::unique_ptr<ExecNode> build_exectree_from_str(
     return build_exec_tree(root, opdb);
 }
 
-Ptr<Value> AquilaInterpreter::exec(const std::string &command)
+ValueRef<Value> AquilaInterpreter::exec(const std::string &command)
 {
     Namespace sub_ns{&ns};
     exectree = build_exectree_from_str(command, global_op_db());

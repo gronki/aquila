@@ -56,7 +56,7 @@ ValuePtr BinOp::run(const values::BufferValue &in, const Real &scale) const
     default:
         throw std::runtime_error("unsupported bin scale!");
     }
-    return nullptr;
+    return {};
 }
 
 const ArgManifest &BinOp::arg_manifest() const

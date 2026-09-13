@@ -36,7 +36,7 @@ ValuePtr EqualizeOp::run(Ptr<SequenceValue> channels,
         auto buf = value_cast<values::BufferValue>(item);
         if (!buf)
             throw std::runtime_error("wb: expected buffer in sequence");
-        out_bufs.push_back(buf.clone());
+        out_bufs.push_back(std::make_unique<values::BufferValue>(*buf));
         c_bufs.push_back(c_buf(out_bufs.back()->buffer));
     }
 

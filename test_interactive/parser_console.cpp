@@ -68,7 +68,7 @@ void update_state(const std::string &command,
         ss << *ast;
         ast_summ = ss.str();
 
-        const Value *val = interp.exec(command);
+        auto val = interp.exec(command);
         if (val)
         {
             command_output = val->str();

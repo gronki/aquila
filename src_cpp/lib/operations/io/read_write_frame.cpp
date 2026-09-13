@@ -38,7 +38,7 @@ ValuePtr WriteFrame::run(const values::BufferValue &frame, const std::string &fn
     if (std::filesystem::exists(fn))
         std::filesystem::remove(fn);
     write_fits(fn, frame.buffer);
-    return nullptr;
+    return {};
 }
 
 } // namespace aquila::ops

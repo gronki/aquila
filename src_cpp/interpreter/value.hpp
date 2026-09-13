@@ -145,7 +145,6 @@ class Ptr
 
 public:
     Ptr() {}
-    Ptr(std::nullptr_t) {}
 
     // a freshly built value: nobody else can see it, so sealing it as const
     // costs nothing, and handing the unique_ptr over cannot leak it
@@ -173,16 +172,6 @@ public:
     const T *operator->() const noexcept { return ptr.get(); }
     const T *get() const noexcept { return ptr.get(); }
     explicit operator bool() const noexcept { return (bool)ptr; }
-    bool operator==(std::nullptr_t) const noexcept { return !ptr; }
-
-    // an independent, writable copy. Deliberately explicit: it deep-copies,
-    // which for a frame means megabytes.
-    std::unique_ptr<T> clone() const
-    {
-        if (!ptr)
-            throw std::runtime_error("trying to clone empty value reference!");
-        return std::unique_ptr<T>(static_cast<T *>(ptr->clone().release()));
-    }
 
     // how this reference was obtained; falls back to what the value can say
     // about itself (a literal traces as itself, a sequence as its items)

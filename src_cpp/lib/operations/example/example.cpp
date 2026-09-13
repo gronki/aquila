@@ -10,7 +10,7 @@ ValuePtr ExampleOp::run(const std::string &param) const
      * operation implementation
      */
     throw std::logic_error(std::string("not implemented: ") + name());
-    return nullptr;
+    return {};
 }
 
 const ArgManifest &ExampleOp::arg_manifest() const

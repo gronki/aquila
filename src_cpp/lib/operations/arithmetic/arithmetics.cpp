@@ -28,7 +28,7 @@ const ArgManifest &AddOp::arg_manifest() const
 REGISTER(SubOp);
 Ptr<Value> SubOp::run(Ptr<Value> first, std::vector<const Value *> args) const
 {
-    auto result = first.clone();
+    auto result = first->clone();
     for (std::size_t iarg = 0; iarg < args.size(); iarg++)
     {
         result = apply_binary(*result, *args[iarg], [](auto a, auto b) { return a - b; });
@@ -69,7 +69,7 @@ Ptr<Value> DivOp::run(Ptr<Value> first, std::vector<const Value *> args) const
 {
     if (args.size() == 0)
         return first;
-    auto result = first.clone();
+    auto result = first->clone();
     for (std::size_t iarg = 0; iarg < args.size(); iarg++)
     {
         result = apply_binary(*result, *args[iarg], [](auto a, auto b) { return a / b; });

@@ -9,7 +9,7 @@ REGISTER(StackOp);
 ValuePtr StackOp::run(Ptr<SequenceValue> buffers, const std::string &method) const
 {
     if (buffers->size() == 0)
-        return nullptr;
+        return {};
 
     std::vector<const_buffer_descriptor_r32_t> inputs;
     std::int64_t out_cols = 0, out_rows = 0;

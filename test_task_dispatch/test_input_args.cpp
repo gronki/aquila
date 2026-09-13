@@ -13,7 +13,7 @@ void print_match(const std::vector<ArgMatch> &match)
     {
         std::cout << (match_item.matched ? "MATCHED" : "      ")
                   << "   pos=" << match_item.pos << "    "
-                  << (match_item.deftgt != nullptr ? "DEFAULT" : "") << std::endl;
+                  << (match_item.deftgt ? "DEFAULT" : "") << std::endl;
     }
 }
 
@@ -31,14 +31,14 @@ TEST(match1)
 
     REQUIRE(match[0].matched);
     REQUIRE_EQ(match[0].pos, 0);
-    REQUIRE(match[0].deftgt == nullptr);
+    REQUIRE(!match[0].deftgt);
 
     REQUIRE(!match[1].matched);
-    REQUIRE(match[1].deftgt != nullptr);
+    REQUIRE((bool)match[1].deftgt);
 
     REQUIRE(match[2].matched);
     REQUIRE_EQ(match[2].pos, 1);
-    REQUIRE(match[2].deftgt == nullptr);
+    REQUIRE(!match[2].deftgt);
 }
 
 TEST(match1a)
@@ -74,15 +74,15 @@ TEST(match_ellip_0)
 
     REQUIRE(match[0].matched);
     REQUIRE_EQ(match[0].pos, 0);
-    REQUIRE(match[0].deftgt == nullptr);
+    REQUIRE(!match[0].deftgt);
 
     REQUIRE(match[1].matched);
     REQUIRE_EQ(match[1].pos, 1);
-    REQUIRE(match[1].deftgt == nullptr);
+    REQUIRE(!match[1].deftgt);
 
     REQUIRE(match[2].matched);
     REQUIRE_EQ(match[2].pos, 2);
-    REQUIRE(match[2].deftgt == nullptr);
+    REQUIRE(!match[2].deftgt);
 }
 
 TEST(match_ellip_1)
@@ -98,15 +98,15 @@ TEST(match_ellip_1)
 
     REQUIRE(match[0].matched);
     REQUIRE_EQ(match[0].pos, 0);
-    REQUIRE(match[0].deftgt == nullptr);
+    REQUIRE(!match[0].deftgt);
 
     REQUIRE(match[1].matched);
     REQUIRE_EQ(match[1].pos, 1);
-    REQUIRE(match[1].deftgt == nullptr);
+    REQUIRE(!match[1].deftgt);
 
     REQUIRE(match[2].matched);
     REQUIRE_EQ(match[2].pos, 2);
-    REQUIRE(match[2].deftgt == nullptr);
+    REQUIRE(!match[2].deftgt);
 }
 
 TEST(match_ellip_1a)
@@ -122,15 +122,15 @@ TEST(match_ellip_1a)
 
     REQUIRE(match[0].matched);
     REQUIRE_EQ(match[0].pos, 2);
-    REQUIRE(match[0].deftgt == nullptr);
+    REQUIRE(!match[0].deftgt);
 
     REQUIRE(match[1].matched);
     REQUIRE_EQ(match[1].pos, 0);
-    REQUIRE(match[1].deftgt == nullptr);
+    REQUIRE(!match[1].deftgt);
 
     REQUIRE(match[2].matched);
     REQUIRE_EQ(match[2].pos, 1);
-    REQUIRE(match[2].deftgt == nullptr);
+    REQUIRE(!match[2].deftgt);
 }
 
 TEST(match_ellip_1b)
@@ -145,15 +145,15 @@ TEST(match_ellip_1b)
     REQUIRE_EQ(match.size(), 3);
 
     REQUIRE(!match[0].matched);
-    REQUIRE(match[0].deftgt != nullptr);
+    REQUIRE((bool)match[0].deftgt);
 
     REQUIRE(match[1].matched);
     REQUIRE_EQ(match[1].pos, 0);
-    REQUIRE(match[1].deftgt == nullptr);
+    REQUIRE(!match[1].deftgt);
 
     REQUIRE(match[2].matched);
     REQUIRE_EQ(match[2].pos, 1);
-    REQUIRE(match[2].deftgt == nullptr);
+    REQUIRE(!match[2].deftgt);
 }
 
 TEST(match_ellip_3)

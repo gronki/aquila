@@ -79,17 +79,27 @@ struct value_type
 // frame may be reachable both as "x" and as "item{seq{...}; 1}".
 struct value_trace_t
 {
-    std::string content;
     bool is_corrupt;
     value_trace_t() : is_corrupt(true) {}
-    value_trace_t(const std::string &content) : content(content), is_corrupt(false) {};
-    std::string flatten() const { return content; }
+    value_trace_t(std::string content) :
+        text(std::make_shared<const std::string>(std::move(content))), is_corrupt(false)
+    {
+    }
+    const std::string &content() const
+    {
+        static const std::string none;
+        return text ? *text : none;
+    }
+    std::string flatten() const { return content(); }
     static value_trace_t corrupt()
     {
         value_trace_t t;
         t.is_corrupt = true;
         return t;
     }
+
+private:
+    std::shared_ptr<const std::string> text;
 };
 
 inline std::ostream &operator<<(std::ostream &os, const value_trace_t &trace)
@@ -123,14 +133,7 @@ template <ValueConcept T>
 class Ptr
 {
     std::shared_ptr<const T> ptr;
-    std::shared_ptr<const value_trace_t> trace;
-
-    static std::shared_ptr<const value_trace_t> share_trace(value_trace_t t)
-    {
-        if (t.content.empty())
-            return nullptr;
-        return std::make_shared<const value_trace_t>(std::move(t));
-    }
+    value_trace_t trace;
 
     template <ValueConcept U>
     friend class Ptr;
@@ -140,11 +143,9 @@ class Ptr
 public:
     Ptr() {}
 
-    // a freshly built value: nobody else can see it yet, so sealing it as const
-    // costs nothing
     template <ValueConcept U>
     Ptr(std::unique_ptr<U> owned, value_trace_t trace = {}) :
-        ptr(std::move(owned)), trace(share_trace(std::move(trace)))
+        ptr(std::move(owned)), trace(std::move(trace))
     {
     }
 
@@ -170,13 +171,15 @@ public:
     {
         if (!ptr)
             return {};
-        return trace ? *trace : ptr->get_trace();
+        if (!trace.content().empty())
+            return trace;
+        return ptr->get_trace();
     }
 
     Ptr with_trace(value_trace_t t) const
     {
         Ptr copy(*this);
-        copy.trace = share_trace(std::move(t));
+        copy.trace = std::move(t);
         return copy;
     }
 
@@ -203,7 +206,6 @@ struct Value
     virtual int64_t sequence_len() const { return -1; }
     virtual int64_t mem_size() const { return 0; }
     virtual int64_t sequence_depth() const { return 0; }
-    // the trace a value implies when the reference to it carries none of its own
     virtual value_trace_t get_trace() const { return str(); }
     std::string str() const
     {
@@ -600,10 +602,10 @@ using interpreter::Str;
 using interpreter::StrValue;
 using interpreter::Value;
 
+using interpreter::Ptr;
 using interpreter::value_cast;
 using interpreter::value_type;
 using interpreter::ValueBase;
 using interpreter::ValuePtr;
-using interpreter::Ptr;
 
 } // namespace aquila

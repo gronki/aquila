@@ -16,18 +16,18 @@ static std::uint64_t fnv1a(std::string s)
 
 ValuePtr CacheSpace::push(const value_trace_t &trace, ValuePtr v, int64_t initial_score)
 {
-    if (trace.is_corrupt || trace.content.empty() || !v)
+    if (trace.is_corrupt || trace.content().empty() || !v)
         return {};
     auto [it, replaced] =
-        vault.insert_or_assign(trace.flatten(), CacheEntry{std::move(v), initial_score});
+        vault.insert_or_assign(trace.content(), CacheEntry{std::move(v), initial_score});
     return it->second.val;
 }
 
 ValuePtr CacheSpace::get(const value_trace_t &trace) const
 {
-    if (trace.is_corrupt || trace.content.empty())
+    if (trace.is_corrupt || trace.content().empty())
         return {};
-    auto it = vault.find(trace.flatten());
+    auto it = vault.find(trace.content());
     if (it != vault.end())
         return it->second.val;
     return {};
@@ -35,9 +35,9 @@ ValuePtr CacheSpace::get(const value_trace_t &trace) const
 
 ValuePtr CacheSpace::get_and_score(const value_trace_t &trace, int64_t score)
 {
-    if (trace.is_corrupt || trace.content.empty())
+    if (trace.is_corrupt || trace.content().empty())
         return {};
-    auto it = vault.find(trace.flatten());
+    auto it = vault.find(trace.content());
     if (it != vault.end())
     {
         it->second.score += score;

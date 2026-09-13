@@ -469,7 +469,7 @@ ValuePtr InlineAssignmentNode::yield(ExecCtx ctx) const
     {
         // every name gets the same value, but its own account of where it came from
         auto peeled = sqv.items[iarg].with_trace(
-            "item{" + seq_trace.content + "; " + std::to_string(iarg + 1) + "}");
+            "item{" + seq_trace.content() + "; " + std::to_string(iarg + 1) + "}");
         sq_ret->items.push_back(ctx.ns.push(idents[iarg], std::move(peeled)));
     }
 

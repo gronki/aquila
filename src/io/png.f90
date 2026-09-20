@@ -108,8 +108,8 @@ subroutine write_png(fn, im, bits, errno)
    integer :: j, nx, ny, nc, bits_
    integer(c_int) :: clrtype
 
-   nx = size(im,2)
-   ny = size(im,1)
+   nx = size(im,1)
+   ny = size(im,2)
    nc = size(im,3)
 
    bits_ = 8

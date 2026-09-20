@@ -94,13 +94,13 @@ public:
 
 class ValueNode : public ExecNode
 {
-    std::unique_ptr<Value> value;
+    ValuePtr value;
 
 public:
-    ValueNode(std::unique_ptr<Value> value) : value(std::move(value)) {}
+    ValueNode(ValuePtr value) : value(std::move(value)) {}
 
-    Ptr<Value> yield(ExecCtx ctx) const override { return value.get(); }
-    value_trace_t trace(ExecCtx ctx) const override { return value->get_trace(); }
+    Ptr<Value> yield(ExecCtx ctx) const override { return value; }
+    value_trace_t trace(ExecCtx ctx) const override { return value.get_trace(); }
     bool trivial() const override { return true; }
 };
 

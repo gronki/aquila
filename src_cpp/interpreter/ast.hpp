@@ -33,9 +33,9 @@ struct AstNode
 
 struct AstValueNode : public AstNode
 {
-    std::unique_ptr<Value> constant;
+    ValuePtr constant;
 
-    AstValueNode(std::unique_ptr<Value> constant, const TokenLoc &loc) :
+    AstValueNode(ValuePtr constant, const TokenLoc &loc) :
         AstNode(loc), constant(std::move(constant))
     {
     }

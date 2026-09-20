@@ -60,7 +60,7 @@ std::unique_ptr<ExecNode> build_exec_tree(
 
     if (const auto *ast_val_node = dynamic_cast<const AstValueNode *>(ast.get()))
     {
-        return std::make_unique<ValueNode>(ast_val_node->constant->clone());
+        return std::make_unique<ValueNode>(ast_val_node->constant);
     }
 
     if (const auto *ast_op_node = dynamic_cast<const AstOpNode *>(ast.get()))

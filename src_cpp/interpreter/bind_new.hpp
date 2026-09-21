@@ -115,7 +115,7 @@ TS __collect_struct(
         const auto *ts_ptr = static_cast<const StructFieldB<TS> *>(spec.field.get());
         if (!seeded)
         {
-            result = ts_ptr->struct_default();
+            result = ts_ptr->struct_default;
             seeded = true;
         }
         if (vals[i])

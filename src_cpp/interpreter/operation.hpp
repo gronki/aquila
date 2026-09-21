@@ -38,19 +38,20 @@ struct ArgSpec
     std::shared_ptr<StructFieldBase> field;
 };
 
-using ArgManifest = std::vector<ArgSpec>;
 static const std::string ARG_ELLIPSIS = "...";
-struct manifest_properties_t
+struct ArgManifest
 {
-    manifest_properties_t(const ArgManifest &m);
+    std::vector<ArgSpec> args;
+    void analyze();
+    ArgManifest(std::vector<ArgSpec>);
+    ArgManifest(std::initializer_list<ArgSpec>);
     size_t num_positionals, num_keyword;
     bool has_ellipsis;
 };
 
 struct Operation
 {
-    manifest_properties_t props;
-    Operation() : props(arg_manifest()) {}
+    Operation() {}
     enum class Tracing
     {
         DEFAULT,
@@ -95,9 +96,8 @@ struct ArgMatch
     bool sequence = false;
 };
 
-std::vector<ArgMatch> match_arguments(const std::vector<ArgSpec> &manifest,
-    const manifest_properties_t &,
-    const std::vector<std::string> &given_keys);
+std::vector<ArgMatch> match_arguments(
+    const ArgManifest &manifest, const std::vector<std::string> &given_keys);
 
 std::vector<ValuePtr> build_ptrs_from_match(
     std::vector<ValuePtr> &given_args, const std::vector<ArgMatch> &match);

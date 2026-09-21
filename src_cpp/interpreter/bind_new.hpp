@@ -4,7 +4,6 @@
 #include <memory>
 #include <operation.hpp>
 #include <stdexcept>
-#include <string>
 #include <struct_bind.hpp>
 #include <value.hpp>
 #include <vector>
@@ -57,12 +56,9 @@ struct __castng_helper<const T *>
 template <typename T>
 struct __arg_helper
 {
-    static T process(const ArgManifest &manifest,
-        const manifest_properties_t &props,
-        std::vector<ValuePtr> &args,
-        size_t iarg)
+    static T process(const ArgManifest &manifest, std::vector<ValuePtr> &args, size_t iarg)
     {
-        if (iarg < props.num_keyword + props.num_positionals)
+        if (iarg < manifest.num_keyword + manifest.num_positionals && iarg < args.size())
             return __castng_helper<T>::cast(args[iarg]);
         throw std::logic_error("argument list longer than argspec");
     }
@@ -77,19 +73,17 @@ struct Ellipsis
 template <typename T>
 struct __arg_helper<Ellipsis<T>>
 {
-    static Ellipsis<T> process(const ArgManifest &manifest,
-        const manifest_properties_t &props,
-        std::vector<ValuePtr> &args,
-        size_t iarg)
+    static Ellipsis<T> process(
+        const ArgManifest &manifest, std::vector<ValuePtr> &args, size_t iarg)
     {
-        if (!props.has_ellipsis)
+        if (!manifest.has_ellipsis)
             throw std::logic_error("argspec does not contain an ellipsis but the "
                                    "argument list requests it");
-        if (iarg < props.num_positionals)
+        if (iarg < manifest.num_positionals)
             throw std::logic_error("Ellipsis may not appear in the argument list until "
                                    "all positional args are exhausted");
         Ellipsis<T> el;
-        auto num_args = props.num_keyword + props.num_positionals;
+        auto num_args = manifest.num_keyword + manifest.num_positionals;
         for (auto iarg = num_args; iarg < args.size(); iarg++)
             el.data.push_back(__castng_helper<T>::cast(args[iarg]));
         return el;
@@ -108,12 +102,12 @@ TS __collect_struct(
     const std::vector<Ptr<Value>> &vals, const ArgManifest &manifest, int struct_nr = 0)
 {
     TS result;
-    if (vals.size() < manifest.size())
+    if (vals.size() < manifest.args.size())
         throw std::logic_error("consistency error: value list shorter than manifest");
     bool seeded = false;
-    for (auto i = 0ul; i < manifest.size(); i++)
+    for (auto i = 0ul; i < manifest.args.size(); i++)
     {
-        const auto &spec = manifest[i];
+        const auto &spec = manifest.args[i];
         if (!spec.field)
             continue;
         if (spec.field->struct_nr != struct_nr)
@@ -133,12 +127,10 @@ TS __collect_struct(
 template <typename T, int struct_nr>
 struct __arg_helper<Struct<T, struct_nr>>
 {
-    static Struct<T, struct_nr> process(const ArgManifest &manifest,
-        const manifest_properties_t &props,
-        std::vector<ValuePtr> &args,
-        size_t iarg)
+    static Struct<T, struct_nr> process(
+        const ArgManifest &manifest, std::vector<ValuePtr> &args, size_t iarg)
     {
-        if (iarg < props.num_positionals)
+        if (iarg < manifest.num_positionals)
             throw std::logic_error(
                 "Struct collection may not appear in the argument list until "
                 "all positional args are exhausted");
@@ -150,22 +142,20 @@ template <typename OpT, typename... ArgsT, std::size_t... iarg>
 inline ValuePtr __bind_args_new(const OpT *obj,
     ValuePtr (OpT::*exec_fun)(ArgsT...) const,
     const ArgManifest &manifest,
-    const manifest_properties_t &props,
     std::vector<ValuePtr> &args,
     std::index_sequence<iarg...>)
 {
-    return (obj->*exec_fun)(__arg_helper<ArgsT>::process(manifest, props, args, iarg)...);
+    return (obj->*exec_fun)(__arg_helper<ArgsT>::process(manifest, args, iarg)...);
 }
 
 template <typename OpT, typename... ArgsT>
 inline ValuePtr bind_args_new(const OpT *obj,
     ValuePtr (OpT::*exec_fun)(ArgsT...) const,
     const ArgManifest &manifest,
-    const manifest_properties_t &props,
     std::vector<ValuePtr> &args)
 {
     return __bind_args_new(
-        obj, exec_fun, manifest, props, args, std::index_sequence_for<ArgsT...>{});
+        obj, exec_fun, manifest, args, std::index_sequence_for<ArgsT...>{});
 }
 
 } // namespace aquila::interpreter

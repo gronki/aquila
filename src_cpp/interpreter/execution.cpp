@@ -20,7 +20,7 @@ OpNode::OpNode(std::unique_ptr<Operation> op,
     std::vector<std::unique_ptr<ExecNode>> args,
     std::vector<std::string> keys) :
     op(std::move(op)), args(std::move(args)), manifest(this->op->arg_manifest()),
-    props(manifest), match(match_arguments(manifest, props, keys))
+    match(match_arguments(manifest, keys))
 {
 }
 

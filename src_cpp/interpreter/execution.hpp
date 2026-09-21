@@ -109,7 +109,6 @@ class OpNode : public ExecNode
     std::unique_ptr<Operation> op;
     std::vector<std::unique_ptr<ExecNode>> args;
     const ArgManifest &manifest;
-    manifest_properties_t props;
     std::vector<ArgMatch> match;
 
 public:

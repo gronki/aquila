@@ -1,5 +1,6 @@
 #pragma once
 
+#include <bind_new.hpp>
 #include <interpreter.hpp>
 
 namespace aquila::interpreter::ops
@@ -16,8 +17,8 @@ struct SequenceOp : Operation
 struct ItemOp : public Operation
 {
 
-    BIND_ARGS(&ItemOp::run);
-    ValuePtr run(Ptr<SequenceValue> seq, Real ix) const;
+    BIND_ARGS_NEW(&ItemOp::run);
+    ValuePtr run(Ptr<SequenceValue> seq, const Real &ix) const;
 
     std::string name() const override { return "item"; }
 

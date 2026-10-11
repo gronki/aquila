@@ -1,5 +1,6 @@
 #pragma once
 
+#include <bind_new.hpp>
 #include "../../../interpreter/interpreter.hpp"
 #include "../../values/frame.hpp"
 
@@ -9,7 +10,7 @@ namespace aquila::ops
 struct ConvolOp : public Operation
 {
 
-    BIND_ARGS(&ConvolOp::run);
+    BIND_ARGS_NEW(&ConvolOp::run);
     ValuePtr run(const values::BufferValue &buf,
         const values::BufferValue &krn,
         const std::string &edges) const;
@@ -23,7 +24,7 @@ struct ConvolOp : public Operation
 struct DeconvOp : public Operation
 {
 
-    BIND_ARGS(&DeconvOp::run);
+    BIND_ARGS_NEW(&DeconvOp::run);
     ValuePtr run(const values::BufferValue &buf,
             const values::BufferValue& krn,
             const Real& strength,

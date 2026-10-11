@@ -1,5 +1,6 @@
 #pragma once
 
+#include <bind_new.hpp>
 #include "../../../interpreter/interpreter.hpp"
 #include "../../values/frame.hpp"
 #include <utils/expand_path.hpp>
@@ -32,7 +33,7 @@ namespace aquila::ops
 
 struct ReadFrame : public Operation
 {
-    BIND_ARGS(&ReadFrame::run);
+    BIND_ARGS_NEW(&ReadFrame::run);
     ValuePtr run(const std::string &fn) const;
 
     const ArgManifest &arg_manifest() const override
@@ -53,7 +54,7 @@ struct ReadFrame : public Operation
 
 struct WriteFrame : public Operation
 {
-    BIND_ARGS(&WriteFrame::run);
+    BIND_ARGS_NEW(&WriteFrame::run);
     ValuePtr run(const values::BufferValue &frame, const std::string &fn) const;
 
     const ArgManifest &arg_manifest() const override

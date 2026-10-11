@@ -7,10 +7,10 @@ namespace aquila::ops
 {
 
 REGISTER(PathOp);
-ValuePtr PathOp::run(std::vector<const Str *> paths) const
+ValuePtr PathOp::run(Ellipsis<const Str *> paths) const
 {
     std::vector<Ptr<Value>> items;
-    for (const Str *path : paths)
+    for (const auto &path : paths.data)
     {
         auto wildcarded = utils::expand_path(*path);
         for (const auto &p : wildcarded)

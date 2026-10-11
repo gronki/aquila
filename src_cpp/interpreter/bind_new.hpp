@@ -12,6 +12,13 @@ namespace aquila::interpreter
 {
 
 template <typename T>
+std::runtime_error __type_error(const Value &got)
+{
+    return std::runtime_error("type error: expected " + value_type_info<T>().str()
+        + " but got " + got.get_type().str() + " " + got.str());
+}
+
+template <typename T>
 struct __castng_helper
 {
 };
@@ -20,9 +27,11 @@ struct __castng_helper<Ptr<T>>
 {
     static Ptr<T> cast(ValuePtr &ptr)
     {
+        if (!ptr)
+            return {};
         auto casted = value_cast<T>(ptr);
         if (!casted)
-            throw std::runtime_error("Cast error");
+            throw __type_error<T>(*ptr);
         return casted;
     }
 };
@@ -32,26 +41,42 @@ struct __castng_helper<const T &>
     static const T &cast(ValuePtr &ptr)
     {
         if (!ptr)
-            throw std::runtime_error("Empty value not allowed");
+            throw std::runtime_error("empty argument");
         auto casted = value_cast<T>(ptr.get());
         if (!casted)
-            throw std::runtime_error("Cast error");
+            throw __type_error<T>(*ptr);
         return *casted;
     }
 };
 template <typename T>
 struct __castng_helper<const T *>
 {
-    static const T &cast(ValuePtr &ptr)
+    static const T *cast(ValuePtr &ptr)
     {
         if (!ptr)
             return nullptr;
         auto casted = value_cast<T>(ptr.get());
         if (!casted)
-            throw std::runtime_error("Cast error");
+            throw __type_error<T>(*ptr);
         return casted;
     }
 };
+
+/* names the offending argument, the way the error reaches the user:
+   "Error trying to interpret argument 2: type error: expected str but got real 3" */
+template <typename T>
+T __cast_arg(std::vector<ValuePtr> &args, size_t iarg)
+{
+    try
+    {
+        return __castng_helper<T>::cast(args[iarg]);
+    }
+    catch (const std::exception &e)
+    {
+        throw std::runtime_error(std::string("Error trying to interpret argument ")
+            + std::to_string(iarg + 1) + ": " + e.what());
+    }
+}
 
 template <typename T>
 struct __arg_helper
@@ -59,7 +84,7 @@ struct __arg_helper
     static T process(const ArgManifest &manifest, std::vector<ValuePtr> &args, size_t iarg)
     {
         if (iarg < manifest.num_keyword + manifest.num_positionals && iarg < args.size())
-            return __castng_helper<T>::cast(args[iarg]);
+            return __cast_arg<T>(args, iarg);
         throw std::logic_error("argument list longer than argspec");
     }
 };
@@ -85,7 +110,7 @@ struct __arg_helper<Ellipsis<T>>
         Ellipsis<T> el;
         auto num_args = manifest.num_keyword + manifest.num_positionals;
         for (auto iarg = num_args; iarg < args.size(); iarg++)
-            el.data.push_back(__castng_helper<T>::cast(args[iarg]));
+            el.data.push_back(__cast_arg<T>(args, iarg));
         return el;
     }
 };

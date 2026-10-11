@@ -1,5 +1,6 @@
 #pragma once
 
+#include <bind_new.hpp>
 #include <operation.hpp>
 #include <value.hpp>
 #include <values/frame.hpp>
@@ -9,7 +10,7 @@ namespace aquila::ops
 
 struct BinOp : public Operation
 {
-    BIND_ARGS(&BinOp::run);
+    BIND_ARGS_NEW(&BinOp::run);
     ValuePtr run(const values::BufferValue &in, const Real &scale) const;
 
     std::string name() const override { return "bin"; }

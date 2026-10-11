@@ -7,10 +7,10 @@ namespace aquila::ops
 {
 
 REGISTER(AddOp);
-Ptr<Value> AddOp::run(std::vector<const Value *> args) const
+Ptr<Value> AddOp::run(Ellipsis<const Value *> args) const
 {
     std::unique_ptr<Value> result = std::make_unique<RealValue>(0);
-    for (const Value *arg : args)
+    for (const auto &arg : args.data)
     {
         result = apply_binary(*result, *arg, [](auto a, auto b) { return a + b; });
     }
@@ -26,12 +26,12 @@ const ArgManifest &AddOp::arg_manifest() const
 }
 
 REGISTER(SubOp);
-Ptr<Value> SubOp::run(Ptr<Value> first, std::vector<const Value *> args) const
+Ptr<Value> SubOp::run(Ptr<Value> first, Ellipsis<const Value *> args) const
 {
     auto result = first;
-    for (std::size_t iarg = 0; iarg < args.size(); iarg++)
+    for (std::size_t iarg = 0; iarg < args.data.size(); iarg++)
     {
-        result = apply_binary(*result, *args[iarg], [](auto a, auto b) { return a - b; });
+        result = apply_binary(*result, *args.data[iarg], [](auto a, auto b) { return a - b; });
     }
     return result;
 }
@@ -46,10 +46,10 @@ const ArgManifest &SubOp::arg_manifest() const
 }
 
 REGISTER(MulOp);
-Ptr<Value> MulOp::run(std::vector<const Value *> args) const
+Ptr<Value> MulOp::run(Ellipsis<const Value *> args) const
 {
     std::unique_ptr<Value> result = std::make_unique<RealValue>(1);
-    for (const Value *arg : args)
+    for (const auto &arg : args.data)
     {
         result = apply_binary(*result, *arg, [](auto a, auto b) { return a * b; });
     }
@@ -65,14 +65,14 @@ const ArgManifest &MulOp::arg_manifest() const
 }
 
 REGISTER(DivOp);
-Ptr<Value> DivOp::run(Ptr<Value> first, std::vector<const Value *> args) const
+Ptr<Value> DivOp::run(Ptr<Value> first, Ellipsis<const Value *> args) const
 {
-    if (args.size() == 0)
+    if (args.data.size() == 0)
         return first;
     auto result = first;
-    for (std::size_t iarg = 0; iarg < args.size(); iarg++)
+    for (std::size_t iarg = 0; iarg < args.data.size(); iarg++)
     {
-        result = apply_binary(*result, *args[iarg], [](auto a, auto b) { return a / b; });
+        result = apply_binary(*result, *args.data[iarg], [](auto a, auto b) { return a / b; });
     }
     return result;
 }
@@ -87,7 +87,7 @@ const ArgManifest &DivOp::arg_manifest() const
 }
 
 REGISTER(MaxOp);
-Ptr<Value> MaxOp::run(Ptr<Value> first, Ellipsis<Ptr<Value>> ellip) const
+Ptr<Value> MaxOp::run(Ptr<Value> first, Ellipsis<const Value *> ellip) const
 {
     if (ellip.data.size() == 0)
         return first;
@@ -110,7 +110,7 @@ const ArgManifest &MaxOp::arg_manifest() const
 }
 
 REGISTER(MinOp);
-Ptr<Value> MinOp::run(Ptr<Value> first, Ellipsis<Ptr<Value>> ellip) const
+Ptr<Value> MinOp::run(Ptr<Value> first, Ellipsis<const Value *> ellip) const
 {
     if (ellip.data.size() == 0)
         return first;
@@ -134,7 +134,7 @@ const ArgManifest &MinOp::arg_manifest() const
 
 REGISTER(SoftmaxOp);
 Ptr<Value> SoftmaxOp::run(
-    Ptr<Value> first, const Real &alpha, Ellipsis<Ptr<Value>> ellip) const
+    Ptr<Value> first, const Real &alpha, Ellipsis<const Value *> ellip) const
 {
     if (ellip.data.size() == 0)
         return first;
@@ -175,18 +175,18 @@ const ArgManifest &SoftmaxOp::arg_manifest() const
 }
 
 REGISTER(MixOp);
-Ptr<Value> MixOp::run(std::vector<const Value *> args) const
+Ptr<Value> MixOp::run(Ellipsis<const Value *> args) const
 {
-    if (args.size() % 2)
+    if (args.data.size() % 2)
         throw std::runtime_error(
             std::string("Mix requires even number of arguments but got: ")
-            + std::to_string(args.size()));
+            + std::to_string(args.data.size()));
     std::unique_ptr<Value> result = std::make_unique<RealValue>(0);
-    for (std::size_t iarg = 0; iarg < args.size(); iarg += 2)
+    for (std::size_t iarg = 0; iarg < args.data.size(); iarg += 2)
     {
         result = apply_tertiary(*result,
-            *args[iarg],
-            *args[iarg + 1],
+            *args.data[iarg],
+            *args.data[iarg + 1],
             [](auto a, auto b, auto c) { return a + b * c; });
     }
     return result;
@@ -201,22 +201,22 @@ const ArgManifest &MixOp::arg_manifest() const
 }
 
 REGISTER(LrgbOp);
-Ptr<Value> LrgbOp::run(Ptr<Value> lum, std::vector<const Value *> args) const
+Ptr<Value> LrgbOp::run(Ptr<Value> lum, Ellipsis<const Value *> args) const
 {
-    if (args.size() == 0)
+    if (args.data.size() == 0)
         return lum;
     std::unique_ptr<Value> chroma_sum = std::make_unique<RealValue>(0);
-    for (std::size_t iarg = 0; iarg < args.size(); iarg++)
+    for (std::size_t iarg = 0; iarg < args.data.size(); iarg++)
     {
         chroma_sum =
-            apply_binary(*chroma_sum, *args[iarg], [](auto a, auto b) { return a + b; });
+            apply_binary(*chroma_sum, *args.data[iarg], [](auto a, auto b) { return a + b; });
     }
     std::vector<ValuePtr> scaled_components;
-    scaled_components.reserve(args.size() - 1);
-    for (std::size_t iarg = 0; iarg < args.size(); iarg++)
+    scaled_components.reserve(args.data.size() - 1);
+    for (std::size_t iarg = 0; iarg < args.data.size(); iarg++)
     {
         scaled_components.push_back(apply_tertiary(*lum,
-            *args[iarg],
+            *args.data[iarg],
             *chroma_sum,
             [](auto l, auto c, auto s) { return l * c / s; }));
     }

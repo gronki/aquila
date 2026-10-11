@@ -1,5 +1,6 @@
 #pragma once
 
+#include <bind_new.hpp>
 #include <operation.hpp>
 #include <value.hpp>
 #include <values/frame.hpp>
@@ -9,7 +10,7 @@ namespace aquila::ops
 
 struct NormalizeOp : public Operation
 {
-    BIND_ARGS(&NormalizeOp::run);
+    BIND_ARGS_NEW(&NormalizeOp::run);
     ValuePtr run(Ptr<SequenceValue> buffers, const Real &margin) const;
 
     std::string name() const override { return "normalize"; }

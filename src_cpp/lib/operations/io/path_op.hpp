@@ -1,5 +1,6 @@
 #pragma once
 
+#include <bind_new.hpp>
 #include <interpreter.hpp>
 
 namespace aquila::ops
@@ -7,8 +8,8 @@ namespace aquila::ops
 
 struct PathOp : public Operation
 {
-    BIND_ARGS(&PathOp::run);
-    ValuePtr run(std::vector<const Str *>) const;
+    BIND_ARGS_NEW(&PathOp::run);
+    ValuePtr run(Ellipsis<const Str *>) const;
 
     const ArgManifest &arg_manifest() const override
     {
@@ -37,7 +38,7 @@ struct PathOp : public Operation
 
 struct PwdOp : public Operation
 {
-    BIND_ARGS(&PwdOp::run);
+    BIND_ARGS_NEW(&PwdOp::run);
     ValuePtr run() const;
 
     const ArgManifest &arg_manifest() const override
@@ -64,7 +65,7 @@ struct PwdOp : public Operation
 
 struct ChdirOp : public Operation
 {
-    BIND_ARGS(&ChdirOp::run);
+    BIND_ARGS_NEW(&ChdirOp::run);
     ValuePtr run(const std::string &) const;
 
     const ArgManifest &arg_manifest() const override

@@ -2,6 +2,7 @@
 
 #include <cmath>
 
+#include "../src_cpp/interpreter/bind_new.hpp"
 #include "../src_cpp/interpreter/operation.hpp"
 #include "../src_cpp/interpreter/value.hpp"
 
@@ -10,9 +11,9 @@ namespace aquila::interpreter::ops
 
 struct AddOp : Operation
 {
-    BIND_ARGS(&AddOp::run);
+    BIND_ARGS_NEW(&AddOp::run);
 
-    std::unique_ptr<Value> run(const double &a, const double &b) const
+    ValuePtr run(const double &a, const double &b) const
     {
         return std::make_unique<RealValue>(a + b);
     }
@@ -33,9 +34,9 @@ REGISTER(AddOp);
 
 struct MulOp : Operation
 {
-    BIND_ARGS(&MulOp::run);
+    BIND_ARGS_NEW(&MulOp::run);
 
-    std::unique_ptr<Value> run(const double &a, const double &b) const
+    ValuePtr run(const double &a, const double &b) const
     {
         return std::make_unique<RealValue>(a * b);
     }
@@ -55,9 +56,9 @@ REGISTER(MulOp);
 
 struct PowOp : Operation
 {
-    BIND_ARGS(&PowOp::run);
+    BIND_ARGS_NEW(&PowOp::run);
 
-    std::unique_ptr<Value> run(const double &a, const double &p) const
+    ValuePtr run(const double &a, const double &p) const
     {
         return std::make_unique<RealValue>(std::pow(a, p));
     }

@@ -24,7 +24,7 @@ const ArgManifest &SequenceOp::arg_manifest() const
 }
 
 REGISTER(ItemOp);
-ValuePtr ItemOp::run(Ptr<SequenceValue> seq, Real ix) const
+ValuePtr ItemOp::run(Ptr<SequenceValue> seq, const Real &ix) const
 {
     int64_t idx = int64_t(ix) - 1;
     if (idx < 0 || size_t(idx) >= seq->items.size())

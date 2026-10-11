@@ -8,7 +8,6 @@
 #include <stdexcept>
 #include <string>
 
-#include "bind_args.hpp"
 #include "type_converter.hpp"
 #include "value.hpp"
 #include <struct_bind.hpp>
@@ -80,12 +79,6 @@ struct Operation
     std::string signature_str() const;
     virtual ~Operation() = default;
 };
-
-#define BIND_ARGS(proc)                                                                \
-    ValuePtr call(std::vector<ValuePtr> args) const override                           \
-    {                                                                                  \
-        return bind_args(this, (proc), args);                                          \
-    }
 
 struct ArgMatch
 {

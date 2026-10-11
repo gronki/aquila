@@ -9,8 +9,8 @@ namespace aquila::ops
 
 struct AddOp : public Operation
 {
-    BIND_ARGS(&AddOp::run);
-    Ptr<Value> run(std::vector<const Value *> args) const;
+    BIND_ARGS_NEW(&AddOp::run);
+    Ptr<Value> run(Ellipsis<const Value *> args) const;
     const ArgManifest &arg_manifest() const override;
     std::string name() const override { return "add"; }
     std::string description() const override
@@ -21,8 +21,8 @@ struct AddOp : public Operation
 
 struct SubOp : public Operation
 {
-    BIND_ARGS(&SubOp::run);
-    Ptr<Value> run(Ptr<Value> first, std::vector<const Value *> args) const;
+    BIND_ARGS_NEW(&SubOp::run);
+    Ptr<Value> run(Ptr<Value> first, Ellipsis<const Value *> args) const;
 
     const ArgManifest &arg_manifest() const override;
     std::string name() const override { return "sub"; }
@@ -34,8 +34,8 @@ struct SubOp : public Operation
 
 struct MulOp : public Operation
 {
-    BIND_ARGS(&MulOp::run);
-    Ptr<Value> run(std::vector<const Value *> args) const;
+    BIND_ARGS_NEW(&MulOp::run);
+    Ptr<Value> run(Ellipsis<const Value *> args) const;
     const ArgManifest &arg_manifest() const override;
     std::string name() const override { return "mul"; }
     std::string description() const override
@@ -46,8 +46,8 @@ struct MulOp : public Operation
 
 struct DivOp : public Operation
 {
-    BIND_ARGS(&DivOp::run);
-    Ptr<Value> run(Ptr<Value> first, std::vector<const Value *> args) const;
+    BIND_ARGS_NEW(&DivOp::run);
+    Ptr<Value> run(Ptr<Value> first, Ellipsis<const Value *> args) const;
 
     const ArgManifest &arg_manifest() const override;
     std::string name() const override { return "div"; }
@@ -60,7 +60,7 @@ struct DivOp : public Operation
 struct MaxOp : public Operation
 {
     BIND_ARGS_NEW(&MaxOp::run);
-    Ptr<Value> run(Ptr<Value> first, Ellipsis<Ptr<Value>>) const;
+    Ptr<Value> run(Ptr<Value> first, Ellipsis<const Value *>) const;
     const ArgManifest &arg_manifest() const override;
     std::string name() const override { return "max"; }
     std::string description() const override { return "Maximum value pixel-wise"; }
@@ -69,7 +69,7 @@ struct MaxOp : public Operation
 struct MinOp : public Operation
 {
     BIND_ARGS_NEW(&MinOp::run);
-    Ptr<Value> run(Ptr<Value> first, Ellipsis<Ptr<Value>>) const;
+    Ptr<Value> run(Ptr<Value> first, Ellipsis<const Value *>) const;
     const ArgManifest &arg_manifest() const override;
     std::string name() const override { return "min"; }
     std::string description() const override { return "Minimum value pixel-wise"; }
@@ -78,7 +78,7 @@ struct MinOp : public Operation
 struct SoftmaxOp : public Operation
 {
     BIND_ARGS_NEW(&SoftmaxOp::run);
-    Ptr<Value> run(Ptr<Value> first, const Real &alpha, Ellipsis<Ptr<Value>>) const;
+    Ptr<Value> run(Ptr<Value> first, const Real &alpha, Ellipsis<const Value *>) const;
     const ArgManifest &arg_manifest() const override;
     std::string name() const override { return "softmax"; }
     std::string description() const override
@@ -90,8 +90,8 @@ struct SoftmaxOp : public Operation
 
 struct MixOp : public Operation
 {
-    BIND_ARGS(&MixOp::run);
-    Ptr<Value> run(std::vector<const Value *> args) const;
+    BIND_ARGS_NEW(&MixOp::run);
+    Ptr<Value> run(Ellipsis<const Value *> args) const;
     const ArgManifest &arg_manifest() const override;
     std::string name() const override { return "mix"; }
     std::string description() const override
@@ -102,8 +102,8 @@ struct MixOp : public Operation
 
 struct LrgbOp : public Operation
 {
-    BIND_ARGS(&LrgbOp::run);
-    Ptr<Value> run(Ptr<Value> lum, std::vector<const Value *> args) const;
+    BIND_ARGS_NEW(&LrgbOp::run);
+    Ptr<Value> run(Ptr<Value> lum, Ellipsis<const Value *> args) const;
 
     const ArgManifest &arg_manifest() const override;
     std::string name() const override { return "lrgb"; }
@@ -116,7 +116,7 @@ struct LrgbOp : public Operation
 
 struct PowOp : public Operation
 {
-    BIND_ARGS(&PowOp::run);
+    BIND_ARGS_NEW(&PowOp::run);
     ValuePtr run(const Value &a, const Value &b) const;
 
     const ArgManifest &arg_manifest() const override;
@@ -126,7 +126,7 @@ struct PowOp : public Operation
 
 struct SqrtOp : public Operation
 {
-    BIND_ARGS(&SqrtOp::run);
+    BIND_ARGS_NEW(&SqrtOp::run);
     ValuePtr run(const Value &x) const;
 
     const ArgManifest &arg_manifest() const override;

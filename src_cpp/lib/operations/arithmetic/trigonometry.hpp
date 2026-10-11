@@ -1,5 +1,6 @@
 #pragma once
 
+#include <bind_new.hpp>
 #include "../../../interpreter/interpreter.hpp"
 
 namespace aquila::ops
@@ -7,7 +8,7 @@ namespace aquila::ops
 
 struct SinOp : public Operation
 {
-    BIND_ARGS(&SinOp::run);
+    BIND_ARGS_NEW(&SinOp::run);
     ValuePtr run(const Value &x) const;
 
     const ArgManifest &arg_manifest() const override
@@ -21,7 +22,7 @@ struct SinOp : public Operation
 
 struct CosOp : public Operation
 {
-    BIND_ARGS(&CosOp::run);
+    BIND_ARGS_NEW(&CosOp::run);
     ValuePtr run(const Value &x) const;
 
     const ArgManifest &arg_manifest() const override
@@ -35,7 +36,7 @@ struct CosOp : public Operation
 
 struct AsinhOp : public Operation
 {
-    BIND_ARGS(&AsinhOp::run);
+    BIND_ARGS_NEW(&AsinhOp::run);
     ValuePtr run(const Value &, const Real &) const;
 
     const ArgManifest &arg_manifest() const override

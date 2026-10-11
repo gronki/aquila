@@ -1,5 +1,6 @@
 #pragma once
 
+#include <bind_new.hpp>
 #include "../../../interpreter/interpreter.hpp"
 #include "../../values/frame.hpp"
 
@@ -8,7 +9,7 @@ namespace aquila::ops
 
 struct StackOp : public Operation
 {
-    BIND_ARGS(&StackOp::run);
+    BIND_ARGS_NEW(&StackOp::run);
     ValuePtr run(Ptr<SequenceValue> buffers, const std::string &method) const;
 
     const ArgManifest &arg_manifest() const override;

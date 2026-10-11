@@ -1,5 +1,6 @@
 #pragma once
 
+#include <bind_new.hpp>
 #include "../../../interpreter/interpreter.hpp"
 #include "../../values/sourcelist.hpp"
 #include "../../values/transform_value.hpp"
@@ -9,7 +10,7 @@ namespace aquila::ops
 
 struct AlignOp : public Operation
 {
-    BIND_ARGS(&AlignOp::run);
+    BIND_ARGS_NEW(&AlignOp::run);
     ValuePtr run(const values::SourceListValue &lst0,
         const values::SourceListValue &lst,
         const std::string &method,

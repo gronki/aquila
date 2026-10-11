@@ -1,7 +1,8 @@
 #pragma once
 
-#include "../../../interpreter/interpreter.hpp"
-#include "../../values/frame.hpp"
+#include <bind_new.hpp>
+#include <interpreter.hpp>
+#include <values/frame.hpp>
 
 namespace aquila::ops
 {
@@ -11,7 +12,7 @@ struct AddOp : public Operation
     BIND_ARGS(&AddOp::run);
     Ptr<Value> run(std::vector<const Value *> args) const;
     const ArgManifest &arg_manifest() const override;
-    std::string name() const { return "add"; }
+    std::string name() const override { return "add"; }
     std::string description() const override
     {
         return "Adds all given scalars/buffers.";
@@ -24,7 +25,7 @@ struct SubOp : public Operation
     Ptr<Value> run(Ptr<Value> first, std::vector<const Value *> args) const;
 
     const ArgManifest &arg_manifest() const override;
-    std::string name() const { return "sub"; }
+    std::string name() const override { return "sub"; }
     std::string description() const override
     {
         return "Subtract frames. sub(A,B,C...) computes A - B - C - ...";
@@ -36,7 +37,7 @@ struct MulOp : public Operation
     BIND_ARGS(&MulOp::run);
     Ptr<Value> run(std::vector<const Value *> args) const;
     const ArgManifest &arg_manifest() const override;
-    std::string name() const { return "mul"; }
+    std::string name() const override { return "mul"; }
     std::string description() const override
     {
         return "Multiplies all given scalars/buffers.";
@@ -49,11 +50,20 @@ struct DivOp : public Operation
     Ptr<Value> run(Ptr<Value> first, std::vector<const Value *> args) const;
 
     const ArgManifest &arg_manifest() const override;
-    std::string name() const { return "div"; }
+    std::string name() const override { return "div"; }
     std::string description() const override
     {
         return "Divide frames. div(A,B,C...) computes A / (B * C * ...)";
     }
+};
+
+struct MaxOp : public Operation
+{
+    BIND_ARGS_NEW(&MaxOp::run);
+    Ptr<Value> run(Ptr<Value> first, Ellipsis<Ptr<Value>>) const;
+    const ArgManifest &arg_manifest() const override;
+    std::string name() const override { return "max"; }
+    std::string description() const override { return "Maximum value pixel-wise"; }
 };
 
 struct MixOp : public Operation
@@ -61,7 +71,7 @@ struct MixOp : public Operation
     BIND_ARGS(&MixOp::run);
     Ptr<Value> run(std::vector<const Value *> args) const;
     const ArgManifest &arg_manifest() const override;
-    std::string name() const { return "mix"; }
+    std::string name() const override { return "mix"; }
     std::string description() const override
     {
         return "mix(a,b,c,d,.) will compute a*b + c*d + ...";
@@ -74,7 +84,7 @@ struct LrgbOp : public Operation
     Ptr<Value> run(Ptr<Value> lum, std::vector<const Value *> args) const;
 
     const ArgManifest &arg_manifest() const override;
-    std::string name() const { return "lrgb"; }
+    std::string name() const override { return "lrgb"; }
     std::string description() const override
     {
         return "lrgb(A, B, C, ...) with N parameters"
@@ -88,7 +98,7 @@ struct PowOp : public Operation
     ValuePtr run(const Value &a, const Value &b) const;
 
     const ArgManifest &arg_manifest() const override;
-    std::string name() const { return "pow"; }
+    std::string name() const override { return "pow"; }
     std::string description() const override { return "Computes base^exponent."; }
 };
 
@@ -98,7 +108,7 @@ struct SqrtOp : public Operation
     ValuePtr run(const Value &x) const;
 
     const ArgManifest &arg_manifest() const override;
-    std::string name() const { return "sqrt"; }
+    std::string name() const override { return "sqrt"; }
     std::string description() const override
     {
         return "Square root of a scalar/buffer.";

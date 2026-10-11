@@ -168,9 +168,17 @@ inline ValuePtr bind_args_new(const OpT *obj,
         obj, exec_fun, manifest, props, args, std::index_sequence_for<ArgsT...>{});
 }
 
+#define BIND_ARGS_NEW(proc)                                                            \
+    ValuePtr call(std::vector<ValuePtr> args) const override                           \
+    {                                                                                  \
+        return bind_args_new(this, (proc), arg_manifest(), props, args);               \
+    }
+
 } // namespace aquila::interpreter
 
 namespace aquila
 {
 using interpreter::bind_args_new;
-}
+using interpreter::Ellipsis;
+using interpreter::Struct;
+} // namespace aquila

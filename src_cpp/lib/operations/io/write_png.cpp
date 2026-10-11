@@ -42,21 +42,20 @@ void write_png_rgb(const Str &fn,
 }
 
 REGISTER(WritePng);
-ValuePtr WritePng::run(
-    const values::BufferValue &in_mono, const Str &fn, const Real &bits_) const
+ValuePtr WritePng::run(Ptr<values::BufferValue> in_mono, const Str &fn, const Real &bits_) const
 {
     int bits = (int)bits_;
     if (bits == 8)
     {
-        write_png_mono<utils::png8pix_t>(fn, in_mono);
+        write_png_mono<utils::png8pix_t>(fn, *in_mono);
     }
     else if (bits == 16)
     {
-        write_png_mono<utils::png16pix_t>(fn, in_mono);
+        write_png_mono<utils::png16pix_t>(fn, *in_mono);
     }
     else
         throw std::runtime_error("BITS In png must be 8 or 16!");
-    return in_mono.clone();
+    return in_mono;
 }
 
 const ArgManifest &WritePng::arg_manifest() const
@@ -75,28 +74,28 @@ std::string WritePng::description() const
 }
 
 REGISTER(WritePngRGB);
-ValuePtr WritePngRGB::run(const values::BufferValue &in_r,
-    const values::BufferValue &in_g,
-    const values::BufferValue &in_b,
+ValuePtr WritePngRGB::run(Ptr<values::BufferValue> in_r,
+    Ptr<values::BufferValue> in_g,
+    Ptr<values::BufferValue> in_b,
     const Str &fn,
     const Real &bits_) const
 {
     int bits = (int)bits_;
     if (bits == 8)
     {
-        write_png_rgb<utils::png8pix_t>(fn, in_r, in_g, in_b);
+        write_png_rgb<utils::png8pix_t>(fn, *in_r, *in_g, *in_b);
     }
     else if (bits == 16)
     {
-        write_png_rgb<utils::png16pix_t>(fn, in_r, in_g, in_b);
+        write_png_rgb<utils::png16pix_t>(fn, *in_r, *in_g, *in_b);
     }
     else
         throw std::runtime_error("BITS In png must be 8 or 16!");
     std::vector<ValuePtr> rgb(3);
-    rgb[0] = in_r.clone();
-    rgb[1] = in_g.clone();
-    rgb[2] = in_b.clone();
-    return std::make_unique<SequenceValue>(std::move(rgb));
+    rgb[0] = in_r;
+    rgb[1] = in_g;
+    rgb[2] = in_b;
+    return Ptr<SequenceValue>::make(std::move(rgb));
 }
 
 const ArgManifest &WritePngRGB::arg_manifest() const

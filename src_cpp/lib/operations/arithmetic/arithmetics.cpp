@@ -28,7 +28,7 @@ const ArgManifest &AddOp::arg_manifest() const
 REGISTER(SubOp);
 Ptr<Value> SubOp::run(Ptr<Value> first, std::vector<const Value *> args) const
 {
-    auto result = first.own();
+    auto result = first;
     for (std::size_t iarg = 0; iarg < args.size(); iarg++)
     {
         result = apply_binary(*result, *args[iarg], [](auto a, auto b) { return a - b; });
@@ -69,7 +69,7 @@ Ptr<Value> DivOp::run(Ptr<Value> first, std::vector<const Value *> args) const
 {
     if (args.size() == 0)
         return first;
-    auto result = first.own();
+    auto result = first;
     for (std::size_t iarg = 0; iarg < args.size(); iarg++)
     {
         result = apply_binary(*result, *args[iarg], [](auto a, auto b) { return a / b; });
@@ -85,6 +85,30 @@ const ArgManifest &DivOp::arg_manifest() const
     };
     return manifest;
 }
+
+REGISTER(MaxOp);
+Ptr<Value> MaxOp::run(Ptr<Value> first, Ellipsis<Ptr<Value>> ellip) const
+{
+    if (ellip.data.size() == 0)
+        return first;
+    Ptr<Value> result = first;
+    for (size_t i = 0; i < ellip.data.size(); i++)
+    {
+        result = apply_binary(
+            *result, *ellip.data[i], [](auto a, auto b) { return std::max(a, b); });
+    }
+    return result;
+}
+
+const ArgManifest &MaxOp::arg_manifest() const
+{
+    static const ArgManifest manifest{
+        ArgSpec{.name = "first"},
+        ArgSpec{.name = "..."},
+    };
+    return manifest;
+}
+
 REGISTER(MixOp);
 Ptr<Value> MixOp::run(std::vector<const Value *> args) const
 {
@@ -138,8 +162,7 @@ const ArgManifest &LrgbOp::arg_manifest() const
 {
     static const ArgManifest manifest{
         ArgSpec{.name = "L", .help = "luminance"},
-        ArgSpec{
-            .name = "...", .help = "color channels"},
+        ArgSpec{.name = "...", .help = "color channels"},
     };
     return manifest;
 }

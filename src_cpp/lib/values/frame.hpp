@@ -25,6 +25,7 @@ struct BufferValue : public ValueBase<BufferValue>
     {
     }
     BufferValue(const BufferValue &other) : buffer(other.buffer), info(other.info) {}
+    BufferValue(Int nx, Int ny) : buffer(nx, ny) {}
     void write(std::ostream &os) const override
     {
         os << "(frame ";

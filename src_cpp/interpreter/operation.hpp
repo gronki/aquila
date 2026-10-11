@@ -90,7 +90,7 @@ struct ArgMatch
 {
     bool matched = false;
     size_t pos;
-    std::unique_ptr<Value> deftgt = nullptr;
+    std::shared_ptr<Value> deftgt = nullptr;
     ConvertFun convert = nullptr;
     bool sequence = false;
 };

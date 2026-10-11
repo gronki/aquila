@@ -4,9 +4,9 @@ namespace aquila::interpreter::ops
 {
 
 REGISTER(TraceOp);
-ValuePtr TraceOp::run(const Value &v) const
+ValuePtr TraceOp::run(Ptr<Value> v) const
 {
-    return Ptr<StrValue>::make(v.get_trace().content);
+    return Ptr<StrValue>::make(v.get_trace().flatten());
 }
 
 const ArgManifest &TraceOp::arg_manifest() const

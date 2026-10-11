@@ -88,11 +88,11 @@ public:
         content(std::make_shared<std::string>(content)) {};
     std::string flatten() const
     {
-        if (content)
+        if (!empty())
             return *content;
         return {};
     }
-    bool empty() const { return content && !content->empty(); }
+    bool empty() const { return !content || content->empty(); }
     bool is_corrupt() const { return corrupt_flag; }
     const std::string &trace() const
     {
@@ -114,6 +114,10 @@ inline std::ostream &operator<<(std::ostream &os, const value_trace_t &trace)
     if (trace.is_corrupt())
     {
         os << "##NOTRACE##";
+    }
+    else if (trace.empty())
+    {
+        os << "(empty trace)";
     }
     else
     {
@@ -150,6 +154,15 @@ public:
     {
     }
 
+    template <ValueConcept U>
+    friend class Ptr;
+
+    template <ValueConcept U>
+    Ptr(const Ptr<U> &other) :
+        ptr(std::static_pointer_cast<const T>(other.ptr)), trace(other.trace)
+    {
+    }
+
     const T &operator*() const
     {
         if (!ptr)
@@ -171,7 +184,7 @@ public:
         if (!trace.empty())
             return trace;
         if (ptr)
-            return ptr->get_trace();
+            return ptr->content_trace();
         return {};
     }
     Ptr with_trace(const value_trace_t &vt) const { return Ptr{ptr, vt}; }
@@ -197,7 +210,7 @@ struct Value
         write(ss);
         return ss.str();
     }
-    virtual value_trace_t get_trace() const { return str(); }
+    virtual value_trace_t content_trace() const { return str(); }
 };
 
 #define TYPE_NAME(x)                                                                   \
@@ -495,7 +508,7 @@ struct SequenceValue : public ValueBase<SequenceValue>
         return children_depth + 1;
     }
 
-    value_trace_t get_trace() const override
+    value_trace_t content_trace() const override
     {
         std::stringstream ss;
         ss << "[";

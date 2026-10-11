@@ -24,6 +24,17 @@ ValuePtr CacheSpace::push(const ValuePtr &v, int64_t initial_score)
     return it->second.val;
 }
 
+double CacheSpace::total_mem_size() const
+{
+    double result = 0;
+    for (const auto &it : vault)
+    {
+        if (it.second.val)
+            result += it.second.val->mem_size();
+    }
+    return result;
+}
+
 ValuePtr CacheSpace::push(const value_trace_t &trace, ValuePtr v, int64_t initial_score)
 {
     return push(v.with_trace(trace), initial_score);

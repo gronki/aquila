@@ -16,13 +16,27 @@ ValuePtr EqualizeOp::run(Ptr<SequenceValue> channels,
     const Int &niter,
     const Int &margin) const
 {
-    std::vector<Ptr<values::BufferValue>> bufs;
+    std::vector<std::unique_ptr<values::BufferValue>> out_bufs;
+    std::vector<buffer_descriptor_r32_t> c_bufs;
+    Int nx = -1, ny = -1;
+
     for (const auto &item : channels->items)
     {
         const auto *casted = value_cast<values::BufferValue>(item.get());
         if (!casted)
             throw std::runtime_error("wb: expected buffer in sequence");
-        bufs.push_back(casted);
+        if (nx < 0 && ny < 0)
+        {
+            nx = casted->buffer.rows();
+            ny = casted->buffer.cols();
+        }
+        else if (nx != casted->buffer.rows() || ny != casted->buffer.cols())
+        {
+            throw std::runtime_error("normalized buffer must be equal dimension");
+        }
+        out_bufs.push_back(std::make_unique<values::BufferValue>(
+            Buffer<real_buf_t>(casted->buffer), casted->info));
+        c_bufs.push_back(c_buf(out_bufs.back()->buffer));
     }
 
     bkeq_param_t params;
@@ -34,15 +48,6 @@ ValuePtr EqualizeOp::run(Ptr<SequenceValue> channels,
     params.sigma_star = sigma_star;
     params.niter = static_cast<int32_t>(niter);
     params.margin = static_cast<int32_t>(margin);
-
-    std::vector<std::unique_ptr<values::BufferValue>> out_bufs;
-    std::vector<buffer_descriptor_r32_t> c_bufs;
-
-    for (auto &buf : bufs)
-    {
-        out_bufs.push_back(buf.own());
-        c_bufs.push_back(c_buf(out_bufs.back()->buffer));
-    }
 
     error_status_t err = {};
     equalize_background(c_bufs.data(), c_bufs.size(), &params, &err);

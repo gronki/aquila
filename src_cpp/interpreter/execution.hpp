@@ -49,7 +49,7 @@ public:
         // a = 1; 2 | add 1; 2 | as a | add a -- will break cache
         if (!allow_cache || !ctx.ns.contains(refname))
             return value_trace_t::corrupt();
-        return ctx.ns.get(refname)->get_trace();
+        return ctx.ns.get(refname).get_trace();
     }
     bool trivial() const override { return true; }
 

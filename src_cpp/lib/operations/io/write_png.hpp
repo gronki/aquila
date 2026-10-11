@@ -11,7 +11,7 @@ struct WritePng : public Operation
 {
 
     BIND_ARGS(&WritePng::run);
-    ValuePtr run(const values::BufferValue &, const Str &fn, const Real &bits) const;
+    ValuePtr run(Ptr<values::BufferValue>, const Str &fn, const Real &bits) const;
 
     std::string name() const override { return "png"; }
 
@@ -23,9 +23,9 @@ struct WritePngRGB : public Operation
 {
 
     BIND_ARGS(&WritePngRGB::run);
-    ValuePtr run(const values::BufferValue &,
-        const values::BufferValue &,
-        const values::BufferValue &,
+    ValuePtr run(Ptr<values::BufferValue>,
+        Ptr<values::BufferValue>,
+        Ptr<values::BufferValue>,
         const Str &fn,
         const Real &bits) const;
 

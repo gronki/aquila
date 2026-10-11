@@ -21,6 +21,7 @@ public:
     ValuePtr push(const value_trace_t &, ValuePtr, int64_t initial_score = 0);
     ValuePtr push(const ValuePtr &, int64_t initial_score = 0);
     ValuePtr get(const value_trace_t &) const;
+    double total_mem_size() const;
     ValuePtr get_and_score(const value_trace_t &, int64_t score);
 };
 

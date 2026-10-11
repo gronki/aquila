@@ -68,7 +68,7 @@ if (AQUILA_TUI)
 add_subdirectory(deps/FTXUI)
 endif()
 
-option (AQUILA_WINDOW "enable window" Off)
+option (AQUILA_WINDOW "enable window" On)
 if (AQUILA_WINDOW)
     option(AQUILA_SYSTEM_SDL2 "use system-installed SDL2 instead of the bundled minimal build" Off)
     if (AQUILA_SYSTEM_SDL2)

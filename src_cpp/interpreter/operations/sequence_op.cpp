@@ -31,11 +31,7 @@ ValuePtr ItemOp::run(Ptr<SequenceValue> seq, Real ix) const
         throw std::runtime_error("Index out of bounds");
     if (!seq->items[idx])
         return {nullptr};
-    if (auto ptr = seq.get_mut())
-    {
-        return std::move(ptr->items[idx]);
-    }
-    return seq->items[idx].get();
+    return seq->items[idx];
 }
 
 const ArgManifest &ItemOp::arg_manifest() const

@@ -21,7 +21,7 @@ int main(int argc, char **argv)
             else
             {
                 std::cout << "|" << i << "|: " << result->str() << std::endl
-                          << "{" << result->get_trace() << "}" << std::endl;
+                          << "{" << result.get_trace() << "}" << std::endl;
             }
         }
         catch (const std::exception &e)

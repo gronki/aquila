@@ -371,14 +371,9 @@ std::ostream &operator<<(std::ostream &os, const View<U> &buf)
     return os;
 }
 
-inline buffer_descriptor_r32_t c_buf(Buffer<float> &buf)
+inline buffer_descriptor_r32_t c_buf(const Buffer<float> &buf)
 {
-    return {buf.data(), buf.cols(), buf.rows()};
-}
-
-inline const_buffer_descriptor_r32_t c_const_buf(const Buffer<float> &buf)
-{
-    return {buf.data(), buf.cols(), buf.rows()};
+    return {const_cast<float *>(buf.data()), buf.cols(), buf.rows()};
 }
 
 } // namespace aquila

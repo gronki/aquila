@@ -11,7 +11,7 @@ ValuePtr StackOp::run(Ptr<SequenceValue> buffers, const std::string &method) con
     if (buffers->size() == 0)
         return nullptr;
 
-    std::vector<const_buffer_descriptor_r32_t> inputs;
+    std::vector<buffer_descriptor_r32_t> inputs;
     std::int64_t out_cols = 0, out_rows = 0;
 
     for (const auto &item : buffers->items)
@@ -21,7 +21,7 @@ ValuePtr StackOp::run(Ptr<SequenceValue> buffers, const std::string &method) con
             throw std::runtime_error("stack: expected buffer in sequence");
         out_cols = buf_value->buffer.cols();
         out_rows = buf_value->buffer.rows();
-        inputs.push_back(c_const_buf(buf_value->buffer));
+        inputs.push_back(c_buf(buf_value->buffer));
     }
 
     Buffer<real_buf_t> frame_out(out_cols, out_rows);

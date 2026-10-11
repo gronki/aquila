@@ -1,13 +1,13 @@
 #pragma once
 
-#ifdef __cplusplus
-#    include <cstdlib>
-extern "C"
-{
-#else
-#    include <stdbool.h>
-#    include <stdlib.h>
-#endif
+/*
+ * Anything that can be derived from the Fortran BIND(C) interfaces lives in
+ * aquila_gen.h, which gfortran generates from src/aquila.F90 (see the
+ * add_custom_command in CMakeLists.txt). Only what gfortran cannot emit is
+ * kept here by hand.
+ */
+
+#include "aquila_gen.h"
 
 #define AQUILA_VERSION "260525"
 
@@ -16,154 +16,21 @@ extern "C"
 #define AQ_STATUS_ERR_SHAPE_MISMATCH 100
 #define AQ_STATUS_ERR_EMPTY_BUFFER 100
 
-    typedef struct
-    {
-        int status;
-        char message[128];
-    } error_status_t;
-
-    typedef float real_buf_t;
-
-    typedef struct
-    {
-        double x, y;
-        double ix, iy;
-        double flux;
-        double rms;
-        double asymmetry_xy, asymmetry_uv, asymmetry;
-        double kurtosis;
-    } source_t;
-
-    typedef struct
-    {
-        int64_t rslice;
-        int64_t margin;
-        int64_t min_star_pixels;
-        double blur_radius;
-        double thresh_sd;
-        int rejection;
-        bool reject_relative;
-        double max_rms;
-    } findstar_params_t;
-
-    findstar_params_t default_findstar_params();
-
+/* C-side names with no Fortran counterpart to generate them from */
+typedef float real_buf_t;
 #define TRANSFORM_MAX_PAR 16
-
-    typedef struct
-    {
-        char type[16];
-        double scale;
-        int npar;
-        double vec[TRANSFORM_MAX_PAR];
-    } transform_t;
-
-    typedef struct
-    {
-        double scale;
-        double gravity_precision;
-        double gravity_precision_pre;
-        int poly_stars;
-        int poly_matches;
-        bool prealign_polygon;
-    } align_params_t;
-
-    align_params_t default_align_params();
-
-    typedef struct
-    {
-        float *data;
-        int64_t rows;
-        int64_t cols;
-    } buffer_descriptor_r32_t;
-
-    typedef struct
-    {
-        const float *data;
-        int64_t rows;
-        int64_t cols;
-    } const_buffer_descriptor_r32_t;
-
-    void register_stars(const_buffer_descriptor_r32_t,
-        source_t *list,
-        int64_t limit,
-        const findstar_params_t *param,
-        int64_t *nstar);
-
-    void mexhakrn(double fwhm, buffer_descriptor_r32_t);
-    void gausskrn(double fwhm, buffer_descriptor_r32_t);
-
-    int64_t get_kernel_size(double fwhm);
-
-    void classic_align(const source_t *lst0,
-        size_t n0,
-        const source_t *lst,
-        size_t n,
-        const char *align_method,
-        const align_params_t *,
-        transform_t *,
-        error_status_t *);
-
-    void conv2d_smallkernel(const_buffer_descriptor_r32_t x,
-        const_buffer_descriptor_r32_t k,
-        const char *method,
-        buffer_descriptor_r32_t y,
-        bool parallel,
-        int *err);
-
-    void stack_frames(const const_buffer_descriptor_r32_t *frames,
-        int n_frames,
-        const char *method,
-        buffer_descriptor_r32_t frame_out,
-        error_status_t *err);
-
-    void project_bilinear(const transform_t *vc,
-        const_buffer_descriptor_r32_t im0,
-        buffer_descriptor_r32_t im,
-        double resample,
-        error_status_t *err);
-
-    typedef struct
-    {
-        bool background;
-        bool stars;
-        real_buf_t apar;
-        real_buf_t bpar;
-        real_buf_t sigma;
-        real_buf_t sigma_star;
-        int32_t niter;
-        int32_t margin;
-    } bkeq_param_t;
-
-    bkeq_param_t default_bkeq_params();
-
-    void equalize_background(const buffer_descriptor_r32_t *buffers,
-        int32_t nbuf,
-        bkeq_param_t *param,
-        error_status_t *err);
-
-    void deconvol_lr(const_buffer_descriptor_r32_t im,
-        const_buffer_descriptor_r32_t krn,
-        real_buf_t strength,
-        int maxiter,
-        buffer_descriptor_r32_t im2,
-        bool parallel);
-
-    void normalize_offset_gain(const const_buffer_descriptor_r32_t *buffers,
-        const buffer_descriptor_r32_t *buffers_out,
-        int n_buf,
-        int margin,
-        error_status_t *err);
-
-    void find_hot(const_buffer_descriptor_r32_t buf,
-        real_buf_t sigma,
-        buffer_descriptor_r32_t mask_out);
-    void fix_hot(buffer_descriptor_r32_t im, const_buffer_descriptor_r32_t mask);
-    void fix_hot_light(
-        const_buffer_descriptor_r32_t in, real_buf_t sigma, buffer_descriptor_r32_t out);
-
-    void avsd_2d(const_buffer_descriptor_r32_t, real_buf_t *av, real_buf_t *sd);
+typedef transform_c_t transform_t;
 
 #ifdef __cplusplus
-} /* extern "C" */
+/* -fc-prototypes spells Fortran kinds as plain C types, losing the exact width
+   the Fortran side declared: INTEGER(8) comes out as long, LOGICAL(1) as
+   int_fast8_t, and so on. On a platform where one of those widths differs
+   (long is 4 bytes on Windows LLP64) every field after it would shift
+   unnoticed, so pin all the spellings the generated header actually uses. */
+static_assert(sizeof(int_fast8_t) == 1, "LOGICAL(1) is emitted as int_fast8_t");
+static_assert(sizeof(long) == 8, "INTEGER(8) is emitted as long");
+static_assert(sizeof(int) == 4, "INTEGER(4) is emitted as int");
+static_assert(sizeof(float) == 4, "REAL(4) is emitted as float");
+static_assert(sizeof(double) == 8, "REAL(8) is emitted as double");
+static_assert(sizeof(char) == 1, "CHARACTER(1) is emitted as char");
 #endif

@@ -116,12 +116,12 @@ pure subroutine expand_image(x, shape_k, method, y, errno)
 
 end subroutine
 
-subroutine conv2d_bind_c(x, k, method, y, parallel, errno) bind(C, name="conv2d_smallkernel")
+subroutine conv2d_bind_c(x, k, method, y, parallel, err_code) bind(C, name="conv2d_smallkernel")
    type(buffer_descriptor_r32_t), intent(in), value :: x, k
    type(buffer_descriptor_r32_t), intent(in), value :: y
    character(kind=c_char, len=1), intent(in) :: method(*)
    logical(kind=c_bool), intent(in), value :: parallel
-   integer(c_int) :: errno
+   integer(c_int) :: err_code
 
    real(buf_k), contiguous, pointer :: x_buf(:,:), k_buf(:,:), y_buf(:,:)
    character(kind=c_char, len=32) :: method_f
@@ -131,7 +131,7 @@ subroutine conv2d_bind_c(x, k, method, y, parallel, errno) bind(C, name="conv2d_
    y_buf => from_descriptor(y)
 
    call c_f_string(method, method_f)
-   call conv2d_fix(x_buf, k_buf, method_f, y_buf, logical(parallel), errno)
+   call conv2d_fix(x_buf, k_buf, method_f, y_buf, logical(parallel), err_code)
 
 end subroutine
 

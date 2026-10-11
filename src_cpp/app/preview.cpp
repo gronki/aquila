@@ -474,7 +474,7 @@ void AquilaWindow::WindowThread::update(const std::vector<const values::BufferVa
                 payload.matching_size = false;
         }
         float av, sd;
-        avsd_2d(c_const_buf(buf), &av, &sd);
+        avsd_2d(c_buf(buf), &av, &sd);
         av_tot += av;
         sd_tot += sd * sd;
         payload.bufs.push_back(std::move(buf));

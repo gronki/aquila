@@ -154,8 +154,23 @@ if (AQUILA_PARALLEL)
     target_compile_definitions(aquila PRIVATE AQUILA_PARALLEL)
 endif ()
 
+# the C++ side uses C prototypes of the Fortran BIND(C) interfaces. they can
+# only be generated once the Fortran module files sit in the build directory,
+# so this runs right after the Fortran library is built. only gfortran can do
+# it (-fc-prototypes has no counterpart in ifx or flang), so other compilers
+# build against the copy kept in the source tree.
+if (CMAKE_Fortran_COMPILER_ID STREQUAL "GNU")
+    add_custom_command(TARGET aquila POST_BUILD
+        COMMAND ${CMAKE_Fortran_COMPILER} -I ${CMAKE_BINARY_DIR} -fsyntax-only
+            -fc-prototypes ${CMAKE_CURRENT_SOURCE_DIR}/src/aquila.F90
+            > ${CMAKE_CURRENT_SOURCE_DIR}/src/c_binding/aquila_gen.h
+        COMMENT "generating src/c_binding/aquila_gen.h from the Fortran BIND(C) interfaces")
+endif()
+
 install(TARGETS aquila LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
-install(FILES src/c_binding/aquila.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+# aquila.h is useless without the generated prototypes it includes
+install(FILES src/c_binding/aquila.h src/c_binding/aquila_gen.h
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
 if (AQUILA_TESTS)
 

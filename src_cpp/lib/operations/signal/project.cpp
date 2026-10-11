@@ -19,7 +19,7 @@ ValuePtr ProjectOp::run(const values::TransformValue &trans,
     Buffer<real_buf_t> buf_out(cols_out, rows_out, 0.);
 
     error_status_t err;
-    project_bilinear(&trans.transform, c_const_buf(buf), c_buf(buf_out), resample, &err);
+    project_bilinear(&trans.transform, c_buf(buf), c_buf(buf_out), resample, &err);
     if (err.status)
         throw std::runtime_error(std::string(err.message));
     return std::make_unique<values::BufferValue>(buf_out, bufval.info);

@@ -123,6 +123,18 @@ struct field_cast<bool>
     static std::unique_ptr<Value> inv(bool b) { return std::make_unique<BoolValue>(b); }
 };
 
+// -fc-prototypes emits Fortran LOGICAL(1) fields as int_fast8_t (signed char),
+// not as _Bool, so they need the same treatment as a plain bool
+template <>
+struct field_cast<signed char>
+{
+    static signed char cast(const Value &val) { return field_cast<bool>::cast(val); }
+    static std::unique_ptr<Value> inv(signed char b)
+    {
+        return field_cast<bool>::inv(b != 0);
+    }
+};
+
 template <typename TF, typename TS>
 struct StructField : public StructFieldB<TS>
 {

@@ -10,8 +10,8 @@ ValuePtr ConvolOp::run(const values::BufferValue &buf,
 {
     int err;
     Buffer<real_buf_t> result(buf.buffer.cols(), buf.buffer.rows());
-    conv2d_smallkernel(c_const_buf(buf.buffer),
-        c_const_buf(krn.buffer),
+    conv2d_smallkernel(c_buf(buf.buffer),
+        c_buf(krn.buffer),
         edges.c_str(),
         c_buf(result),
         false,
@@ -39,8 +39,8 @@ ValuePtr DeconvOp::run(const values::BufferValue &buf,
     const Real &niter) const
 {
     Buffer<real_buf_t> result(buf.buffer.cols(), buf.buffer.rows());
-    deconvol_lr(c_const_buf(buf.buffer),
-        c_const_buf(krn.buffer),
+    deconvol_lr(c_buf(buf.buffer),
+        c_buf(krn.buffer),
         strength,
         (int)niter,
         c_buf(result),

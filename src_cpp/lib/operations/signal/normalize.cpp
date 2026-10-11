@@ -9,7 +9,7 @@ REGISTER(NormalizeOp);
 ValuePtr NormalizeOp::run(Ptr<SequenceValue> buffers, const Real &margin) const
 {
     std::vector<ValuePtr> items;
-    std::vector<const_buffer_descriptor_r32_t> buf_inputs;
+    std::vector<buffer_descriptor_r32_t> buf_inputs;
     std::vector<buffer_descriptor_r32_t> buf_outputs;
 
     for (const auto &item : buffers->items)
@@ -19,7 +19,7 @@ ValuePtr NormalizeOp::run(Ptr<SequenceValue> buffers, const Real &margin) const
             throw std::runtime_error("normalize: expected buffer in sequence");
         auto buf = std::make_unique<values::BufferValue>(
             Buffer<real_buf_t>(ptr->buffer.cols(), ptr->buffer.rows()), ptr->info);
-        buf_inputs.push_back(c_const_buf(ptr->buffer));
+        buf_inputs.push_back(c_buf(ptr->buffer));
         buf_outputs.push_back(c_buf(buf->buffer));
         items.push_back(std::move(buf));
     }

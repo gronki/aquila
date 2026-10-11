@@ -9,7 +9,7 @@ REGISTER(HotFindOp);
 ValuePtr HotFindOp::run(const values::BufferValue &im, const Real &sigma) const
 {
     Buffer<real_buf_t> result(im.buffer.cols(), im.buffer.rows());
-    find_hot(c_const_buf(im.buffer), sigma, c_buf(result));
+    find_hot(c_buf(im.buffer), sigma, c_buf(result));
     return std::make_unique<values::BufferValue>(std::move(result), im.info);
 }
 
@@ -30,7 +30,7 @@ REGISTER(HotFixOp);
 ValuePtr HotFixOp::run(const values::BufferValue &im, const values::BufferValue &mask) const
 {
     Buffer<real_buf_t> result(im.buffer);
-    fix_hot(c_buf(result), c_const_buf(mask.buffer));
+    fix_hot(c_buf(result), c_buf(mask.buffer));
     return std::make_unique<values::BufferValue>(std::move(result), im.info);
 }
 
@@ -52,7 +52,7 @@ REGISTER(HotFixLightOp);
 ValuePtr HotFixLightOp::run(const values::BufferValue &im, const Real &sigma) const
 {
     Buffer<real_buf_t> result(im.buffer.cols(), im.buffer.rows());
-    fix_hot_light(c_const_buf(im.buffer), sigma, c_buf(result));
+    fix_hot_light(c_buf(im.buffer), sigma, c_buf(result));
     return std::make_unique<values::BufferValue>(std::move(result), im.info);
 }
 

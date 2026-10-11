@@ -13,6 +13,11 @@ else
 ANNOTATION="v$VERSION_STR: $2"
 fi
 
+if [ "$(git branch --show-current)" != master ]; then
+    echo "This operation must be done on the master branch."
+    exit 1
+fi
+
 if [ -n "$(git tag -l \"$VERSION_STR\")" ]; then
     echo "Tag $VERSION_STR already exists."
     exit 1
@@ -29,8 +34,8 @@ sed -i "s/version = .*$/version = \"${VERSION_STR}\"/" src/globals/globals.F90
 # sed -i "s/^version:.*$/version: \"${VERSION_STR}\"/" snap/snapcraft.yaml
 
 (
-    git add .
-    git commit -m "Version $VERSION_STR"
+    git add src/c_binding/aquila.h src/globals/globals.F90
+    git commit
 ) || echo "no changes to add"
 
 git tag --delete "$VERSION_STR" || echo "Tag does not exist. creating..."

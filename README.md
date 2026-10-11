@@ -134,41 +134,97 @@ R, G, B are color frames and L is optional luminance
 
 ## Scripting with aqcli
 
-``aqcli`` is a small domain-specific language for writing image processing pipelines. Rather than stringing together shell commands or writing Python glue code, you can express a full reduction workflow — loading frames, stacking, compositing, stretching, saving — as a readable script that runs top to bottom.
+``aqcli`` is a small language for writing image processing pipelines. Rather than
+stringing together shell commands or writing Python glue, a whole reduction —
+loading frames, calibrating, aligning, stacking, compositing, stretching,
+saving — is one readable chain. Type ``help`` at the prompt for the list of
+operations and their arguments.
 
-The language is expression-oriented: operations return values that can be assigned to variables or chained with the pipe operator ``%``. Routines accept positional and keyword arguments; arrays of frames flow through pipelines element-wise.
+Everything is an expression:
 
-### Example: stacking a luminance sequence
+- ``|`` passes the result on its left as the **first argument** of the operation
+  on its right, so ``load "a.fits" | bin 2`` means ``bin(load("a.fits"), 2)``.
+  Inside a chain the parentheses are optional: ``asinh factor: 30`` is
+  ``asinh(factor: 30)``.
+- Arguments that have a default are **keyword-only** and written with a colon:
+  ``stack method: "sigclip"``, not ``stack("sigclip")``.
+- ``as`` names a result, and splits a sequence into several names at once.
+  ``=`` assigns as well: ``t = register(stars, ref)``.
+- ``[a, b, c]`` is a sequence, and operations map over sequences element-wise,
+  so one chain processes every channel at once.
+- ``load`` and ``path`` expand shell-style patterns including braces, so
+  ``load "stack_{R,G,B}.fits"`` gives three frames as one sequence.
+- ``#`` starts a comment. Each line is one complete expression; a chain cannot
+  be split across lines.
+
+### Example: calibrate, align and stack one channel
 
 ```
-lights = path("lights/L_frame_00{1,2,3,4,5,6,7,8}.fits") % file()
+# hotpixel mask from the dark frame
+load "dark.fits" | hot_find() | as hot
 
-stars      = findstar(lights)
-alignments = register(stars, stars % item(1))
+# frames to stack, with the hotpixels repaired
+load "Light/R/*.fits" | hot_fix hot | as imgs
 
-! alignment will be applied here once projection is in place
-
-stack(lights, method: "average") % save("stack_L.fits")
+# stars of every frame, then align to the first one and stack
+imgs | findstar() | as stars
+stars | register item(stars, 1) | project imgs | normalize() | stack method: "sigclip" | save "stack_R.fits"
 ```
 
-Lines beginning with ``!`` are comments.
+``findstar()`` with no arguments takes its frame from the pipe, and since
+``imgs`` is a sequence, ``findstar`` and ``project`` run on every frame.
+``item(stars, 1)`` picks the first star list as the alignment reference, and
+``normalize()`` equalizes the levels before stacking.
 
-### Example: SHO narrowband composite
+### Example: background subtraction and stretch
 
 ```
-S = file("stack_S.fits")
-H = file("stack_H.fits")
-O = file("stack_O.fits")
+load "stack_{R,G,B}.fits" | div 66666 | as R, G, B
+
+[R, G, B] | sub bg([R, G, B]) | wb what: "stars" | add 5e-4 | asinh factor: 30 | mul 1.4 | asinh factor: 10 | as RR, GG, BB
+
+png_rgb RR, GG, BB, "rgb.png"
+```
+
+``bg`` estimates the sky gradient and ``sub`` removes it, ``wb`` white-balances
+on the stars, and the two ``asinh`` passes do the stretch. Scalars broadcast
+over frames, and a sequence of scalars applies one value per channel, which is
+how per-channel tweaks are written:
+
+```
+[R, G, B] | sub [1e-3, 2e-3, 3e-3] | mul [1, 0.9, 0.8]
+```
+
+The same pairing applies to filenames — saving a sequence needs one name per
+frame:
+
+```
+[R, G, B] | save ["ch_R.fits", "ch_G.fits", "ch_B.fits"]
+```
+
+``path`` expands patterns the way bash does, so braces are a shorter way to
+write that list. Brace expansion does not depend on the files existing, which
+makes it useful for output names as well:
+
+```
+[R, G, B] | save path("ch{R,G,B}.fits")
+```
+
+### Example: narrowband composite
+
+``mix`` forms linear combinations of frames and ``lrgb`` re-applies a luminance
+to colour channels:
+
+```
+load "stack_{S,H,O}.fits" | div 66666 | as S, H, O
 
 R = mix(H, 0.9, S, 3)
 G = mix(H, 0.9, O, 1, S, -0.8)
 B = mix(O, 3.3)
 
-rgb = lrgb(H, R, G, B)
-rgb % save("sho.fits")
+lrgb mix(1, R, 1, G, 1, B), R, G, B | as RR, GG, BB
+png_rgb RR, GG, BB, "sho.png"
 ```
-
-The pipe operator ``%`` passes the result of the left-hand side as the first argument of the right-hand side, making it easy to build readable processing chains without intermediate variables.
 
 ## Changelog
 

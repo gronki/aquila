@@ -18,6 +18,7 @@ apt-get update -y
 apt-get install -y --no-install-recommends \
     cmake make gcc g++ gfortran \
     libreadline-dev pkg-config zlib1g-dev \
+    libx11-dev libxext-dev \
     wget file patchelf ca-certificates
 
 # ── build ──────────────────────────────────────────────────────────────────

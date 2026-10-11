@@ -7,9 +7,12 @@
  * kept here by hand.
  */
 
+/* -fc-prototypes emits int_fast8_t and friends without providing stdint.h */
+#include <stdint.h>
+
 #include "aquila_gen.h"
 
-#define AQUILA_VERSION "260525"
+#define AQUILA_VERSION "261011"
 
 #define AQ_STATUS_OK 0
 #define AQ_STATUS_ERROR 1

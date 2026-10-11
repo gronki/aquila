@@ -71,24 +71,24 @@ jobs:
             --notes "Latest stable release. Always points to the most recent tag." \
             --latest=false
 
-  snap:
-    name: Build and publish Snap
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: recursive
-          fetch-depth: 0
-
-      - name: Fetch tags
-        run: git fetch --tags --force
-
-      - uses: snapcore/action-build@v1
-        id: build
-
-      - uses: snapcore/action-publish@v1
-        env:
-          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
-        with:
-          snap: ${{ steps.build.outputs.snap }}
-          release: stable
+#  snap:
+#    name: Build and publish Snap
+#    runs-on: ubuntu-latest
+#    steps:
+#      - uses: actions/checkout@v4
+#        with:
+#          submodules: recursive
+#          fetch-depth: 0
+#
+#      - name: Fetch tags
+#        run: git fetch --tags --force
+#
+#      - uses: snapcore/action-build@v1
+#        id: build
+#
+#      - uses: snapcore/action-publish@v1
+#        env:
+#          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
+#        with:
+#          snap: ${{ steps.build.outputs.snap }}
+#          release: stable

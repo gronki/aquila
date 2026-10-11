@@ -19,7 +19,7 @@ struct PathOp : public Operation
         return manifest;
     }
 
-    std::string name() const override { return "find"; }
+    std::string name() const override { return "path"; }
     std::string description() const override
     {
         return "Bash-style expansion of paths. For "

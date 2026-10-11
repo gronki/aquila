@@ -26,16 +26,29 @@ typedef struct source_t {
     double kurtosis /* WARNING: Converting 'REAL(8)' to interoperable type */;
 } source_t;
 
-typedef struct error_status_t {
-    int status /* WARNING: Converting 'INTEGER(4)' to interoperable type */;
-    char message[128];
-} error_status_t;
-
 typedef struct buffer_descriptor_r32_t {
     void *data;
     long rows /* WARNING: Converting 'INTEGER(8)' to interoperable type */;
     long cols /* WARNING: Converting 'INTEGER(8)' to interoperable type */;
 } buffer_descriptor_r32_t;
+
+typedef struct error_status_t {
+    int status /* WARNING: Converting 'INTEGER(4)' to interoperable type */;
+    char message[128];
+} error_status_t;
+
+typedef struct bkgradient_model_t {
+    float a /* WARNING: Converting 'REAL(4)' to interoperable type */;
+    float b /* WARNING: Converting 'REAL(4)' to interoperable type */;
+    float c /* WARNING: Converting 'REAL(4)' to interoperable type */;
+} bkgradient_model_t;
+
+typedef struct box_px_t {
+    long x /* WARNING: Converting 'INTEGER(8)' to interoperable type */;
+    long y /* WARNING: Converting 'INTEGER(8)' to interoperable type */;
+    long w /* WARNING: Converting 'INTEGER(8)' to interoperable type */;
+    long h /* WARNING: Converting 'INTEGER(8)' to interoperable type */;
+} box_px_t;
 
 typedef struct align_params_t {
     double scale /* WARNING: Converting 'REAL(8)' to interoperable type */;
@@ -56,6 +69,16 @@ typedef struct bkeq_param_t {
     int niter /* WARNING: Converting 'INTEGER(4)' to interoperable type */;
     int margin /* WARNING: Converting 'INTEGER(4)' to interoperable type */;
 } bkeq_param_t;
+
+typedef struct bkgradient_param_t {
+    double sd_sigma /* WARNING: Converting 'REAL(8)' to interoperable type */;
+    double offset /* WARNING: Converting 'REAL(8)' to interoperable type */;
+    long start_x /* WARNING: Converting 'INTEGER(8)' to interoperable type */;
+    long start_y /* WARNING: Converting 'INTEGER(8)' to interoperable type */;
+    long n_points /* WARNING: Converting 'INTEGER(8)' to interoperable type */;
+    long window_size /* WARNING: Converting 'INTEGER(8)' to interoperable type */;
+    long margin /* WARNING: Converting 'INTEGER(8)' to interoperable type */;
+} bkgradient_param_t;
 
 typedef struct findstar_params_t {
     long rslice /* WARNING: Converting 'INTEGER(8)' to interoperable type */;
@@ -81,8 +104,10 @@ void conv2d_smallkernel (buffer_descriptor_r32_t x, buffer_descriptor_r32_t k, c
 void deconvol_lr (buffer_descriptor_r32_t im1, buffer_descriptor_r32_t psf, float strength /* WARNING: non-interoperable KIND */ , int maxiter /* WARNING: non-interoperable KIND */ , buffer_descriptor_r32_t im2, int_fast8_t parallel /* WARNING: non-interoperable KIND */ );
 align_params_t default_align_params ();
 bkeq_param_t default_bkeq_params ();
+bkgradient_param_t default_bkgradient_params ();
 findstar_params_t default_findstar_params ();
 void equalize_background (buffer_descriptor_r32_t *buffers, int nbuf /* WARNING: non-interoperable KIND */ , bkeq_param_t *param, error_status_t *err);
+void estimate_gradient (buffer_descriptor_r32_t buf_in, buffer_descriptor_r32_t buf_out, const bkgradient_param_t *param, error_status_t *err_out);
 void find_hot (buffer_descriptor_r32_t im, float sigma /* WARNING: non-interoperable KIND */ , buffer_descriptor_r32_t hot_mask);
 void fix_hot (buffer_descriptor_r32_t im, buffer_descriptor_r32_t hot_mask);
 void fix_hot_light (buffer_descriptor_r32_t im, float sigma /* WARNING: non-interoperable KIND */ , buffer_descriptor_r32_t im_out);

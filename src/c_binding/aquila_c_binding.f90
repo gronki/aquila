@@ -21,15 +21,15 @@ integer(c_int), parameter :: status_err_empty_buffer = 101
 
 contains
 
-function check_err(status)
-   type(error_status_t) :: status
+pure function check_err(status)
+   type(error_status_t), intent(in) :: status
    logical :: check_err
 
    check_err = status%status /= status_ok
 end function
 
-subroutine reset_err(status)
-   type(error_status_t) :: status
+pure subroutine reset_err(status)
+   type(error_status_t), intent(inout) :: status
 
    status % status = status_ok
    status % message(1) = achar(0, kind=c_char)
@@ -53,10 +53,10 @@ subroutine print_err(status)
    end select
 end subroutine
 
-subroutine set_err(status, code, msg)
-   type(error_status_t) :: status
-   integer(c_int), optional :: code
-   character(len=*), optional :: msg
+pure subroutine set_err(status, code, msg)
+   type(error_status_t), intent(inout) :: status
+   integer(c_int), intent(in), optional :: code
+   character(len=*), intent(in), optional :: msg
 
    if (present(code)) then
       status%status = code
@@ -104,10 +104,40 @@ subroutine c_f_string(c_str, f_str)
 
 end subroutine
 
-subroutine f_2c_string(f_str, c_str, n)
+! counterparts of the pure_forbid / failed pair in globals, for code that
+! reports through error_status_t instead of a bare integer code
+
+pure subroutine pure_forbid_err(check, status, code, msg)
+   logical, intent(in) :: check
+   type(error_status_t), intent(inout), optional :: status
+   integer(c_int), intent(in) :: code
+   character(len=*), intent(in) :: msg
+
+   if (present(status)) call reset_err(status)
+   if (.not. check) return
+
+   if (present(status)) then
+      call set_err(status, code, msg)
+      return
+   end if
+
+   error stop msg
+end subroutine
+
+pure function failed_err(status)
+   type(error_status_t), intent(in), optional :: status
+   logical :: failed_err
+
+   failed_err = .false.
+   if (.not. present(status)) return
+   failed_err = status%status /= status_ok
+end function
+
+pure subroutine f_2c_string(f_str, c_str, n)
    character(kind=c_char, len=*), intent(in) :: f_str
    character(kind=c_char, len=1), intent(inout) :: c_str(n)
-   integer :: n, i, n_min
+   integer, intent(in) :: n
+   integer :: i, n_min
 
    n_min = min(n, len(f_str) + 1)
 

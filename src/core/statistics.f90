@@ -27,14 +27,28 @@ interface outliers
 module procedure :: outliers_2d_mask, outliers_2d
 end interface
 
+interface outliers_fixed
+module procedure :: outliers_fixed_2d_mask, outliers_fixed_2d
+end interface
+
 interface linfit
 module procedure :: linfit_r32
 module procedure :: linfit_r64
 end interface
 
+interface linfit2d
+module procedure :: linfit2d_r32
+module procedure :: linfit2d_r64
+end interface
+
 interface sigclip2
 module procedure :: sigclip2_r32
 module procedure :: sigclip2_r64
+end interface
+
+interface sigclip2_fixed
+module procedure :: sigclip2_fixed_r32
+module procedure :: sigclip2_fixed_r64
 end interface
 
 interface quickselect
@@ -231,6 +245,54 @@ end subroutine
 
  !----------------------------------------------------------------------------!
 
+! Same clipping as outliers, except that the expected value is given instead
+! of being measured: only the dispersion around it is re-estimated.
+
+pure subroutine outliers_fixed_2d_mask(im, msk, kap, niter, av, sd, error_status)
+   use iso_fortran_env, only: int64
+   use aquila_c_binding, only: error_status_t, reset_err, pure_forbid_err, &
+      failed_err, status_error
+
+   real(r32_k), intent(in) :: im(:,:), kap, av
+   integer, intent(in) :: niter
+   logical, intent(inout) :: msk(:,:)
+   real(r32_k), intent(out) :: sd
+   type(error_status_t), intent(inout), optional :: error_status
+   integer :: i
+   integer(int64) :: nn, cn
+
+   ! the loop may converge and exit before any check runs
+   if (present(error_status)) call reset_err(error_status)
+
+   do i = 1, niter
+      nn = count(msk, kind=int64)
+      ! av was not estimated from the data, so no degree of freedom is lost
+      sd = sqrt(sum((im - av)**2, msk) / real(nn, r32_k))
+      msk = msk .and. (im >= av - kap * sd) &
+         .and. (im <= av + kap * sd)
+
+      cn = count(msk, kind=int64)
+      if ( cn == nn ) exit
+      call pure_forbid_err(cn == 0, error_status, status_error, 'all data rejected')
+      if (failed_err(error_status)) return
+   end do
+end subroutine
+
+pure subroutine outliers_fixed_2d(im, kap, niter, av, sd, error_status)
+   use aquila_c_binding, only: error_status_t
+   real(r32_k), intent(in) :: im(:,:), kap, av
+   integer, intent(in) :: niter
+   real(r32_k), intent(out) :: sd
+   type(error_status_t), intent(inout), optional :: error_status
+   logical, allocatable :: msk(:,:)
+
+   allocate(msk(size(im, 1), size(im, 2))); msk(:,:) = .true.
+   call outliers_fixed_2d_mask(im, msk, kap, niter, av, sd, error_status)
+   deallocate(msk)
+end subroutine
+
+ !----------------------------------------------------------------------------!
+
 pure function average_fast_1d(x) result(m)
    real(r32_k), intent(in) :: x(:)
    real(r32_k) :: m
@@ -344,6 +406,84 @@ pure subroutine linfit_r64(x, y, a, b)
 
    a = sum((x - xm) * (y - ym)) / sum((x - xm)**2)
    b = sum(y - a * x) / n
+end subroutine
+
+ !----------------------------------------------------------------------------!
+
+! Least squares plane z = a * x + b * y + c through scattered points.
+
+pure subroutine linfit2d_r32(x, y, z, a, b, c, error_status)
+   use iso_fortran_env, only: int64
+   use aquila_c_binding, only: error_status_t, pure_forbid_err, failed_err, &
+      status_error, status_err_shape_mismatch
+   real(r32_k), dimension(:), intent(in) :: x, y, z
+   real(r32_k), intent(out) :: a, b, c
+   type(error_status_t), intent(inout), optional :: error_status
+   real(r32_k) :: xm, ym, zm, sxx, syy, sxy, sxz, syz, det
+   integer(int64) :: n
+
+   call pure_forbid_err(size(x) /= size(y) .or. size(x) /= size(z), error_status, &
+      status_err_shape_mismatch, 'linfit2d: x, y and z differ in size')
+   if (failed_err(error_status)) return
+
+   n = size(x, kind=int64)
+   xm = sum(x) / real(n, r32_k)
+   ym = sum(y) / real(n, r32_k)
+   zm = sum(z) / real(n, r32_k)
+
+   sxx = sum((x - xm)**2)
+   syy = sum((y - ym)**2)
+   sxy = sum((x - xm) * (y - ym))
+   sxz = sum((x - xm) * (z - zm))
+   syz = sum((y - ym) * (z - zm))
+
+   det = sxx * syy - sxy**2
+
+   ! no plane is determined if every sample sits on one line
+   call pure_forbid_err(det == 0, error_status, status_error, &
+      'linfit2d: samples are collinear')
+   if (failed_err(error_status)) return
+
+   a = (sxz * syy - syz * sxy) / det
+   b = (syz * sxx - sxz * sxy) / det
+   c = zm - a * xm - b * ym
+end subroutine
+
+pure subroutine linfit2d_r64(x, y, z, a, b, c, error_status)
+   use iso_fortran_env, only: int64
+   use aquila_c_binding, only: error_status_t, pure_forbid_err, failed_err, &
+      status_error, status_err_shape_mismatch
+   real(r64_k), dimension(:), intent(in) :: x, y, z
+   real(r64_k), intent(out) :: a, b, c
+   type(error_status_t), intent(inout), optional :: error_status
+   real(r64_k) :: xm, ym, zm, sxx, syy, sxy, sxz, syz, det
+   integer(int64) :: n
+
+   call pure_forbid_err(size(x) /= size(y) .or. size(x) /= size(z), error_status, &
+      status_err_shape_mismatch, 'linfit2d: x, y and z differ in size')
+   if (failed_err(error_status)) return
+
+   n = size(x, kind=int64)
+   xm = sum(x) / n
+   ym = sum(y) / n
+   zm = sum(z) / n
+
+   sxx = sum((x - xm)**2)
+   syy = sum((y - ym)**2)
+   sxy = sum((x - xm) * (y - ym))
+   sxz = sum((x - xm) * (z - zm))
+   syz = sum((y - ym) * (z - zm))
+
+   det = sxx * syy - sxy**2
+
+   ! no plane is determined if every sample sits on one line
+   call pure_forbid_err(det == 0, error_status, status_error, &
+      'linfit2d: samples are collinear')
+   if (failed_err(error_status)) return
+
+   a = (sxz * syy - syz * sxy) / det
+   b = (syz * sxx - sxz * sxy) / det
+   c = zm - a * xm - b * ym
 end subroutine
 
  !----------------------------------------------------------------------------!
@@ -483,6 +623,60 @@ pure function sigclip2_r64(x, kap) result(av)
       end if
    end do reject
    call avsd(x, msk, av, sd)
+end function
+
+ !----------------------------------------------------------------------------!
+
+! Same rejection as sigclip2, except that the expected value is given instead
+! of being measured, so what comes back is the dispersion around it.
+
+pure function sigclip2_fixed_r32(x, kap, av) result(sd)
+   real(r32_k), intent(in) :: x(:), kap, av
+   real(r32_k) :: sd
+   logical :: msk(size(x))
+   integer :: i, imax
+
+   msk(:) = .true.
+   ! av was not estimated from the data, so no degree of freedom is lost
+   sd = sqrt(sum((x - av)**2, msk) / real(count(msk), r32_k))
+
+   reject: do i = 1, size(x) - 2
+      imax = maxloc(abs(x - av), 1, msk)
+      msk(imax) = .false.
+      sd = sqrt(sum((x - av)**2, msk) / real(count(msk), r32_k))
+      if (abs(x(imax) - av) <= kap * sd) then
+         msk(imax) = .true.
+         exit reject
+      end if
+   end do reject
+   sd = sqrt(sum((x - av)**2, msk) / real(count(msk), r32_k))
+end function
+
+ !----------------------------------------------------------------------------!
+
+! Same rejection as sigclip2, except that the expected value is given instead
+! of being measured, so what comes back is the dispersion around it.
+
+pure function sigclip2_fixed_r64(x, kap, av) result(sd)
+   real(r64_k), intent(in) :: x(:), kap, av
+   real(r64_k) :: sd
+   logical :: msk(size(x))
+   integer :: i, imax
+
+   msk(:) = .true.
+   ! av was not estimated from the data, so no degree of freedom is lost
+   sd = sqrt(sum((x - av)**2, msk) / real(count(msk), r64_k))
+
+   reject: do i = 1, size(x) - 2
+      imax = maxloc(abs(x - av), 1, msk)
+      msk(imax) = .false.
+      sd = sqrt(sum((x - av)**2, msk) / real(count(msk), r64_k))
+      if (abs(x(imax) - av) <= kap * sd) then
+         msk(imax) = .true.
+         exit reject
+      end if
+   end do reject
+   sd = sqrt(sum((x - av)**2, msk) / real(count(msk), r64_k))
 end function
 
  !----------------------------------------------------------------------------!

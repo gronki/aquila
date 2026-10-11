@@ -32,9 +32,10 @@ struct ArgSpec
 
     bool sequence = false;
 
-    std::string help = "";
     ConvertFun convert = nullptr;
     std::shared_ptr<StructFieldBase> field;
+
+    std::string help = "";
 };
 
 static const std::string ARG_ELLIPSIS = "...";

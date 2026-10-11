@@ -109,6 +109,71 @@ const ArgManifest &MaxOp::arg_manifest() const
     return manifest;
 }
 
+REGISTER(MinOp);
+Ptr<Value> MinOp::run(Ptr<Value> first, Ellipsis<Ptr<Value>> ellip) const
+{
+    if (ellip.data.size() == 0)
+        return first;
+    Ptr<Value> result = first;
+    for (size_t i = 0; i < ellip.data.size(); i++)
+    {
+        result = apply_binary(
+            *result, *ellip.data[i], [](auto a, auto b) { return std::min(a, b); });
+    }
+    return result;
+}
+
+const ArgManifest &MinOp::arg_manifest() const
+{
+    static const ArgManifest manifest{
+        ArgSpec{.name = "first"},
+        ArgSpec{.name = "..."},
+    };
+    return manifest;
+}
+
+REGISTER(SoftmaxOp);
+Ptr<Value> SoftmaxOp::run(
+    Ptr<Value> first, const Real &alpha, Ellipsis<Ptr<Value>> ellip) const
+{
+    if (ellip.data.size() == 0)
+        return first;
+    if (alpha == 0)
+        throw std::runtime_error("softmax: alpha must not be zero");
+
+    // the pixel-wise maximum is subtracted before exponentiating, otherwise
+    // exp() overflows the single precision buffers already for alpha * x ~ 89
+    Ptr<Value> peak = first;
+    for (size_t i = 0; i < ellip.data.size(); i++)
+    {
+        peak = apply_binary(
+            *peak, *ellip.data[i], [](auto a, auto b) { return std::max(a, b); });
+    }
+
+    const real_buf_t a = alpha;
+    auto weight = [a](auto x, auto m) { return std::exp(a * (x - m)); };
+
+    Ptr<Value> sum = apply_binary(*first, *peak, weight);
+    for (size_t i = 0; i < ellip.data.size(); i++)
+    {
+        auto term = apply_binary(*ellip.data[i], *peak, weight);
+        sum = apply_binary(*sum, *term, [](auto p, auto q) { return p + q; });
+    }
+
+    return apply_binary(
+        *peak, *sum, [a](auto m, auto s) { return m + std::log(s) / a; });
+}
+
+const ArgManifest &SoftmaxOp::arg_manifest() const
+{
+    static const ArgManifest manifest{
+        ArgSpec{.name = "first"},
+        ArgSpec{.name = "alpha", .default_real = 1.0, .help = "sharpness of the maximum"},
+        ArgSpec{.name = "..."},
+    };
+    return manifest;
+}
+
 REGISTER(MixOp);
 Ptr<Value> MixOp::run(std::vector<const Value *> args) const
 {

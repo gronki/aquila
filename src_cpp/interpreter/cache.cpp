@@ -19,8 +19,8 @@ ValuePtr CacheSpace::push(const ValuePtr &v, int64_t initial_score)
     const auto &trace = v.get_trace();
     if (trace.is_corrupt() || trace.empty() || !v)
         return {};
-    auto [it, replaced] =
-        vault.insert_or_assign(trace.trace(), CacheEntry{v, initial_score});
+    auto [it, replaced] = vault.insert_or_assign(
+        trace.trace(), CacheEntry{v, initial_score, v->mem_size()});
     return it->second.val;
 }
 
@@ -29,10 +29,38 @@ double CacheSpace::total_mem_size() const
     double result = 0;
     for (const auto &it : vault)
     {
-        if (it.second.val)
-            result += it.second.val->mem_size();
+        result += it.second.mem_size;
     }
     return result;
+}
+
+/**
+ * Entries with the lowest priority are evicted first: every use of an entry
+ * earns it a point of score, while its size costs it one point per 20 MB.
+ */
+static double entry_priority(const CacheEntry &entry)
+{
+    return entry.score - entry.mem_size / 2e7;
+}
+
+void CacheSpace::prune()
+{
+    double total = total_mem_size();
+
+    while (total > CACHE_MEM_LIMIT && !vault.empty())
+    {
+        auto victim = vault.begin();
+        for (auto it = vault.begin(); it != vault.end(); it++)
+        {
+            if (entry_priority(it->second) < entry_priority(victim->second))
+                victim = it;
+        }
+#ifndef NDEBUG
+        std::cout << "cache: dropping " << victim->first << std::endl;
+#endif
+        total -= victim->second.mem_size;
+        vault.erase(victim);
+    }
 }
 
 ValuePtr CacheSpace::push(const value_trace_t &trace, ValuePtr v, int64_t initial_score)

@@ -66,6 +66,28 @@ struct MaxOp : public Operation
     std::string description() const override { return "Maximum value pixel-wise"; }
 };
 
+struct MinOp : public Operation
+{
+    BIND_ARGS_NEW(&MinOp::run);
+    Ptr<Value> run(Ptr<Value> first, Ellipsis<Ptr<Value>>) const;
+    const ArgManifest &arg_manifest() const override;
+    std::string name() const override { return "min"; }
+    std::string description() const override { return "Minimum value pixel-wise"; }
+};
+
+struct SoftmaxOp : public Operation
+{
+    BIND_ARGS_NEW(&SoftmaxOp::run);
+    Ptr<Value> run(Ptr<Value> first, const Real &alpha, Ellipsis<Ptr<Value>>) const;
+    const ArgManifest &arg_manifest() const override;
+    std::string name() const override { return "softmax"; }
+    std::string description() const override
+    {
+        return "Smooth maximum pixel-wise: log(sum(exp(alpha*x)))/alpha. "
+               "Approaches max() for large alpha.";
+    }
+};
+
 struct MixOp : public Operation
 {
     BIND_ARGS(&MixOp::run);

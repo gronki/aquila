@@ -2,6 +2,8 @@
 #include <aquila.h>
 #include <values/frame.hpp>
 
+STRUCT_DEFAULT(bkeq_param_t, default_bkeq_params);
+
 namespace aquila::ops
 {
 
@@ -9,12 +11,7 @@ REGISTER(EqualizeOp);
 
 ValuePtr EqualizeOp::run(Ptr<SequenceValue> channels,
     const Str &what,
-    const Real &apar,
-    const Real &bpar,
-    const Real &sigma,
-    const Real &sigma_star,
-    const Int &niter,
-    const Int &margin) const
+    interpreter::Struct<bkeq_param_t> params) const
 {
     std::vector<std::unique_ptr<values::BufferValue>> out_bufs;
     std::vector<buffer_descriptor_r32_t> c_bufs;
@@ -39,18 +36,11 @@ ValuePtr EqualizeOp::run(Ptr<SequenceValue> channels,
         c_bufs.push_back(c_buf(out_bufs.back()->buffer));
     }
 
-    bkeq_param_t params;
-    params.background = what == "bg" || what == "both";
-    params.stars = what == "stars" || what == "both";
-    params.apar = apar;
-    params.bpar = bpar;
-    params.sigma = sigma;
-    params.sigma_star = sigma_star;
-    params.niter = static_cast<int32_t>(niter);
-    params.margin = static_cast<int32_t>(margin);
+    params.data.background = what == "bg" || what == "both";
+    params.data.stars = what == "stars" || what == "both";
 
     error_status_t err = {};
-    equalize_background(c_bufs.data(), c_bufs.size(), &params, &err);
+    equalize_background(c_bufs.data(), c_bufs.size(), &params.data, &err);
 
     if (err.status != 0)
     {
@@ -70,12 +60,12 @@ const ArgManifest &EqualizeOp::arg_manifest() const
     static const ArgManifest manifest{
         ArgSpec{.name = "channels", .sequence = true},
         ArgSpec{.name = "what", .default_str = "both", .help = "bg, stars or both"},
-        ArgSpec{.name = "apar", .default_real = 2.0},
-        ArgSpec{.name = "bpar", .default_real = 0.5},
-        ArgSpec{.name = "sigma", .default_real = 3.0},
-        ArgSpec{.name = "sigma_star", .default_real = 4.0},
-        ArgSpec{.name = "niter", .default_int = 32},
-        ArgSpec{.name = "margin", .default_int = 32},
+        ArgSpec{.name = "apar", .field = field(&bkeq_param_t::apar)},
+        ArgSpec{.name = "bpar", .field = field(&bkeq_param_t::bpar)},
+        ArgSpec{.name = "sigma", .field = field(&bkeq_param_t::sigma)},
+        ArgSpec{.name = "sigma_star", .field = field(&bkeq_param_t::sigma_star)},
+        ArgSpec{.name = "niter", .field = field(&bkeq_param_t::niter)},
+        ArgSpec{.name = "margin", .field = field(&bkeq_param_t::margin)},
     };
     return manifest;
 }

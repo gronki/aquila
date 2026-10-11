@@ -366,9 +366,10 @@ Ptr<Value> OpNode::yield(ExecCtx ctx) const
     }
     try
     {
+        std::cout << "Executing: " << op->name() << std::endl;
         auto result = op_call_with_sequencing(
             *op, build_ptrs_from_match(arg_results, match), match, false, true);
-        if (ctx.cache && result && op->cacheable() && result->mem_size() < 2e8)
+        if (ctx.cache && result && op->cacheable())
         {
             auto result_trace = result.get_trace();
             if (!result_trace.is_corrupt())

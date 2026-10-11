@@ -1,5 +1,7 @@
 #include "interpreter.hpp"
 
+#include <cstdio>
+
 namespace aquila::interpreter
 {
 
@@ -29,6 +31,11 @@ Ptr<Value> AquilaInterpreter::exec(const std::string &command)
 #endif
     auto result = exectree->yield({ns, &cache});
     ns.merge(std::move(sub_ns));
+    cache.prune();
+    char cache_size[32];
+    std::snprintf(
+        cache_size, sizeof(cache_size), "%.1f", cache.total_mem_size() / 1e6);
+    std::cout << "Cache: " << cache_size << "M" << std::endl;
     return result;
 }
 

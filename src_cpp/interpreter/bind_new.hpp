@@ -161,7 +161,7 @@ inline ValuePtr bind_args_new(const OpT *obj,
 #define BIND_ARGS_NEW(proc)                                                            \
     ValuePtr call(std::vector<ValuePtr> args) const override                           \
     {                                                                                  \
-        return bind_args_new(this, (proc), arg_manifest(), props, args);               \
+        return bind_args_new(this, (proc), arg_manifest(), args);                      \
     }
 
 } // namespace aquila::interpreter

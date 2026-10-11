@@ -14,7 +14,7 @@ static std::uint64_t fnv1a(std::string s)
     return h;
 }
 
-ValuePtr CacheSpace::push(const ValuePtr &v, int64_t initial_score)
+ValuePtr CacheSpace::push(const ValuePtr &v, double initial_score)
 {
     const auto &trace = v.get_trace();
     if (trace.is_corrupt() || trace.empty() || !v)
@@ -35,16 +35,23 @@ double CacheSpace::total_mem_size() const
 }
 
 /**
- * Entries with the lowest priority are evicted first: every use of an entry
- * earns it a point of score, while its size costs it one point per 20 MB.
+ * Entries with the lowest priority are evicted first. Every use of an entry
+ * earns it a point of score, its size costs it a point per gigabyte, and each
+ * pruning charges it CACHE_AGE_PENALTY -- so an entry that stops being used
+ * sinks below the entries pushed after it, which start from zero.
  */
 static double entry_priority(const CacheEntry &entry)
 {
-    return entry.score - entry.mem_size / 2e7;
+    return entry.score - entry.mem_size * CACHE_SIZE_PENALTY;
 }
 
 void CacheSpace::prune()
 {
+    for (auto &it : vault)
+    {
+        it.second.score -= CACHE_AGE_PENALTY;
+    }
+
     double total = total_mem_size();
 
     while (total > CACHE_MEM_LIMIT && !vault.empty())
@@ -63,7 +70,7 @@ void CacheSpace::prune()
     }
 }
 
-ValuePtr CacheSpace::push(const value_trace_t &trace, ValuePtr v, int64_t initial_score)
+ValuePtr CacheSpace::push(const value_trace_t &trace, ValuePtr v, double initial_score)
 {
     return push(v.with_trace(trace), initial_score);
 }
@@ -78,7 +85,7 @@ ValuePtr CacheSpace::get(const value_trace_t &trace) const
     return {};
 }
 
-ValuePtr CacheSpace::get_and_score(const value_trace_t &trace, int64_t score)
+ValuePtr CacheSpace::get_and_score(const value_trace_t &trace, double score)
 {
     if (trace.is_corrupt() || trace.empty())
         return {};

@@ -16,6 +16,7 @@ contains
 
 function default_bkeq_params() bind(C)
    type(bkeq_param_t) :: default_bkeq_params
+   default_bkeq_params = bkeq_param_t()
 end function
 
 

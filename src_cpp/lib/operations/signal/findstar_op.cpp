@@ -10,7 +10,7 @@ namespace aquila::ops
 REGISTER(FindstarOp);
 ValuePtr FindstarOp::call(std::vector<ValuePtr> args) const
 {
-    return bind_args_new(this, &FindstarOp::run, arg_manifest(), props, args);
+    return bind_args_new(this, &FindstarOp::run, arg_manifest(), args);
 }
 
 ValuePtr FindstarOp::run(const values::BufferValue &frame,

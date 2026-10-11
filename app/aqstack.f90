@@ -473,6 +473,7 @@ contains
 
             case ("flat")
                strategy = "flat"
+               method = 'sigclip'
                cycle scan_cli
 
             case ("process")
@@ -508,11 +509,8 @@ contains
 
          case ("-sigclip")
             method = "sigclip"
-            if (strategy /= 'bias' .and. strategy /= 'dark') &
+            if (strategy /= 'bias' .and. strategy /= 'dark' .and. strategy /= "flat") &
             &     cfg_normalize = .true.
-
-         case ("-nostack", "-no-stack")
-            cfg_process_only = .true.
 
          case ("-align")
             cfg_align_frames = .true.
@@ -531,6 +529,9 @@ contains
 
          case ("-norm", "-normalize")
             cfg_normalize = .true.
+
+         case ("-no-norm", "-no-normalize")
+            cfg_normalize = .false.
 
          case ("-resample")
             cfg_resampling = .true.
@@ -699,8 +700,7 @@ contains
       print fmthlp,  '-ref FILENAME', 'align to this frame rather than first frame'
       print fmthlp,  '-resample [FACTOR=2]', 'resample before stacking (only with -align)', &
       &     'FACTOR is scale to be applied'
-      print fmthlp,  '-norm[alize]', 'normalize to average before stacking'
-      print fmthlp,  '-no-stack', 'process but do not stack images'
+      print fmthlp,  '-[no-]normalize', 'normalize to average before stacking'
       print fmthlp,  '-suffix/-S SUFFIX', 'suffix that will be added to file names', &
       &     'when using -nostack {def.: _pp}'
       print fmthlp,  '-temp/-T TEMP [DT=0.5]', 'stack only frames with given CCD temperature', &

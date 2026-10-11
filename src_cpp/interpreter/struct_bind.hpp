@@ -9,12 +9,6 @@ namespace aquila
 template <typename TS>
 struct __struct_default_registry
 {
-    using FacT = TS (*)();
-    static FacT get_factory()
-    {
-        std::cerr << "Warning: no default factory for " << typeid(TS).name() << std::endl;
-        return nullptr;
-    }
 };
 } // namespace aquila
 
@@ -33,25 +27,18 @@ struct StructFieldBase
     template <>                                                                        \
     struct aquila::__struct_default_registry<TS>                                       \
     {                                                                                  \
-        using FacT = TS (*)();                                                         \
-        static FacT get_factory() { return FAC; }                                      \
+        static TS build_default() { return (FAC)(); }                                  \
     }
 
 template <typename TS>
 struct StructFieldB : public StructFieldBase
 {
     using FacT = TS (*)();
-    FacT def_factory;
+    const TS struct_default;
     StructFieldB(int struct_nr) :
         StructFieldBase(struct_nr),
-        def_factory(aquila::__struct_default_registry<TS>::get_factory())
+        struct_default(aquila::__struct_default_registry<TS>::build_default())
     {
-    }
-    TS struct_default() const
-    {
-        if (!def_factory)
-            return {};
-        return def_factory();
     }
     virtual void read(const Value *, TS &) const = 0;
 };
@@ -140,10 +127,8 @@ template <typename TF, typename TS>
 struct StructField : public StructFieldB<TS>
 {
     TF TS::*field;
-    TF default_val;
     StructField(int struct_nr, TF TS::*field) :
-        StructFieldB<TS>(struct_nr), field(field),
-        default_val(StructFieldB<TS>::struct_default().*(this->field))
+        StructFieldB<TS>(struct_nr), field(field)
     {
     }
     void read(const Value *val, TS &dest) const override
@@ -154,7 +139,7 @@ struct StructField : public StructFieldB<TS>
     }
     std::unique_ptr<Value> build_default() const override
     {
-        return field_cast<TF>::inv(default_val);
+        return field_cast<TF>::inv(StructFieldB<TS>::struct_default.*field);
     }
 };
 

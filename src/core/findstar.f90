@@ -24,6 +24,8 @@ contains
 
 function default_findstar_params() bind(C)
    type(findstar_params_t) :: default_findstar_params
+   ! this is needed to make sure defaults are indeed returned
+   default_findstar_params = findstar_params_t()
 end function
 
  !----------------------------------------------------------------------------!

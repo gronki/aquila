@@ -58,6 +58,16 @@ std::vector<const Value *> build_ptrs(const std::vector<std::unique_ptr<Value>> 
     return args;
 }
 
+ArgManifest::ArgManifest(std::vector<ArgSpec> args) : args(std::move(args))
+{
+    analyze();
+}
+
+ArgManifest::ArgManifest(std::initializer_list<ArgSpec> args) : args(std::move(args))
+{
+    analyze();
+}
+
 static bool valid_argspec_key(const std::string &name)
 {
     if (name.empty())
@@ -73,7 +83,7 @@ static bool valid_argspec_key(const std::string &name)
     return true;
 }
 
-manifest_properties_t::manifest_properties_t(const std::vector<ArgSpec> &manifest)
+void ArgManifest::analyze()
 {
     bool first_keyword = false;
     has_ellipsis = false;
@@ -82,7 +92,7 @@ manifest_properties_t::manifest_properties_t(const std::vector<ArgSpec> &manifes
     num_positionals = 0;
     num_keyword = 0;
 
-    for (const auto &argspec : manifest)
+    for (const auto &argspec : args)
     {
         if (argspec.name.empty())
         {
@@ -135,10 +145,12 @@ manifest_properties_t::manifest_properties_t(const std::vector<ArgSpec> &manifes
     }
 }
 
-std::vector<ArgMatch> match_arguments(const std::vector<ArgSpec> &manifest,
-    const manifest_properties_t &props,
-    const std::vector<std::string> &given_keys)
+std::vector<ArgMatch> match_arguments(
+    const ArgManifest &manifest_o, const std::vector<std::string> &given_keys)
 {
+    const auto &manifest = manifest_o.args;
+    const auto &props = manifest_o;
+
     const size_t n_spec = props.has_ellipsis ? manifest.size() - 1 : manifest.size();
     std::vector<ArgMatch> match(n_spec);
 
@@ -310,7 +322,7 @@ std::string Operation::signature_str() const
     ss << name() << "(";
     const auto &manifest = arg_manifest();
     bool first = true;
-    for (const auto &argspec : manifest)
+    for (const auto &argspec : manifest.args)
     {
         if (first)
         {

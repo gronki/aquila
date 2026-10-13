@@ -30,11 +30,20 @@ const ArgManifest &BackgroundOp::arg_manifest() const
         ArgSpec{.name = "offset",
             .field = field(&bkgradient_param_t::offset),
             .help = "fraction of constant signal to mix in"},
-        ArgSpec{.name = "n_points", .field = field(&bkgradient_param_t::n_points)},
-        ArgSpec{.name = "window_size", .field = field(&bkgradient_param_t::window_size)},
+        ArgSpec{.name = "gradient",
+            .field = field(&bkgradient_param_t::gradient),
+            .help = "fraction of gradient to mix in. =0 will only approximate uniform "
+                    "background"},
+        ArgSpec{.name = "shift",
+            .field = field(&bkgradient_param_t::sigma_shift),
+            .help =
+                "compensate local background value with that many standard deviations. "
+                "Tweak if you are unhappy with the background subtraction"},
+        ArgSpec{.name = "points", .field = field(&bkgradient_param_t::n_points)},
+        ArgSpec{.name = "box", .field = field(&bkgradient_param_t::window_size)},
         ArgSpec{.name = "margin", .field = field(&bkgradient_param_t::margin)},
-        ArgSpec{.name = "start_x", .field = field(&bkgradient_param_t::start_x)},
-        ArgSpec{.name = "start_y", .field = field(&bkgradient_param_t::start_y)},
+        ArgSpec{.name = "seed_x", .field = field(&bkgradient_param_t::start_x)},
+        ArgSpec{.name = "seed_y", .field = field(&bkgradient_param_t::start_y)},
     };
     return manifest;
 }

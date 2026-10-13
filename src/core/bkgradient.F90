@@ -13,8 +13,12 @@ private
 
 real(c_double), parameter :: golden = (1 + sqrt(5.0_c_double)) / 2
 
+type, bind(C) :: box_sample_param_t
+   integer(c_int64_t) :: start_x = 55, start_y = 67, n_points = 64, window_size = 16, margin = 32
+end type
+
 type, bind(C) :: bkgradient_param_t
-   real(c_double) :: sd_sigma = 2.5, offset = 1.0
+   real(c_double) :: sd_sigma = 2.5, offset = 0.97, gradient=1.0, sigma_shift = 0
    integer(c_int64_t) :: start_x = 55, start_y = 67, n_points = 64, window_size = 16, margin = 32
 end type
 
@@ -31,18 +35,34 @@ function default_bkgradient_params() bind(C)
    default_bkgradient_params = bkgradient_param_t()
 end function
 
+subroutine sample_point_stats(data_in, param, box_stats, err_out)
+
+   real(buf_k) :: data_in(:,:)
+   type(box_sample_param_t), intent(in) :: param
+   type(box_px_t) :: boxes(param%n_points)
+   type(error_status_t), intent(inout) :: err_out
+   type(box_stats_t) :: box_stats(param%n_points)
+   integer :: ibox
+
+   call generate_boxes(shape(data_in, kind=c_int64_t), param, boxes)
+   call ij_to_xy(real(boxes%x + boxes%w / 2, c_double), real(boxes%y + boxes%h / 2, c_double), &
+      size(data_in, 1, c_int64_t), size(data_in, 2, c_int64_t), &
+      1.0_c_double, box_stats%x, box_stats%y)
+   do ibox = 1, size(boxes)
+      call compute_box_stats(data_in, param, boxes(ibox), box_stats(ibox)%av, box_stats(ibox)%sd)
+   end do
+
+end subroutine
+
 subroutine estimate_gradient(buf_in, buf_out, param, err_out) bind(C)
    type(buffer_descriptor_r32_t), value :: buf_in, buf_out
    type(bkgradient_param_t), intent(in) :: param
    type(error_status_t), intent(inout) :: err_out
 
    real(buf_k), pointer :: data_in(:,:), data_out(:,:)
-   type(box_px_t) :: boxes(param%n_points)
-   real(buf_k) :: boxes_av(param%n_points), boxes_sd(param%n_points)
-   real(c_double) :: boxes_x(param%n_points), boxes_y(param%n_points)
+   type(box_stats_t) :: box_stats(param%n_points)
    real(buf_k) :: limit_sd
    logical(c_bool) :: boxes_mask(param%n_points)
-   integer :: ibox
    type(bkgradient_model_t) :: model
 
    call reset_err(err_out)
@@ -55,40 +75,46 @@ subroutine estimate_gradient(buf_in, buf_out, param, err_out) bind(C)
       return
    end if
 
-   call generate_boxes(shape(data_in, kind=c_int64_t), param, boxes)
-   do ibox = 1, size(boxes)
-      call compute_box_stats(data_in, param, boxes(ibox), boxes_av(ibox), boxes_sd(ibox))
-   end do
-   limit_sd = sigclip2_fixed(boxes_sd, real(param%sd_sigma, buf_k), 0._buf_k)
+   call sample_point_stats(data_in, box_sample_param_t( &
+      start_x=param%start_x, start_y=param%start_y, n_points=param%n_points, &
+      window_size=param%window_size, margin=param%margin), box_stats, err_out)
+   if (failed_err(err_out)) return
+
+   limit_sd = sigclip2_fixed(box_stats%sd, real(param%sd_sigma, buf_k), 0._buf_k)
    if (.not.ieee_is_normal(limit_sd)) then
       call set_err(err_out, msg="all points for background estimations were rejected")
       return
    end if
-   boxes_mask = boxes_sd < param%sd_sigma * limit_sd
+   boxes_mask = box_stats%sd < param%sd_sigma * limit_sd
+
+#  ifndef NDEBUG
+   block
+      integer i
+      write (*, *) " Points used for background estimation:"
+      do i = 1, param%n_points
+         write (*, '(i5,2f11.2,2e11.3,2x,a)') i, box_stats(i)%x, box_stats(i)%y, box_stats(i)%av, box_stats(i)%sd, &
+            merge(' ', 'X', boxes_mask(i))
+      end do
+   end block
+#  endif
 
    if (count(boxes_mask) < 3) then
       call set_err(err_out, msg="all points for background estimations were rejected")
       return
    end if
 
-   call ij_to_xy(real(boxes%x + boxes%w / 2, c_double), real(boxes%y + boxes%h / 2, c_double), &
-      size(data_in, 1, c_int64_t), size(data_in, 2, c_int64_t), &
-      1.0_c_double, boxes_x, boxes_y)
-
-   call linfit2d(pack(real(boxes_x, buf_k), boxes_mask), pack(real(boxes_y, buf_k), boxes_mask),&
-      pack(boxes_av, boxes_mask), model%a, model%b, model%c, err_out)
+   call linfit2d(pack(real(box_stats%x, buf_k), boxes_mask), pack(real(box_stats%y, buf_k), boxes_mask),&
+      pack(box_stats%av - real(param%sigma_shift, buf_k) * box_stats%sd, boxes_mask), model%a, model%b, model%c, err_out)
 
    if (failed_err(err_out)) return
 
-   model%c = model%c * param%offset
-
-   call generate_background(data_out, model)
+   call generate_background(data_out, param, model)
 
 end subroutine
 
 subroutine generate_boxes(dims, param, boxes)
    integer(c_int64_t) :: dims(2)
-   type(bkgradient_param_t) :: param
+   type(box_sample_param_t) :: param
    type(box_px_t) :: boxes(:)
    integer(c_int64_t) :: ibox, counter_x, counter_y
    real(c_double) :: cx_fl, cy_fl
@@ -115,16 +141,17 @@ end subroutine
 
 subroutine compute_box_stats(data_in, param, box, box_av, box_sd)
    real(buf_k) :: data_in(:,:), box_av, box_sd
-   type(bkgradient_param_t) :: param
+   type(box_sample_param_t) :: param
    type(box_px_t) :: box
 
    call avsd(data_in(box%x:box%x + box%w - 1, box%y:box%y+box%w - 1), box_av, box_sd)
 
 end subroutine
 
-subroutine generate_background(data_out, model)
+subroutine generate_background(data_out, param, model)
    real(buf_k) :: data_out(:,:)
    type(bkgradient_model_t) :: model
+   type(bkgradient_param_t) :: param
 
    integer(c_int64_t) :: i, j
    real(c_double) :: x, y
@@ -133,7 +160,7 @@ subroutine generate_background(data_out, model)
       call ij_to_xy(real(i, c_double), real(j, c_double), &
          size(data_out, 1, c_int64_t), size(data_out, 2, c_int64_t), 1.0_c_double, &
          x, y)
-      data_out(i, j) = model%a * x + model%b * y + model%c
+      data_out(i, j) = (model%a * x + model%b * y) * param%gradient + model%c * param%offset
    end do
 end subroutine
 

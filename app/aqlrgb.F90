@@ -461,8 +461,9 @@ contains
     write (*, hlp_fmt) '-sqrt/-asinh/-log', 'compress the image levels before saving'
     write (*, hlp_fmt) '-sqrt2/-asinh2/-log2', 'same but using luminosity'
     write (*, hlp_fmtc) '(boosts star colors but can kill some details)'
-    write (*, '(a)') '-sharpen/wavelet/deconv [FWHM [strength]]'
-    write (*, hlp_fmtc) 'sharpen the luminance (default strength=0.85)'
+    write (*, '(a)') '-wavelet/-deconv/-unsharp [FWHM [strength]]'
+    write (*, hlp_fmtc) 'sharpen the luminance (default strength: 0.1/0.8/0.4)'
+    write (*, hlp_fmt) '-best', 'shortcut for -wb -bg -smooth -asinh with deconv sharpening'
     print fmthlp, '-margin W', 'sets width for processing margin in px {def.: 64}'
     write (*, hlp_fmt) '-h[elp]', 'prints help'
   end subroutine

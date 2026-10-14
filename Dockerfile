@@ -1,27 +1,35 @@
-FROM debian:trixie AS builder
+FROM ubuntu:24.04 AS builder
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-cmake make gcc g++ gfortran libpng-dev libreadline-dev pkg-config
+    cmake make gcc g++ gfortran libreadline-dev pkg-config zlib1g-dev
 
 WORKDIR /tmp/aquila
 COPY . .
 WORKDIR /tmp/aquila/build
-RUN cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/opt/aquila -DAQUILA_OPENMP=On \
-    && cmake --build . && ctest . && cmake --install .
+RUN cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/opt/aquila/usr \
+        -DAQUILA_PARALLEL=On -DAQUILA_TESTS=Off -DAQUILA_WINDOW=Off \
+    && cmake --build . -j"$(nproc)" && cmake --install .
 
-FROM debian:trixie
+COPY scripts/entrypoint.sh /opt/aquila/entrypoint.sh
+RUN chmod +x /opt/aquila/entrypoint.sh
+
+FROM ubuntu:24.04
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libpng16-16t64 libreadline8t64 libgomp1 libgfortran5
+    libreadline8t64 libgomp1 libgfortran5 zlib1g
 
 COPY --from=builder /opt/aquila/ /opt/aquila/
-ENV PATH="${PATH}:/opt/aquila/bin"
-ENV LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:/opt/aquila/lib"
-ENV INCLUDE_PATH="${INCLUDE_PATH}:/opt/aquila/include"
+WORKDIR /work
 
-COPY scripts/docker_entrypoint.sh /opt/aquila/docker_entrypoint.sh
-RUN chmod +x /opt/aquila/docker_entrypoint.sh
+# Recommended way to run (e.g. as an alias in .bashrc):
+#   alias aquila='docker run -it --rm --user "$(id -u):$(id -g)" -v aquila-history:/history -v "$PWD":/work aquila'
+#   aquila cli
+# --user: output files in the current directory are owned by you, not root
+# aquila-history: a named volume keeping aqcli history between runs
+# /history is world-writable so that history works under any --user
+RUN mkdir -m 1777 /history
+ENV AQUILA_HISTORY_FILE=/history/history.txt
 
-ENTRYPOINT [ "/opt/aquila/docker_entrypoint.sh" ]
+ENTRYPOINT [ "/opt/aquila/entrypoint.sh" ]

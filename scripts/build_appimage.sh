@@ -39,13 +39,13 @@ mkdir -p "$APPDIR/usr/lib"
 for bin in "$APPDIR/usr/bin/"*; do
     ldd "$bin" 2>/dev/null \
         | awk '/=> \// { print $3 }' \
-        | grep -E 'libgfortran|libgomp|libaqtask_dispatch|libaquila|aquila2|libcfitsio|libpng16|libreadline' \
+        | grep -E 'libgfortran|libgomp|libreadline' \
         | sort -u \
         | xargs -I{} cp -v {} "$APPDIR/usr/lib/" || true
 done
 
 # ── AppRun + .desktop ──────────────────────────────────────────────────────
-cp "$SRC_DIR/scripts/AppRun"         "$APPDIR/AppRun"
+cp "$SRC_DIR/scripts/entrypoint.sh"   "$APPDIR/AppRun"
 cp "$SRC_DIR/snap/gui/aquila.desktop"  "$APPDIR/aquila.desktop"
 sed -i 's/^Exec=.*/Exec=aquila/' "$APPDIR/aquila.desktop"
 sed -i 's/^Icon=.*/Icon=aquila/' "$APPDIR/aquila.desktop"

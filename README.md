@@ -6,6 +6,8 @@
 While graphical tools exist for this workflow, they rarely integrate well with the terminal — the natural environment for batch-processing hundreds of FITS files, writing reproducible pipelines, and automating nightly runs.
 Aquila is designed to fit into that world: fast, scriptable, and unobtrusive.
 
+The same properties make it a good fit for AI coding agents. Everything is plain text: an agent can write an ``aqcli`` pipeline, run it, read the results, check the output images and refine the parameters on its own — and what you get back is a short, readable script you can keep, edit and rerun, not an opaque edit.
+
 Currently, the package consists of following programs:
 
 1. ``aqstack``— stacking and calibration of monochromatic CCD frames (bias, dark, flat, alignment, sigma-clipping)
@@ -27,7 +29,7 @@ sudo snap install aquila
 
 **AppImage**
 
-* Download Stable [x86_64 / PC](https://github.com/gronki/aquila/releases/download/stable/aquila-x86_64.AppImage) and [ARM64 / Rpi / Mac](https://github.com/gronki/aquila/releases/download/stable/aquila-aarch64.AppImage)
+* Download Stable [x86_64 / PC](https://github.com/gronki/aquila/releases/download/stable/aquila-x86_64.AppImage) and [ARM64 / Rpi](https://github.com/gronki/aquila/releases/download/stable/aquila-aarch64.AppImage)
 
 [Click here](https://github.com/gronki/aquila/releases) to see all **AppImage** releases.
 
@@ -39,27 +41,48 @@ chmod +x aquila
 sudo install aquila /usr/local/bin/aquila
 ```
 
+**Docker**
+
+For systems where snap and AppImage are not an option. Build the image from the source tree (see below for cloning):
+
+```sh
+docker build -t aquila .
+```
+
+Add this to your ``.bashrc``:
+
+```sh
+alias aquila='docker run -it --rm --user "$(id -u):$(id -g)" -v aquila-history:/history -v "$PWD":/work aquila'
+```
+
+Then run ``aquila stack ...``, ``aquila lrgb ...`` or ``aquila cli`` from the directory with your images; only that directory is visible to the program. ``--user`` makes the output files yours rather than root's, and the ``aquila-history`` volume keeps the ``aqcli`` command history between runs. The image window is not available in Docker. When running from a script without a terminal, drop ``-t``.
+
 
 ### Build from source
 
-To build the program on Ubuntu/Debian, first install the dependencies:
+To build the program on Ubuntu, first install the dependencies (`libx11-dev` and `libxext-dev` are for the image window; skip them if you build with `-DAQUILA_WINDOW=Off`):
 
 ```sh
-apt-get update && apt-get install -y --no-install-recommends cmake make gcc g++ gfortran libreadline-dev pkg-config
+sudo apt-get update && sudo apt-get install -y --no-install-recommends cmake make gcc g++ gfortran libreadline-dev pkg-config zlib1g-dev libx11-dev libxext-dev
+```
+
+The source tree includes cfitsio, libpng and SDL2 as git submodules, so clone with them:
+
+```sh
+git clone --recursive https://github.com/gronki/aquila.git && cd aquila
 ```
 
 Manual build and installation:
 
 
 ```sh
-mkdir build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DAQUILA_OPENMP=On -DCMAKE_INSTALL_PREFIX=/opt/aquila && cmake --build . && sudo cmake --install .
+mkdir build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DAQUILA_PARALLEL=On -DAQUILA_TESTS=Off -DCMAKE_INSTALL_PREFIX=/opt/aquila && cmake --build . -j"$(nproc)" && sudo cmake --install .
 ```
 
 Remember to add to your ``.bashrc``:
 
 ```sh
 export PATH="${PATH}:/opt/aquila/bin"
-export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:/opt/aquila/lib/aquila"
 ```
 
 
@@ -78,18 +101,18 @@ STRATEGY can be: bias, dark, flat, process, align, final
                  -average  stack by average value
                   -median  stack by median
                  -sigclip  stack by 3-sigma clipped average
-          -align [METHOD]  align frames (isometric). METHOD can be:
-                           polygon: quadrangle matching {def.}
-                           gravity_only: use gravity align method
-                           gravity: use polygon matching and fine-tune
-                           using gravity
+          -align [METHOD]  align frames. METHOD can be:
+                           polygon: quadrangle matching -- only rot&transl
+                           xyr: rotation and translation
+                           affine {def.} use poly, then gravity to find affine (linear stretch)
+   -[no-]prealign-polygon  prealignment step using polygon matching.
+                           Use when frames are strongly rotated (meridian flip.) {def: off}
             -ref FILENAME  align to this frame rather than first frame
-   -resample [FACTOR=1.5]  resample before stacking (only with -align)
+     -resample [FACTOR=2]  resample before stacking (only with -align)
                            FACTOR is scale to be applied
-             -norm[alize]  normalize to average before stacking
-                -no-stack  process but do not stack images
+          -[no-]normalize  normalize to average before stacking
         -suffix/-S SUFFIX  suffix that will be added to file names
-                           when using -nostack {def.: _r}
+                           when using -nostack {def.: _pp}
    -temp/-T TEMP [DT=0.5]  stack only frames with given CCD temperature
                            DT gives allowed deviation in temperature
                            in Celsius
@@ -103,8 +126,49 @@ STRATEGY can be: bias, dark, flat, process, align, final
 [-no]-darkopt [SIGMA=5.0]  optimize dark to minimize correlation
                            if sigma is nonzero, only background will be used.
                            SIGMA=0 forces to use all pixels {def.: OFF}
-         [-no]-dirty-dark  subtract bias from dark (only if not done before!)
+         -[no-]dark-scale  scale dark proportional to the exposure time
                            {def.: OFF}
+         [-no]-dirty-dark  notify that the darkframe had not been bias-corrected
+                           {def.: ON}
+                 -verbose  verbose output
+
+Typical CMOS workflow (with flatdarks)
+
+     aqstack dark Dark/dark_*.fits -o dark.fits
+     aqstack dark Dark/flatdark_*.fits -o flatdark.fits
+     aqstack flat -dark flatdark.fits Flat/*.fits -o flat.fits
+     aqstack final -dark dark.fits -flat flat.fits Light/*.fits -o stack.fits
+
+You may use -ref option to align RGB channels
+
+     aqstack final Light/R/*.fits -ref Light/L/001.fits -o stack_R.fits
+     aqstack final Light/G/*.fits -ref Light/L/001.fits -o stack_G.fits
+```
+
+CCD workflow with a master bias (``final`` aligns, normalizes and stacks with sigma clipping by default):
+
+```sh
+aqstack bias Bias/*.fits -o bias.fits
+aqstack dark -bias bias.fits Dark/*.fits -o dark.fits
+aqstack flat -bias bias.fits Flat/L/*.fits -o flat_L.fits
+aqstack final -bias bias.fits -dark dark.fits -flat flat_L.fits Light/L/*.fits -o stack_L.fits
+```
+
+Combining several nights, each with its own calibration frames: ``process`` calibrates the frames without stacking and writes each one next to its original with the ``_pp`` suffix, then ``final`` aligns and stacks all of them together:
+
+```sh
+aqstack process -dark Night1/dark.fits -flat Night1/flat.fits Night1/Light/*.fits
+aqstack process -dark Night2/dark.fits -flat Night2/flat.fits Night2/Light/*.fits
+aqstack final Night1/Light/*_pp.fits Night2/Light/*_pp.fits -o stack.fits
+```
+
+Pixel-aligned channels for ``aqlrgb``: pass the same single frame as ``-ref`` when stacking every channel. All frames are aligned to the stars of that frame, so all stacks share its pixel grid:
+
+```sh
+aqstack final Light/L/*.fits -ref Light/L/001.fits -o stack_L.fits
+aqstack final Light/R/*.fits -ref Light/L/001.fits -o stack_R.fits
+aqstack final Light/G/*.fits -ref Light/L/001.fits -o stack_G.fits
+aqstack final Light/B/*.fits -ref Light/L/001.fits -o stack_B.fits
 ```
 
 ### aqlrgb
@@ -115,21 +179,41 @@ STRATEGY can be: bias, dark, flat, process, align, final
 prepares the aligned images for RGB processing
 usage: aqlrgb [L] R G B [-o FILE] [options]
 R, G, B are color frames and L is optional luminance
-            -o/-output  specifies the output file name
-                        (allowed formats: fits, png)
-                -split  save as 3 files fits rather than one cube
-                        for example, if image.fits is given to -o, three files
-                        image.r.fits, image.g.fits, image.b.fits will be written
-        -smooth [FWHM]  smoothes color while preserving luminance
-                        if FWHM not given, default value (2.5) will be used
-         -wb/-equalize  attempt to make stars white
-                        (works best if background is small)
-       -bg/-background  attempt to make background black
-                        (do not use for strong nebulosity)
-     -sqrt/-asinh/-log  compress the image levels before saving
-  -sqrt2/-asinh2/-log2  same but using luminosity
-                        (boosts star colors but can kill some details)
-               -h[elp]  prints help
+               -o/-output  specifies the output file name
+                           (allowed formats: fits, png)
+                   -split  save as 3 files fits rather than one cube
+                           for example, if image.fits is given to -o, three files
+                           image.r.fits, image.g.fits, image.b.fits will be written
+           -smooth [FWHM]  smoothes color while preserving luminance
+                           if FWHM not given, default value (2.5) will be used
+            -wb/-equalize  attempt to make stars white
+                           (works best if background is small)
+          -bg/-background  attempt to make background black
+                           (do not use for strong nebulosity)
+        -sqrt/-asinh/-log  compress the image levels before saving
+     -sqrt2/-asinh2/-log2  same but using luminosity
+                           (boosts star colors but can kill some details)
+-wavelet/-deconv/-unsharp [FWHM [strength]]
+                           sharpen the luminance (default strength: 0.1/0.8/0.4)
+                    -best  shortcut for -wb -bg -smooth -asinh with deconv sharpening
+                -margin W  sets width for processing margin in px {def.: 64}
+                  -h[elp]  prints help
+```
+
+Examples:
+
+```sh
+# RGB: white stars, black background, asinh stretch
+aqlrgb stack_R.fits stack_G.fits stack_B.fits -wb -bg -asinh -o rgb.png
+
+# LRGB: smooth the colour, sharpen the luminance, stretch using luminosity
+aqlrgb stack_L.fits stack_R.fits stack_G.fits stack_B.fits -wb -bg -smooth -wavelet -asinh2 -o lrgb.png
+
+# narrowband in the Hubble palette (SII, H-alpha, OIII as R, G, B)
+aqlrgb stack_S.fits stack_H.fits stack_O.fits -bg -asinh -o sho.png
+
+# balanced but unstretched, as three FITS files rgb.r.fits, rgb.g.fits, rgb.b.fits
+aqlrgb stack_R.fits stack_G.fits stack_B.fits -wb -bg -o rgb.fits -split
 ```
 
 ## Scripting with aqcli
@@ -226,6 +310,10 @@ lrgb mix(1, R, 1, G, 1, B), R, G, B | as RR, GG, BB
 png_rgb RR, GG, BB, "sho.png"
 ```
 
+## AI Usage
+
+This project was started in 2016 and its core functionality was developed by 2021. The core ideas as well as imaging processing techniques are the idea and developed by the author. AI aided in developing building and deployment scripts, as well as tutoring Modern C++ features. This repository is mostly the byproduct of the author learning and experimenting how various things work by building them from ground up.
+
 ## Changelog
 
 - 210111: removed flux ratios, changed triangles to quadrangles
@@ -235,12 +323,3 @@ png_rgb RR, GG, BB, "sho.png"
 - 200717: hot pixel correction
 - 200716: now temperature filter is before loading images, which saves memory
 
-## Planned Features
-
-- color images
-- large image handling
-- use 32 bits for image storage
-- more non-linear distortions
-- proper drizzling
-- better control over colors
-- LRGB and edit commands

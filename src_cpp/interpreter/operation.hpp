@@ -66,6 +66,7 @@ struct Operation
     }
     virtual ValuePtr call(std::vector<ValuePtr>) const = 0;
     virtual std::string name() const = 0;
+    virtual bool allow_parallel() const { return true; }
     virtual std::string description() const { return ""; }
     virtual Tracing tracing_mode() const { return Tracing::DEFAULT; }
     virtual bool cacheable() const

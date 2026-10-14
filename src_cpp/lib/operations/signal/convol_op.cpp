@@ -10,12 +10,8 @@ ValuePtr ConvolOp::run(const values::BufferValue &buf,
 {
     int err;
     Buffer<real_buf_t> result(buf.buffer.cols(), buf.buffer.rows());
-    conv2d_smallkernel(c_buf(buf.buffer),
-        c_buf(krn.buffer),
-        edges.c_str(),
-        c_buf(result),
-        false,
-        &err);
+    conv2d_smallkernel(
+        c_buf(buf.buffer), c_buf(krn.buffer), edges.c_str(), c_buf(result), true, &err);
     if (err)
         throw std::runtime_error("Convolution failed.");
     return std::make_unique<values::BufferValue>(std::move(result), buf.info);
@@ -39,12 +35,8 @@ ValuePtr DeconvOp::run(const values::BufferValue &buf,
     const Real &niter) const
 {
     Buffer<real_buf_t> result(buf.buffer.cols(), buf.buffer.rows());
-    deconvol_lr(c_buf(buf.buffer),
-        c_buf(krn.buffer),
-        strength,
-        (int)niter,
-        c_buf(result),
-        false);
+    deconvol_lr(
+        c_buf(buf.buffer), c_buf(krn.buffer), strength, (int)niter, c_buf(result), true);
     return std::make_unique<values::BufferValue>(std::move(result), buf.info);
 }
 

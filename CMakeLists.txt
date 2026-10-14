@@ -114,7 +114,7 @@ if (BUILD_TYPE STREQUAL "RELEASE")
     add_compile_options("$<$<CXX_COMPILER_ID:IntelLLVM>:SHELL:-fp-model fast=1>")
 endif()
 
-option(AQUILA_PARALLEL "use OpenMP in build" Off)
+option(AQUILA_PARALLEL "use OpenMP in build" On)
 
 if (AQUILA_PARALLEL)
 find_package(OpenMP)

@@ -264,7 +264,7 @@ static ValuePtr op_call_with_sequencing(const Operation &op,
 
 #ifdef AQUILA_PARALLEL
 
-    if (parallel)
+    if (parallel && op.allow_parallel())
     {
 
         const auto ncpu = std::max(1l, (std::int64_t)std::thread::hardware_concurrency());

@@ -23,6 +23,8 @@ character(len = *), parameter :: perf_fmt = '("PERF", a10, 1x, "=", f7.3)'
 
 logical :: cfg_verbose = .false.
 
+real(r64_k), parameter :: PI = 4.0_r64_k * atan(1.0_r64_k)
+
 contains
 
 subroutine greeting(progname)

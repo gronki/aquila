@@ -19,6 +19,10 @@
 #define AQ_STATUS_ERR_SHAPE_MISMATCH 100
 #define AQ_STATUS_ERR_EMPTY_BUFFER 100
 
+#define AQ_PREALIGN_NONE 0
+#define AQ_PREALIGN_FLIP 1
+#define AQ_PREALIGN_POLYGON 2
+
 /* C-side names with no Fortran counterpart to generate them from */
 typedef float real_buf_t;
 #define TRANSFORM_MAX_PAR 16

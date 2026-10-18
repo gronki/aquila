@@ -11,12 +11,25 @@ ValuePtr AlignOp::run(const values::SourceListValue &lst,
 {
 
     transform_t trans;
-    if (prealign != "yes" && prealign != "no")
-        throw std::runtime_error("prealign must be: yes or no");
 
     align_params_t params = default_align_params();
     params.scale = (double(lst_ref.nx) + double(lst_ref.ny)) / 3;
-    params.prealign_polygon = (prealign == "yes");
+    if (prealign == "polygon")
+    {
+        params.prealign = AQ_PREALIGN_POLYGON;
+    }
+    else if (prealign == "flip")
+    {
+        params.prealign = AQ_PREALIGN_FLIP;
+    }
+    else if (prealign == "none")
+    {
+        params.prealign = AQ_PREALIGN_NONE;
+    }
+    else
+    {
+        throw std::runtime_error("Prealign must be: none, flip, polygon");
+    }
     error_status_t err;
 
     classic_align(lst_ref.sources.data(),
@@ -42,7 +55,7 @@ const ArgManifest &AlignOp::arg_manifest() const
             .default_str = "affine",
             .help = "options: polygon, xyr, affine"},
         ArgSpec{.name = "prealign",
-            .default_str = "no",
+            .default_str = "flip",
             .help = "Prealign using polygons? Useful "
                     "for rotated photos. yes/no"},
     };

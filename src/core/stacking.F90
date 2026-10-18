@@ -43,7 +43,7 @@ subroutine mask_margins(mask, margin)
    ni = size(mask, 1)
    nj = size(mask, 2)
    mask(:min(margin, ni), :) = .false.
-   mask(max(ni - margin + 1, 1), :) = .false.
+   mask(max(ni - margin + 1, 1):, :) = .false.
    mask(:, :min(margin, nj)) = .false.
    mask(:, max(nj - margin + 1, 1):) = .false.
 end subroutine
@@ -54,7 +54,7 @@ subroutine mask_margins_c(mask, ni, nj, margin) bind(C, name="mask_margins")
    if (margin == 0) return
    if (margin < 0) error stop "margin < 0"
    mask(:min(margin, ni), :) = .false.
-   mask(max(ni - margin + 1, 1), :) = .false.
+   mask(max(ni - margin + 1, 1):, :) = .false.
    mask(:, :min(margin, nj)) = .false.
    mask(:, max(nj - margin + 1, 1):) = .false.
 end subroutine
@@ -75,7 +75,8 @@ subroutine normalize_offset_gain_c(buffers, buffers_out, n_buf, margin, err) &
    real(buf_k), allocatable :: imref(:,:), xx(:), yy(:)
    real(buf_k), pointer, CONTIGUOUS :: ptr(:,:), ptr_out(:,:)
    logical, allocatable :: mask(:,:)
-   integer :: i, j, np, sz(2), nstack
+   integer :: i, j, sz(2), nstack
+   integer(c_double) :: np
 
    call reset_err(err)
 
@@ -102,7 +103,7 @@ subroutine normalize_offset_gain_c(buffers, buffers_out, n_buf, margin, err) &
    mask(:,:) = mask .and. ieee_is_normal(imref)
 
    ! pack it into 1-d array
-   np = count(mask)
+   np = count(mask, kind=c_double)
    if (np == 0) then
       call set_err(err, msg="no points eligible for normalization")
       return
@@ -123,66 +124,22 @@ end subroutine
 
  !----------------------------------------------------------------------------!
 
-subroutine normalize_offset_gain(buffer, margin)
-   use statistics, only: linfit, outliers_2d_mask
-
-   real(buf_k), intent(inout) :: buffer(:,:,:)
-   integer, intent(in) :: margin
-
-   real(buf_k) :: a, b, av, sd
-   real(buf_k), allocatable :: imref(:,:), xx(:), yy(:)
-   logical, allocatable :: mask(:,:)
-   integer :: i, j, np, sz(3), nstack
-
-   sz = shape(buffer)
-   nstack = sz(3)
-
-   ! create mean frame to normalize to
-   allocate(imref(sz(1), sz(2)))
-   do concurrent (i = 1:sz(1), j = 1:sz(2))
-      imref(i,j) = sum(buffer(i, j, :)) / nstack
-   end do
-
-   ! create mask which excludes edges and the brigtenst pixels
-   allocate(mask(sz(1), sz(2)), source=.true.)
-   call mask_margins(mask, margin)
-   ! call outliers_2d_mask(imref, mask, 3.0_buf_k, 10, av, sd)
-   mask(:,:) = mask .and. imref < (minval(imref, mask=mask) + maxval(imref, mask=mask)) / 2
-   mask(:,:) = mask .and. ieee_is_normal(imref)
-
-   ! pack it into 1-d array
-   np = count(mask)
-   if (np == 0) error stop "zero points for image normalization"
-   allocate(xx(np), yy(np))
-   xx(:) = pack(imref, mask)
-   deallocate(imref)
-
-   do i = 1, nstack
-      yy(:) = pack(buffer(:,:,i), mask)
-      call linfit(xx, yy, a, b)
-      write (stderr, '("NORM frame(",i2,") y = ",f5.3,"x + ",f7.1)') i, a, b
-      buffer(:,:,i) = (buffer(:,:,i) - b) / a
-   end do
-end subroutine
-
- !----------------------------------------------------------------------------!
-
-subroutine stack_frames(strategy, method, frames, buffer, frame_out)
+subroutine stack_frames(strategy, method, frames, bufs, frame_out)
    use framehandling, only: image_frame_t
 
    character(len = *), intent(in) :: strategy, method
-   real(buf_k), intent(in) :: buffer(:,:,:)
+   type(buffer_descriptor_r32_t), intent(in) :: bufs(:)
    type(image_frame_t), intent(in) :: frames(:)
    type(image_frame_t), intent(out) :: frame_out
    real(real64) :: t1, t2
    integer :: nstack
 
-   nstack = size(buffer, 3)
+   nstack = size(bufs)
 
-   call frame_out % check_shape(size(buffer, 1), size(buffer, 2))
+   call frame_out % check_shape(int(bufs(1) % rows), int(bufs(1) % cols))
 
    call cpu_time(t1)
-   call stack_buffer(method, buffer(:, :, 1:nstack), frame_out % data)
+   call stack_buffer(method, bufs, frame_out % data)
    call cpu_time(t2)
    print perf_fmt, 'stack', t2 - t1
 
@@ -203,7 +160,7 @@ subroutine stack_frames(strategy, method, frames, buffer, frame_out)
       estimate_noise: block
          real(buf_k) :: rms
 
-         rms = estimate_differential_noise(buffer)
+         rms = estimate_differential_noise(bufs)
 
          write (*, '("RMS = ", f10.2)') rms
          call frame_out % hdr % add_real('RMS', real(rms))
@@ -223,94 +180,39 @@ subroutine stack_frames_c(frames, n_frames, method_, frame_out, err) &
 
    character(kind=c_char, len = 1), intent(in) :: method_(*)
    character(len=32) :: method
-   real(buf_k), allocatable :: buffer(:,:,:)
    integer(c_int), value :: n_frames
    type(buffer_descriptor_r32_t), intent(in) :: frames(n_frames)
    type(buffer_descriptor_r32_t), value :: frame_out
    type(error_status_t) :: err
    real(buf_k), pointer, contiguous :: buf_out(:,:)
    real(real64) :: t1, t2
-   integer :: nstack
+   integer :: i
 
    call reset_err(err)
 
    call c_f_string(method_, method)
-   call collect_dframes_into_buffer(frames, buffer, err)
-   if (check_err(err)) return
 
-   if (frame_out%rows /= size(buffer, 1) .or. frame_out%cols /= size(buffer, 2)) then
-      call set_err(err, code = status_err_shape_mismatch, msg = "mismatch of frame dimensions")
-      return
-   end if
+   do i = 1, n_frames
+      if (.not. c_associated(frames(i) % data)) then
+         call set_err(err, code=status_err_empty_buffer, &
+            msg="Empty buffer encountered during stacking")
+         return
+      end if
+      if (frames(i)%rows /= frame_out%rows .or. frames(i)%cols /= frame_out%cols) then
+         call set_err(err, code = status_err_shape_mismatch, msg = "mismatch of frame dimensions")
+         return
+      end if
+   end do
 
    buf_out => from_descriptor(frame_out)
 
    call cpu_time(t1)
-   call stack_buffer(method, buffer, buf_out)
+   call stack_buffer(method, frames, buf_out)
    call cpu_time(t2)
 
    print perf_fmt, 'stack', t2 - t1
 
 end subroutine stack_frames_c
-
- !----------------------------------------------------------------------------!
-
-subroutine collect_frames_into_buffer(frames, buffer)
-   use framehandling, only: image_frame_t
-
-   class(image_frame_t), intent(in) :: frames(:)
-   real(kind=buf_k), allocatable :: buffer(:,:,:)
-   integer :: n_frames, i, ni, nj
-
-   n_frames = size(frames)
-   do i = 1, n_frames
-      if (.not. allocated(frames(i) % data)) &
-         error stop "attempting to collect frames into buffer but one of them is empty"
-      if (i == 1) then
-         ni = size(frames(i)%data, 1)
-         nj = size(frames(i)%data, 2)
-         allocate(buffer(ni, nj, n_frames))
-      end if
-      buffer(:,:,i) = frames(i) % data
-   end do
-end subroutine
-
- !----------------------------------------------------------------------------!
-
-subroutine collect_dframes_into_buffer(frames, buffer, err)
-   use framehandling, only: image_frame_t
-   use aquila_c_binding
-
-   type(buffer_descriptor_r32_t), intent(in) :: frames(:)
-   real(buf_k), pointer, contiguous :: buf(:,:)
-   type(error_status_t) :: err
-   real(kind=buf_k), allocatable :: buffer(:,:,:)
-   integer :: n_frames, i, ni, nj
-
-   call reset_err(err)
-
-   n_frames = size(frames)
-   do i = 1, n_frames
-      buf => from_descriptor(frames(i))
-      if (.not. associated(buf)) then
-         call set_err(err, code=status_err_empty_buffer, &
-            msg="Empty buffer encountered during stacking")
-         return
-      end if
-      if (i == 1) then
-         ni = size(buf, 1)
-         nj = size(buf, 2)
-         allocate(buffer(ni, nj, n_frames))
-      else
-         if (ni /= size(buf, 1) .or. nj /= size(buf, 2)) then
-            call set_err(err, code=status_err_shape_mismatch, &
-               msg="Mismatched shape of input buffers")
-            return
-         end if
-      end if
-      buffer(:,:,i) = buf
-   end do
-end subroutine
 
  !----------------------------------------------------------------------------!
 
@@ -331,45 +233,48 @@ end function
 
  !----------------------------------------------------------------------------!
 
-subroutine stack_buffer(method, buffer, buffer_out)
+subroutine stack_buffer(method, bufs, buffer_out)
    use statistics, only: quickselect, sigclip2
 
-   real(buf_k), intent(in) :: buffer(:,:,:)
+   type(buffer_descriptor_r32_t), intent(in) :: bufs(:)
    real(buf_k), intent(out) :: buffer_out(:,:)
    character(len = *), intent(in) :: method
-   integer :: i, j, nstack
-   real(buf_k) :: a(size(buffer, 3))
+   integer :: i, j, k, ni, nstack
+   real(buf_k) :: a(size(bufs))
+   ! column j of every frame: col(:, k) = frame k, column j
+   real(buf_k), allocatable :: col(:,:)
+   real(buf_k), pointer, contiguous :: buf(:,:)
 
-   nstack = size(buffer, 3)
+   nstack = size(bufs)
+   ni = size(buffer_out, 1)
 
-   select case (method)
-   case ('m', 'median')
-      !$omp parallel do private(i, j, a)
-      do j = 1, size(buffer, 2)
-         do i = 1, size(buffer, 1)
-            a(:) = buffer(i, j, 1:nstack)
-            ! forall (k = 1:nstack) a(k) = frames(k) % data(i, j)
+   !$omp parallel do private(i, j, k, a, col, buf)
+   do j = 1, size(buffer_out, 2)
+      allocate(col(ni, nstack))
+      do k = 1, nstack
+         buf => from_descriptor(bufs(k))
+         col(:, k) = buf(:, j)
+      end do
+
+      select case (method)
+      case ('m', 'median')
+         do i = 1, ni
+            a(:) = col(i, :)
             buffer_out(i, j) = quickselect(a(:), (nstack + 1) / 2)
          end do
-      end do
-      !$omp end parallel do
-   case ('s', 'sigclip')
-      !$omp parallel do private(i, j, a)
-      do j = 1, size(buffer, 2)
-         do i = 1, size(buffer, 1)
-            ! forall (k = 1:nstack) a(k) = frames(k) % data(i, j)
-            ! call sigclip2(a(:), frame_out % data(i, j))
-            buffer_out(i, j) = sigclip2(buffer(i, j, 1:nstack), 3._buf_k)
+      case ('s', 'sigclip')
+         do i = 1, ni
+            buffer_out(i, j) = sigclip2(col(i, :), 3._buf_k)
          end do
-      end do
-      !$omp end parallel do
-   case default
-      do j = 1, size(buffer, 2)
-         do i = 1, size(buffer, 1)
-            buffer_out(i,j) = sum(buffer(i, j, 1:nstack)) / nstack
+      case default
+         do i = 1, ni
+            buffer_out(i, j) = sum(col(i, :)) / nstack
          end do
-      end do
-   end select
+      end select
+
+      deallocate(col)
+   end do
+   !$omp end parallel do
 end subroutine
 
  !----------------------------------------------------------------------------!
@@ -395,23 +300,27 @@ end subroutine
 
  !----------------------------------------------------------------------------!
 
-pure function estimate_differential_noise(buffer) result(rms)
+function estimate_differential_noise(bufs) result(rms)
    use iso_fortran_env, only: int64
-   real(buf_k), intent(in) :: buffer(:,:,:)
-   real(buf_k) :: rms, av(size(buffer, 3))
+   type(buffer_descriptor_r32_t), intent(in) :: bufs(:)
+   real(buf_k) :: rms, av(size(bufs))
+   real(buf_k), pointer, contiguous :: b1(:,:), b2(:,:)
    integer :: i, n
    integer(int64) :: nxny
 
-   nxny = size(buffer, 1, kind = int64) * size(buffer, 2, kind = int64)
-   n = size(buffer, 3)
+   nxny = bufs(1) % rows * bufs(1) % cols
+   n = size(bufs)
 
-   do concurrent (i = 1:n)
-      av(i) = sum(buffer(:,:,i)) / nxny
+   do i = 1, n
+      b1 => from_descriptor(bufs(i))
+      av(i) = sum(b1) / nxny
    end do
 
    rms = 0
    do i = 1, n - 1
-      rms = rms + sum((buffer(:,:,i) - av(i) - buffer(:,:,i+1) + av(i+1))**2) / (2 * nxny)
+      b1 => from_descriptor(bufs(i))
+      b2 => from_descriptor(bufs(i + 1))
+      rms = rms + sum((b1 - av(i) - b2 + av(i+1))**2) / (2 * nxny)
    end do
 
    rms = sqrt(rms / (n - 1))

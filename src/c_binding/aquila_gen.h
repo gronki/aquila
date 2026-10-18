@@ -26,16 +26,16 @@ typedef struct source_t {
     double kurtosis /* WARNING: Converting 'REAL(8)' to interoperable type */;
 } source_t;
 
-typedef struct error_status_t {
-    int status /* WARNING: Converting 'INTEGER(4)' to interoperable type */;
-    char message[128];
-} error_status_t;
-
 typedef struct buffer_descriptor_r32_t {
     void *data;
     long rows /* WARNING: Converting 'INTEGER(8)' to interoperable type */;
     long cols /* WARNING: Converting 'INTEGER(8)' to interoperable type */;
 } buffer_descriptor_r32_t;
+
+typedef struct error_status_t {
+    int status /* WARNING: Converting 'INTEGER(4)' to interoperable type */;
+    char message[128];
+} error_status_t;
 
 typedef struct bkgradient_model_t {
     float a /* WARNING: Converting 'REAL(4)' to interoperable type */;
@@ -51,13 +51,6 @@ typedef struct box_sample_param_t {
     long margin /* WARNING: Converting 'INTEGER(8)' to interoperable type */;
 } box_sample_param_t;
 
-typedef struct box_px_t {
-    long x /* WARNING: Converting 'INTEGER(8)' to interoperable type */;
-    long y /* WARNING: Converting 'INTEGER(8)' to interoperable type */;
-    long w /* WARNING: Converting 'INTEGER(8)' to interoperable type */;
-    long h /* WARNING: Converting 'INTEGER(8)' to interoperable type */;
-} box_px_t;
-
 typedef struct box_stats_t {
     double x /* WARNING: Converting 'REAL(8)' to interoperable type */;
     double y /* WARNING: Converting 'REAL(8)' to interoperable type */;
@@ -65,13 +58,20 @@ typedef struct box_stats_t {
     float sd /* WARNING: Converting 'REAL(4)' to interoperable type */;
 } box_stats_t;
 
+typedef struct box_px_t {
+    long x /* WARNING: Converting 'INTEGER(8)' to interoperable type */;
+    long y /* WARNING: Converting 'INTEGER(8)' to interoperable type */;
+    long w /* WARNING: Converting 'INTEGER(8)' to interoperable type */;
+    long h /* WARNING: Converting 'INTEGER(8)' to interoperable type */;
+} box_px_t;
+
 typedef struct align_params_t {
     double scale /* WARNING: Converting 'REAL(8)' to interoperable type */;
     double gravity_precision /* WARNING: Converting 'REAL(8)' to interoperable type */;
     double gravity_precision_pre /* WARNING: Converting 'REAL(8)' to interoperable type */;
     int poly_stars /* WARNING: Converting 'INTEGER(4)' to interoperable type */;
     int poly_matches /* WARNING: Converting 'INTEGER(4)' to interoperable type */;
-    int_fast8_t prealign_polygon /* WARNING: Converting 'LOGICAL(1)' to interoperable type */;
+    int prealign /* WARNING: Converting 'INTEGER(4)' to interoperable type */;
 } align_params_t;
 
 typedef struct bkeq_param_t {

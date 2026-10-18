@@ -8,13 +8,15 @@ use transform_affine_m
 implicit none (type, external)
 public
 
+integer(c_int), parameter :: prealign_none = 0, prealign_flip = 1, prealign_polygon = 2
+
 type, bind(C) :: align_params_t
    real(r64_k) :: scale = 1
    real(r64_k) :: gravity_precision = 2
    real(r64_k) :: gravity_precision_pre = 10
    integer(i32_k) :: poly_stars = 32
    integer(i32_k) :: poly_matches = 16
-   logical(c_bool) :: prealign_polygon = .false.
+   integer(c_int) :: prealign = prealign_none
 end type
 
 contains
@@ -57,22 +59,46 @@ subroutine classic_align(lst0, lst, align_method, params, tx, err, verbose)
 
    xyr = transform_xyr_t(params%scale)
 
-   if (params % prealign_polygon) then
+   select case (params % prealign)
+
+   case (prealign_polygon)
       call align_polygon(lst0, lst, params%poly_stars, params%poly_matches, xyr)
-   end if
+
+   case (prealign_flip)
+      block
+         type(transform_xyr_t) :: flips(4)
+         real(real64) :: scores(4)
+         integer :: i, l(1)
+
+         do i = 1, 4
+            flips(i)%scale = params%scale
+            flips(i)%vec(3) = (i - 1) * pi / 2 * xyr % scale
+            call align_gravity(lst0, lst, flips(i), params%gravity_precision_pre, &
+               y_out=scores(i), verbose=.false.)
+         end do
+
+         l = maxloc(scores)
+         xyr = flips(l(1))
+
+#ifndef NDEBUG
+         do i = 1, 4
+            write(*, *) (i - 1) * 90., ' deg   score=', scores(i), "    vec=", &
+               flips(i)%vec(:3), ' ', merge('*', ' ', i == l(1))
+         end do
+#endif
+
+      end block
+   end select
 
    select case (align_method)
 
    case ('polygon')
-      if (.not. params % prealign_polygon) &
-         call align_polygon(lst0, lst, params%poly_stars, params%poly_matches, xyr)
+      call align_polygon(lst0, lst, params%poly_stars, params%poly_matches, xyr)
       call move_alloc(xyr, tx)
 
    case ('xyr')
       ! find an initial estimate for a transform
       ! fine-tune the transform between frames
-      if (.not. params % prealign_polygon) &
-         call align_gravity(lst0, lst, xyr, params%gravity_precision_pre, verbose)
       call align_gravity(lst0, lst, xyr, params%gravity_precision, verbose)
       call move_alloc(xyr, tx)
 
@@ -80,8 +106,6 @@ subroutine classic_align(lst0, lst, align_method, params, tx, err, verbose)
       block
          type(transform_affine_t), allocatable :: aff
          ! find an initial estimate for a transform
-         if (.not. params % prealign_polygon) &
-            call align_gravity(lst0, lst, xyr, params%gravity_precision_pre, verbose)
          ! initialize the affine transform from that
          call align_gravity(lst0, lst, xyr, params%gravity_precision, verbose)
          aff = affine_from_xyr(xyr)
@@ -99,7 +123,7 @@ end subroutine
 
  !------------------------------------------------------------------------------------!
 
-subroutine align_gravity(xy, xy0, v0, k0, verbose)
+subroutine align_gravity(xy, xy0, v0, k0, verbose, y_out)
    type(source_t), intent(in) :: xy(:), xy0(:)
    !> transform to be found
    class(transform_t), intent(inout) :: v0
@@ -107,9 +131,11 @@ subroutine align_gravity(xy, xy0, v0, k0, verbose)
    real(r64_k), intent(in) :: k0
    !> print debug?
    logical, intent(in), optional :: verbose
-   logical :: verbose_
+   !> optional output loss
+   real(r64_k), intent(out), optional :: y_out
 
    type(source_t), allocatable :: xy1(:)
+   logical :: verbose_
    integer :: ii, npar
    real(r64_k) :: y0, lam
    real(r64_k) :: y0_dv(v0%npar()), y0n_dv(v0%npar())
@@ -182,6 +208,8 @@ contains
             end if
          end do scan_interval
       end do loop_scales
+
+      if (present(y_out)) y_out = y
 
       if (verbose_) write (0, *) '  ================='
 

@@ -87,6 +87,15 @@ function from_descriptor(descr)
    call c_f_pointer(descr%data, from_descriptor, arrshape)
 end function
 
+function to_descriptor(arr) result(descr)
+   real(buf_k), intent(in), target, contiguous :: arr(:,:)
+   type(buffer_descriptor_r32_t) :: descr
+
+   descr%data = c_loc(arr)
+   descr%rows = size(arr, 1)
+   descr%cols = size(arr, 2)
+end function
+
 subroutine c_f_string(c_str, f_str)
    character(kind=c_char, len=1), intent(in) :: c_str(*)
    character(kind=c_char, len=*), intent(out) :: f_str

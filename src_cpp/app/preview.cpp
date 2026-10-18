@@ -35,6 +35,13 @@ std::vector<uint8_t> render_grayscale(const Buffer<real_buf_t> &buf, float lo, f
     for (int64_t i = 0; i < buf.size(); i++)
     {
         const auto ib = i * 3;
+        if (!std::isfinite(data[i]))
+        {
+            result[ib] = 255;
+            result[ib + 1] = 0;
+            result[ib + 2] = 0;
+            continue;
+        }
         auto bit8 = scale_f_u8(data[i], lo, hi);
         result[ib] = bit8;
         result[ib + 1] = bit8;
@@ -143,7 +150,7 @@ bool get_current_dims(
         return true;
     }
 
-    if (view.current_buf < 0 && view.current_buf >= payload->bufs.size())
+    if (view.current_buf >= payload->bufs.size())
         return false;
 
     width = payload->bufs[view.current_buf].cols();

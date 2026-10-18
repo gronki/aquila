@@ -10,6 +10,8 @@ program aqstack
    use findstar
    use str_utils_m
    use iso_fortran_env, only: real64, stderr => error_unit
+   use iso_c_binding
+   use alignment_m
    use aquila_c_binding
 
    !----------------------------------------------------------------------------!
@@ -31,7 +33,7 @@ program aqstack
    logical :: cfg_dark_is_dirty = .true.
    logical :: cfg_resampling = .false.
    logical :: cfg_temperature_filter = .false.
-   logical :: cfg_prealign_polygon = .false.
+   integer(c_int) :: cfg_prealign = prealign_flip
    logical :: cfg_is_cfa = .false.
    real(r64_k) :: resample_factor = 2
    real(buf_k) :: cfg_temperature_point = 0, cfg_temperature_tolerance = 0.5
@@ -64,11 +66,12 @@ program aqstack
 
    actual_job: block
 
-      type(image_frame_t), dimension(:), allocatable :: frames
+      type(image_frame_t), dimension(:), allocatable, target :: frames
       type(image_frame_t) :: frame_bias, frame_dark, frame_flat
       logical, allocatable :: fix_mask(:,:)
       integer :: i, errno
-      real(buf_k), allocatable :: buffers_to_stack(:,:,:)
+      ! frames(:) % data, seen as a list of buffers for stacking and normalization
+      type(buffer_descriptor_r32_t), allocatable :: bufs(:)
       integer :: nx, ny
 
 
@@ -298,18 +301,22 @@ program aqstack
             class(transform_t), allocatable :: tx
             type(error_status_t) :: err
             real(r64_k) :: r0
+            ! projected frame; replaces frames(i) % data afterwards
+            real(buf_k), allocatable :: projected(:,:)
+            integer :: nyp, nxp
 
             ! r0 is roughly half of frame's dimension
             r0 = sqrt(real(nx, kind=r64_k)**2 + real(ny, kind=r64_k)**2) / sqrt(8.0_r64_k)
             align_params % scale = r0
-            align_params % prealign_polygon = cfg_prealign_polygon
+            align_params % prealign = cfg_prealign
 
             if (cfg_resampling) then
                print '("WARNING ", a)', 'resampling may require a lot of memory'
-               allocate(buffers_to_stack(nint(resample_factor * ny), nint(resample_factor * nx), nframes))
-               buffers_to_stack(:,:,:) = 0
+               nyp = nint(resample_factor * ny)
+               nxp = nint(resample_factor * nx)
             else
-               allocate(buffers_to_stack(ny, nx, nframes))
+               nyp = ny
+               nxp = nx
             end if
 
             if (ref_fn /= "") then
@@ -327,18 +334,20 @@ program aqstack
 
                   call register_stars(frames(1) % data, lst0)
 
+                  allocate(projected(nyp, nxp))
                   if (cfg_resampling) then
-                     call project_bilinear(ity, frames(1) % data, buffers_to_stack(:,:,1), resample_factor)
+                     call project_bilinear(ity, frames(1) % data, projected, resample_factor)
                   else
-                     call project_bilinear(ity, frames(1) % data, buffers_to_stack(:,:,1))
+                     call project_bilinear(ity, frames(1) % data, projected)
                   end if
+                  call move_alloc(projected, frames(1) % data)
 
                   istart = 2
                end block findstar_initial
             end if
 
             call cpu_time(t1)
-            !$omp parallel do private(i, lst, tx) shared(buffers_to_stack)
+            !$omp parallel do private(i, lst, tx, projected)
             do i = istart, nframes
                ! register the stars
                call register_stars(frames(i) % data, lst)
@@ -356,11 +365,13 @@ program aqstack
                print '("margin = ", i0)', margin
                !$omp end critical
 
+               allocate(projected(nyp, nxp))
                if (cfg_resampling) then
-                  call project_bilinear(tx, frames(i) % data, buffers_to_stack(:,:,i), resample_factor)
+                  call project_bilinear(tx, frames(i) % data, projected, resample_factor)
                else
-                  call project_bilinear(tx, frames(i) % data, buffers_to_stack(:,:,i))
+                  call project_bilinear(tx, frames(i) % data, projected)
                end if
+               call move_alloc(projected, frames(i) % data)
 
                deallocate(tx)
 
@@ -370,31 +381,39 @@ program aqstack
             print perf_fmt, 'align', t2 - t1
 
          end block align_frames
-      else
-         allocate(buffers_to_stack(ny, nx, nframes))
-         do i = 1, nframes
-            buffers_to_stack(:,:,i) = frames(i) % data
-         end do
       end if
 
       fix_nans: block
          integer :: i, j, k
-         do k = 1, size(buffers_to_stack, 3)
-            do j = 1, size(buffers_to_stack, 2)
-               do i = 1, size(buffers_to_stack, 1)
-                  if (ieee_is_normal(buffers_to_stack(i,j,k))) cycle
-                  print *, "warning: nan found in buffer ", k, &
-                     "pixel (", j, ", ", i, ")"
-                  buffers_to_stack(i,j,k) = 0
+         do k = 1, nframes
+            do j = 1, size(frames(k) % data, 2)
+               do i = 1, size(frames(k) % data, 1)
+                  if (ieee_is_normal(frames(k) % data(i,j))) cycle
+                  ! print *, "warning: nan found in buffer ", k, &
+                  !    "pixel (", j, ", ", i, ")"
+                  frames(k) % data(i,j) = 0
                end do
             end do
          end do
       end block fix_nans
 
+      allocate(bufs(nframes))
+      do i = 1, nframes
+         bufs(i) = to_descriptor(frames(i) % data)
+      end do
+
       if (cfg_normalize) then
-         call cpu_time(t1)
-         call normalize_offset_gain(buffers_to_stack(:, :, 1:nframes), &
-            ceiling(margin * merge(resample_factor, 1.0_r64_k, cfg_resampling)))
+         normalize: block
+            type(error_status_t) :: err
+            call cpu_time(t1)
+            ! same buffers as input and output: normalizes in place
+            call normalize_offset_gain_c(bufs, bufs, nframes, &
+               ceiling(margin * merge(resample_factor, 1.0_r64_k, cfg_resampling)), err)
+            if (check_err(err)) then
+               call print_err(err)
+               error stop
+            end if
+         end block normalize
          call cpu_time(t2)
          print perf_fmt, 'norm', t2 - t1
       end if
@@ -404,9 +423,6 @@ program aqstack
       if (cfg_process_only) then
          save_processed: block
             integer :: i
-            do i = 1, nframes
-               frames(i) % data = buffers_to_stack(:,:,i)
-            end do
             if (nframes == 1 .and. output_fn /= "") then
                print '(a,a)', 'writing output file: ', trim(output_fn)
                call frames(1) % write_fits(output_fn)
@@ -424,7 +440,7 @@ program aqstack
             type(image_frame_t) :: frame_out
             character(len=:), allocatable :: output_fn_clean
 
-            call stack_frames(strategy, method, frames(1:nframes), buffers_to_stack(:, :, 1:nframes), frame_out)
+            call stack_frames(strategy, method, frames(1:nframes), bufs, frame_out)
 
             output_fn_clean = select_output_filename(output_fn, strategy)
             print '(a,a)', 'writing output file: ', trim(output_fn_clean)
@@ -522,10 +538,14 @@ contains
             end if
 
          case ("-prealign-polygon")
-            cfg_prealign_polygon = .true.
+            cfg_prealign = prealign_polygon
 
-         case ("-no-prealign-polygon")
-            cfg_prealign_polygon = .false.
+         case ("-prealign-none")
+            cfg_prealign = prealign_none
+
+         case ("-prealign-flip")
+            cfg_prealign = prealign_flip
+
 
          case ("-norm", "-normalize")
             cfg_normalize = .true.

@@ -143,9 +143,13 @@ subroutine conv2d_fix(x,k,method,y,parallel, errno)
    integer(c_int), intent(out), optional :: errno
    character(*), intent(in) :: method
    logical, intent(in), optional :: parallel
+   logical :: parallel_
 
    real(buf_k), allocatable :: padded_kernel(:,:), temp_input(:,:)
    integer(size_k) :: offset(2), input_shape(2)
+
+   parallel_ = .false.
+   if (present(parallel)) parallel_ = parallel
 
    if (forbidden(any(mod(shape(k), 2) == 0), errno, &
       3, "conv2d: kernel must have uneven dimensions")) return
@@ -160,7 +164,7 @@ subroutine conv2d_fix(x,k,method,y,parallel, errno)
 
    call conv2d_pad(x, padded_kernel, size(k, 1, size_k), .false., &
       y(1 + offset(1) : input_shape(1) - offset(1), &
-   & 1 + offset(2) : input_shape(2) - offset(2)), parallel)
+   & 1 + offset(2) : input_shape(2) - offset(2)), parallel_)
 
 
    if (offset(2) > 0) then
@@ -172,7 +176,7 @@ subroutine conv2d_fix(x,k,method,y,parallel, errno)
       if (failed(errno)) return
       call conv2d_pad(temp_input, padded_kernel, size(k, 1, size_k), .false., &
          y(:, :offset(2)), &
-         parallel .and. size(padded_kernel, kind=size_k) * input_shape(1) * offset(2) > margin_parallel_threshold)
+         parallel_ .and. size(padded_kernel, kind=size_k) * input_shape(1) * offset(2) > margin_parallel_threshold)
 
       ! roght strip
       call build_image_expansion(x, &
@@ -182,7 +186,7 @@ subroutine conv2d_fix(x,k,method,y,parallel, errno)
       if (failed(errno)) return
       call conv2d_pad(temp_input, padded_kernel, size(k, 1, size_k), .false., &
          y(:, input_shape(2) - offset(2) + 1:), &
-         parallel .and. size(padded_kernel, kind=size_k) * input_shape(1) * offset(2) > margin_parallel_threshold)
+         parallel_ .and. size(padded_kernel, kind=size_k) * input_shape(1) * offset(2) > margin_parallel_threshold)
       deallocate(temp_input)
    end if
 
@@ -197,7 +201,7 @@ subroutine conv2d_fix(x,k,method,y,parallel, errno)
       if (failed(errno)) return
       call conv2d_nopad(temp_input, k, .false., &
          y(:offset(1), 1 + offset(2) : input_shape(2) - offset(2)), &
-         parallel .and. size(k, kind=size_k) * input_shape(2) * offset(1) > margin_parallel_threshold)
+         parallel_ .and. size(k, kind=size_k) * input_shape(2) * offset(1) > margin_parallel_threshold)
 
       ! bottom padding
       call build_image_expansion(x, &
@@ -207,7 +211,7 @@ subroutine conv2d_fix(x,k,method,y,parallel, errno)
       if (failed(errno)) return
       call conv2d_nopad(temp_input, k, .false., &
          y(input_shape(1) - offset(1) + 1:, 1 + offset(2) : input_shape(2) - offset(2)), &
-         parallel .and. size(k, kind=size_k) * input_shape(2) * offset(1) > margin_parallel_threshold)
+         parallel_ .and. size(k, kind=size_k) * input_shape(2) * offset(1) > margin_parallel_threshold)
 
       deallocate (temp_input)
    end if

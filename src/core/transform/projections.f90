@@ -29,6 +29,7 @@ pure function interpolate_point(i0f, j0f, ni0, nj0, im0) result(output)
    ri = real(i0f, buf_k) - ki
    rj = real(j0f, buf_k) - kj
 
+   output = 0
    if ( abs(2 * ri - 1) <= 2 .and. abs(2 * rj - 1) <= 2 ) then
       output   = im0(ki,   kj  ) * (1 - ri)  * (1 - rj)  &
       &        + im0(ki+1, kj  ) * ri        * (1 - rj)  &

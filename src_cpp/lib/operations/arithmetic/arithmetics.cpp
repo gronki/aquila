@@ -1,4 +1,5 @@
 #include <cmath>
+#include <numbers>
 
 #include "arithmetic_templates.hpp"
 #include "arithmetics.hpp"
@@ -256,6 +257,48 @@ ValuePtr SqrtOp::run(const Value &x) const
 const ArgManifest &SqrtOp::arg_manifest() const
 {
     static const ArgManifest manifest{ArgSpec{.name = "x"}};
+    return manifest;
+}
+
+REGISTER(ContrastOp);
+ValuePtr ContrastOp::run(const Value &x, const Real &strength) const
+{
+    const real_buf_t s = strength;
+    return apply_unitary(x,
+        [s](auto a) -> decltype(a)
+        {
+            if (a < 0)
+                return 0;
+            if (a > 1)
+                return 1;
+            return (1 - s) * a + s * (1 - std::cos(std::numbers::pi_v<decltype(a)> * a)) / 2;
+        });
+}
+
+const ArgManifest &ContrastOp::arg_manifest() const
+{
+    static const ArgManifest manifest{
+        ArgSpec{.name = "x"},
+        ArgSpec{.name = "strength", .default_real = 1.0, .help = "0 is identity, 1 is full cosine curve"},
+    };
+    return manifest;
+}
+
+REGISTER(StretchOp);
+ValuePtr StretchOp::run(const Value &x, const Real &lo, const Real &hi) const
+{
+    const real_buf_t l = lo;
+    const real_buf_t h = hi;
+    return apply_unitary(x, [l, h](auto a) { return (a - l) / (h - l); });
+}
+
+const ArgManifest &StretchOp::arg_manifest() const
+{
+    static const ArgManifest manifest{
+        ArgSpec{.name = "x"},
+        ArgSpec{.name = "lo", .default_real = 0.0, .help = "value mapped to 0"},
+        ArgSpec{.name = "hi", .default_real = 1.0, .help = "value mapped to 1"},
+    };
     return manifest;
 }
 

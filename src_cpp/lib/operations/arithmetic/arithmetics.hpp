@@ -137,4 +137,31 @@ struct SqrtOp : public Operation
     }
 };
 
+struct ContrastOp : public Operation
+{
+    BIND_ARGS_NEW(&ContrastOp::run);
+    ValuePtr run(const Value &x, const Real &strength) const;
+
+    const ArgManifest &arg_manifest() const override;
+    std::string name() const override { return "contrast"; }
+    std::string description() const override
+    {
+        return "Contrast curve on [0,1]: (1-strength)*x + strength*(1-cos(pi*x))/2. "
+               "Values below 0 become 0, above 1 become 1.";
+    }
+};
+
+struct StretchOp : public Operation
+{
+    BIND_ARGS_NEW(&StretchOp::run);
+    ValuePtr run(const Value &x, const Real &lo, const Real &hi) const;
+
+    const ArgManifest &arg_manifest() const override;
+    std::string name() const override { return "stretch"; }
+    std::string description() const override
+    {
+        return "Linear levels: (x - lo) / (hi - lo), so lo maps to 0 and hi to 1. No clipping.";
+    }
+};
+
 } // namespace aquila::ops

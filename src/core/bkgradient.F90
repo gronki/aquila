@@ -14,12 +14,13 @@ private
 real(c_double), parameter :: golden = (1 + sqrt(5.0_c_double)) / 2
 
 type, bind(C) :: box_sample_param_t
-   integer(c_int64_t) :: start_x = 55, start_y = 67, n_points = 64, window_size = 16, margin = 32
+   integer(c_int64_t) :: seed , n_points, window_size, margin
 end type
 
 type, bind(C) :: bkgradient_param_t
-   real(c_double) :: sd_sigma = 2.5, offset = 0.97, gradient=1.0, sigma_shift = 0
-   integer(c_int64_t) :: start_x = 55, start_y = 67, n_points = 64, window_size = 16, margin = 32
+   real(c_double) :: sd_sigma = 2.0, offset = 0.95, gradient=1.0, sigma_shift = 0
+   integer(c_int64_t) :: seed = 1337, n_points = 2048, window_size = 16, margin = 64
+   logical(c_bool) :: visualize = .false.
 end type
 
 type, bind(C) :: bkgradient_model_t
@@ -35,7 +36,20 @@ function default_bkgradient_params() bind(C)
    default_bkgradient_params = bkgradient_param_t()
 end function
 
-subroutine sample_point_stats(data_in, param, box_stats, err_out)
+function next_random(state)
+   integer :: state, hi, lo
+   real(c_double) :: next_random
+
+   hi = huge(state)
+   lo = - huge(state) - 1
+
+   state = 337973 * state + 203767
+   next_random = (real(state, c_double) - real(lo, c_double)) &
+      / ( real(hi, c_double) - real(lo, c_double))
+
+end function
+
+subroutine sample_point_stats(data_in, param, boxes, box_stats, err_out)
 
    real(buf_k) :: data_in(:,:)
    type(box_sample_param_t), intent(in) :: param
@@ -61,9 +75,10 @@ subroutine estimate_gradient(buf_in, buf_out, param, err_out) bind(C)
 
    real(buf_k), pointer :: data_in(:,:), data_out(:,:)
    type(box_stats_t) :: box_stats(param%n_points)
-   real(buf_k) :: limit_sd
-   logical(c_bool) :: boxes_mask(param%n_points)
+   real(buf_k) :: limit_sd, av, sd
+   logical :: boxes_mask(param%n_points)
    type(bkgradient_model_t) :: model
+   type(box_px_t) :: boxes(param%n_points)
 
    call reset_err(err_out)
 
@@ -76,16 +91,14 @@ subroutine estimate_gradient(buf_in, buf_out, param, err_out) bind(C)
    end if
 
    call sample_point_stats(data_in, box_sample_param_t( &
-      start_x=param%start_x, start_y=param%start_y, n_points=param%n_points, &
-      window_size=param%window_size, margin=param%margin), box_stats, err_out)
+      seed=param%seed, n_points=param%n_points, &
+      window_size=param%window_size, margin=param%margin), &
+      boxes, box_stats, err_out)
    if (failed_err(err_out)) return
 
-   limit_sd = sigclip2_fixed(box_stats%sd, real(param%sd_sigma, buf_k), 0._buf_k)
-   if (.not.ieee_is_normal(limit_sd)) then
-      call set_err(err_out, msg="all points for background estimations were rejected")
-      return
-   end if
-   boxes_mask = box_stats%sd < param%sd_sigma * limit_sd
+   boxes_mask(:) = .true.
+   call sigclip3_r32(box_stats%sd, boxes_mask, real(param%sd_sigma, buf_k), av, sd, mode=clip_hi, fix_av=0._buf_k)
+   call sigclip3_r32(box_stats%av, boxes_mask, real(param%sd_sigma, buf_k), av, sd, mode=clip_hi)
 
 #  ifndef NDEBUG
    block
@@ -110,25 +123,27 @@ subroutine estimate_gradient(buf_in, buf_out, param, err_out) bind(C)
 
    call generate_background(data_out, param, model)
 
+   if (param%visualize) then
+      call draw_boxes(data_out, pack(boxes, boxes_mask))
+   end if
+
 end subroutine
 
 subroutine generate_boxes(dims, param, boxes)
    integer(c_int64_t) :: dims(2)
    type(box_sample_param_t) :: param
    type(box_px_t) :: boxes(:)
-   integer(c_int64_t) :: ibox, counter_x, counter_y
+   integer(c_int64_t) :: ibox
    real(c_double) :: cx_fl, cy_fl
+   integer :: state
 
    ibox = 1
-   counter_x = param%start_x-1
-   counter_y = param%start_y-1
+   state = param%seed
 
    do while (ibox <= size(boxes, kind=c_int64_t))
-      counter_x = counter_x + 1
-      counter_y = counter_y + 1
 
-      cx_fl = modulo(golden * counter_x, 1.0_c_double)
-      cy_fl = modulo(golden * counter_y, 1.0_c_double)
+      cx_fl = next_random(state)
+      cy_fl = next_random(state)
 
       boxes(ibox) % x = cx_fl * (dims(1) - 2 * param%margin - param%window_size) + param%margin
       boxes(ibox) % y = cy_fl * (dims(2) - 2 * param%margin - param%window_size) + param%margin
@@ -162,6 +177,31 @@ subroutine generate_background(data_out, param, model)
          x, y)
       data_out(i, j) = (model%a * x + model%b * y) * param%gradient + model%c * param%offset
    end do
+end subroutine
+
+subroutine draw_boxes(data_out, boxes)
+   use ieee_arithmetic
+   real(buf_k) :: data_out(:,:)
+   type(box_px_t) :: boxes(:)
+   real(buf_k) :: nan
+   integer :: ibox, ix, iy
+
+   nan = ieee_value(1._buf_k, ieee_quiet_nan)
+
+
+   do ibox = 1, size(boxes)
+      associate (box =>boxes(ibox))
+         do ix = box%x, box%x + box%w
+            data_out(ix, box%y) = nan
+            data_out(ix, box%y+box%h) = nan
+         end do
+         do iy = box%y, box%y + box%h
+            data_out(box%x, iy) = nan
+            data_out(box%x + box%w, iy) = nan
+         end do
+      end associate
+   end do
+
 end subroutine
 
 end module

@@ -46,6 +46,11 @@ module procedure :: sigclip2_r32
 module procedure :: sigclip2_r64
 end interface
 
+interface sigclip3
+module procedure :: sigclip3_r32
+module procedure :: sigclip3_r64
+end interface
+
 interface sigclip2_fixed
 module procedure :: sigclip2_fixed_r32
 module procedure :: sigclip2_fixed_r64
@@ -55,6 +60,8 @@ interface quickselect
 module procedure :: quickselect_r32
 module procedure :: quickselect_r64
 end interface
+
+integer, parameter :: clip_both = 0, clip_hi = 1, clip_lo = 2
 
 contains
 
@@ -680,5 +687,109 @@ pure function sigclip2_fixed_r64(x, kap, av) result(sd)
 end function
 
  !----------------------------------------------------------------------------!
+
+
+
+pure subroutine sigclip3_r32(x, msk, kap, av, sd, mode, fix_av)
+   real(r32_k), intent(in) :: x(:), kap
+   real(r32_k), intent(out) :: av, sd
+   real(r32_k), intent(in), optional :: fix_av
+   integer, intent(in), optional :: mode
+   integer :: mode_
+   logical, intent(inout) :: msk(:)
+   integer(int64) :: i, imax, mask_count
+
+   mode_ = clip_both
+   if (present(mode)) mode_ = mode
+
+   mask_count = count(msk, kind=int64)
+   if (mode_ == clip_both) av = sum(x, msk) / mask_count
+
+   reject: do i = 1, size(x, kind=int64) - 2
+
+      if (mask_count < 3) exit
+
+      select case (mode_)
+      case (clip_both)
+         imax = maxloc(abs(x - av), 1, msk, kind=int64)
+      case (clip_hi)
+         imax = maxloc(x, 1, msk, kind=int64)
+      case (clip_lo)
+         imax = minloc(x, 1, msk, kind=int64)
+      case default
+         error stop "incorrect mode value in sigclip3!"
+      end select
+
+      msk(imax) = .false.
+      mask_count = count(msk, kind=int64)
+
+      if (present(fix_av)) then
+         av = fix_av
+      else
+         av = sum(x, msk) / mask_count
+      end if
+      sd = sqrt(sum( (x - av)**2, msk ) / (mask_count - 1))
+
+      if (abs(x(imax) - av) <= kap * sd) then
+         msk(imax) = .true.
+         exit reject
+      end if
+
+   end do reject
+
+   call avsd(x, msk, av, sd)
+
+end subroutine
+
+pure subroutine sigclip3_r64(x, msk, kap, av, sd, mode, fix_av)
+   real(r64_k), intent(in) :: x(:), kap
+   real(r64_k), intent(out) :: av, sd
+   real(r64_k), intent(in), optional :: fix_av
+   integer, intent(in), optional :: mode
+   integer :: mode_
+   logical, intent(inout) :: msk(:)
+   integer(int64) :: i, imax, mask_count
+
+   mode_ = clip_both
+   if (present(mode)) mode_ = mode
+
+   mask_count = count(msk, kind=int64)
+   if (mode_ == clip_both) av = sum(x, msk) / mask_count
+
+   reject: do i = 1, size(x, kind=int64) - 2
+
+      if (mask_count < 3) exit
+
+      select case (mode_)
+      case (clip_both)
+         imax = maxloc(abs(x - av), 1, msk, kind=int64)
+      case (clip_hi)
+         imax = maxloc(x, 1, msk, kind=int64)
+      case (clip_lo)
+         imax = minloc(x, 1, msk, kind=int64)
+      case default
+         error stop "incorrect mode value in sigclip3!"
+      end select
+
+      msk(imax) = .false.
+      mask_count = count(msk, kind=int64)
+
+      if (present(fix_av)) then
+         av = fix_av
+      else
+         av = sum(x, msk) / mask_count
+      end if
+      sd = sqrt(sum( (x - av)**2, msk ) / (mask_count - 1))
+
+      if (abs(x(imax) - av) <= kap * sd) then
+         msk(imax) = .true.
+         exit reject
+      end if
+
+   end do reject
+
+   call avsd(x, msk, av, sd)
+
+end subroutine
 
 end module

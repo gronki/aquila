@@ -42,8 +42,8 @@ const ArgManifest &BackgroundOp::arg_manifest() const
         ArgSpec{.name = "points", .field = field(&bkgradient_param_t::n_points)},
         ArgSpec{.name = "box", .field = field(&bkgradient_param_t::window_size)},
         ArgSpec{.name = "margin", .field = field(&bkgradient_param_t::margin)},
-        ArgSpec{.name = "seed_x", .field = field(&bkgradient_param_t::start_x)},
-        ArgSpec{.name = "seed_y", .field = field(&bkgradient_param_t::start_y)},
+        ArgSpec{.name = "seed", .field = field(&bkgradient_param_t::seed)},
+        ArgSpec{.name = "draw", .field = field(&bkgradient_param_t::visualize)},
     };
     return manifest;
 }

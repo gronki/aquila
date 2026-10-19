@@ -12,7 +12,7 @@
 
 #include "aquila_gen.h"
 
-#define AQUILA_VERSION "261011"
+#define AQUILA_VERSION "261019"
 
 #define AQ_STATUS_OK 0
 #define AQ_STATUS_ERROR 1

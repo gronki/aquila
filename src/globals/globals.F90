@@ -17,7 +17,7 @@ character(len = *), parameter :: fmthlp = '(a25, 2x, a, :/, *(27x, a, :/))'
 character(len = *), parameter :: fmtwarn = '("Warning: ", a, :/, *(9x, a, :/))'
 character(len = *), parameter :: fmtexampl = '(/, a, :/, /, *(5x, a, :/))'
 
-character(len = *), parameter :: version = "261011"
+character(len = *), parameter :: version = "261019"
 
 character(len = *), parameter :: perf_fmt = '("PERF", a10, 1x, "=", f7.3)'
 

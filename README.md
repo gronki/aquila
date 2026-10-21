@@ -1,8 +1,8 @@
 # Aquila: LRGB astrophotography processor with Fortran heart
 
-<a href="https://github.com/sebastian-mutz/powered_by_fortran_logo"><img src="https://raw.githubusercontent.com/sebastian-mutz/powered_by_fortran_logo/main/badge/powered_by_Fortran_badge_LC_512x64.png" alt="Powered by Fortran" width="180"></a>
-
 ![Aquila](snap/gui/aquila.png)
+
+<a href="https://github.com/sebastian-mutz/powered_by_fortran_logo"><img src="https://raw.githubusercontent.com/sebastian-mutz/powered_by_fortran_logo/main/badge/powered_by_Fortran_badge_LC_512x64.png" alt="Powered by Fortran" width="180"></a>
 
 **aquila** is a command-line toolkit for astrophotography data reduction and compositing on Linux.
 While graphical tools exist for this workflow, they rarely integrate well with the terminal — the natural environment for batch-processing hundreds of FITS files, writing reproducible pipelines, and automating nightly runs.
@@ -62,7 +62,7 @@ Then run ``aquila stack ...``, ``aquila lrgb ...`` or ``aquila cli`` from the di
 
 ### Build from source
 
-To build the program on Ubuntu, first install the dependencies (`libx11-dev` and `libxext-dev` are for the image window; skip them if you build with `-DAQUILA_WINDOW=Off`):
+To build the program on Ubuntu (although build without issues on all major distros), first install the dependencies (`libx11-dev` and `libxext-dev` are for the image window; skip them if you build with `-DAQUILA_WINDOW=Off`):
 
 ```sh
 sudo apt-get update && sudo apt-get install -y --no-install-recommends cmake make gcc g++ gfortran libreadline-dev pkg-config zlib1g-dev libx11-dev libxext-dev

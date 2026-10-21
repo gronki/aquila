@@ -1,5 +1,7 @@
 # Aquila: LRGB astrophotography processor with Fortran heart
 
+<a href="https://github.com/sebastian-mutz/powered_by_fortran_logo"><img src="https://raw.githubusercontent.com/sebastian-mutz/powered_by_fortran_logo/main/badge/powered_by_Fortran_badge_LC_512x64.png" alt="Powered by Fortran" width="180"></a>
+
 ![Aquila](snap/gui/aquila.png)
 
 **aquila** is a command-line toolkit for astrophotography data reduction and compositing on Linux.

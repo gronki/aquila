@@ -334,7 +334,7 @@ png_rgb(or, og, ob, "andromeda.png")
 
 ## AI Usage
 
-This project was started in 2016 and its core functionality was developed by 2021. The core ideas as well as imaging processing techniques are the idea and developed by the author. AI aided in developing building and deployment scripts, as well as tutoring Modern C++ features. This repository is mostly the byproduct of the author learning and experimenting how various things work by building them from ground up.
+This project was started in 2016 and its core functionality was developed by 2021. The core ideas as well as imaging processing techniques are developed (coded) by the author. AI aided in developing building and deployment scripts, tutoring Modern C++ features, bug fixes and code review as well as minor coding and refactoring tasks. The author estimates the contribution of AI to be about 20%. This repository is mostly the byproduct of the author learning and experimenting how various things work by building them so the development is expected to be quite slow.
 
 ## Changelog
 

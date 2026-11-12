@@ -19,56 +19,50 @@ struct ExecCtx
 
 class ExecNode
 {
-protected:
-    int depth = 0;
-    bool allow_cache = true;
+    virtual value_trace_t trace(ExecCtx ctx) const = 0;
+    value_trace_t node_trace;
 
 public:
-    virtual void set_depth(int newdepth = 0) { depth = newdepth; }
     virtual Ptr<Value> yield(ExecCtx ctx) const = 0;
     virtual void trigger_sideeffects(ExecCtx ctx) const {}
-    virtual value_trace_t trace(ExecCtx ctx) const = 0;
+    const value_trace_t &compute_trace(ExecCtx ctx)
+    {
+        node_trace = trace(ctx);
+#ifndef NDEBUG
+        std::cout << "node trace: " << node_trace << std::endl;
+#endif
+        return node_trace;
+    }
+    const value_trace_t &get_trace() const { return node_trace; }
     virtual std::optional<std::string> get_refname() const { return std::nullopt; }
-    virtual bool trivial() const { return false; }
+    /**
+     * Whether the node can be yielded during the trace pass: it is cheap and nothing
+     * under it resolves to a placeholder (dummy) value in the namespace of `ctx`.
+     */
+    virtual bool trivial(ExecCtx ctx) const { return false; }
     virtual ~ExecNode() = default;
-    void setup();
-    virtual void assignment_cache_check(std::set<std::string> &) {}
+    void setup(ExecCtx);
 };
 
 class RefNode : public ExecNode
 {
     std::string refname;
+    value_trace_t trace(ExecCtx ctx) const override;
 
 public:
     RefNode(const std::string &refname) : refname(refname) {}
 
     Ptr<Value> yield(ExecCtx ctx) const override { return ctx.ns.get(refname); }
-    value_trace_t trace(ExecCtx ctx) const override
-    {
-        // we do not trace references. example:
-        // a = 1; 2 | add 1; 2 | as a | add a -- will break cache
-        if (!allow_cache || !ctx.ns.contains(refname))
-            return value_trace_t::corrupt();
-        return ctx.ns.get(refname).get_trace();
-    }
-    bool trivial() const override { return true; }
+    bool trivial(ExecCtx ctx) const override;
 
     std::optional<std::string> get_refname() const override { return refname; }
-    void assignment_cache_check(std::set<std::string> &refs) override
-    {
-        auto it = refs.find(refname);
-        allow_cache = it == refs.end();
-#ifndef NDEBUG
-        if (!allow_cache)
-            std::cout << "untraceable reference encountered: " << refname << std::endl;
-#endif
-    }
 };
 
 class AssignmentNode : public ExecNode
 {
     std::string lhs;
     std::unique_ptr<ExecNode> rhs;
+    value_trace_t trace(ExecCtx ctx) const override { return rhs->compute_trace(ctx); }
 
 public:
     AssignmentNode(const std::string &lhs, std::unique_ptr<ExecNode> rhs) :
@@ -77,31 +71,20 @@ public:
     }
 
     Ptr<Value> yield(ExecCtx ctx) const override;
-    value_trace_t trace(ExecCtx ctx) const override { return rhs->trace(ctx); }
     void trigger_sideeffects(ExecCtx ctx) const override { yield(ctx); }
-    void set_depth(int newdepth = 0) override
-    {
-        depth = newdepth;
-        if (rhs)
-            rhs->set_depth(newdepth);
-    }
-    void assignment_cache_check(std::set<std::string> &refs) override
-    {
-        if (rhs)
-            rhs->assignment_cache_check(refs);
-    }
+    bool trivial(ExecCtx ctx) const override { return rhs->trivial(ctx); }
 };
 
 class ValueNode : public ExecNode
 {
     ValuePtr value;
+    value_trace_t trace(ExecCtx ctx) const override { return value.get_trace(); }
 
 public:
     ValueNode(ValuePtr value) : value(std::move(value)) {}
 
     Ptr<Value> yield(ExecCtx ctx) const override { return value; }
-    value_trace_t trace(ExecCtx ctx) const override { return value.get_trace(); }
-    bool trivial() const override { return true; }
+    bool trivial(ExecCtx ctx) const override { return true; }
 };
 
 class OpNode : public ExecNode
@@ -110,41 +93,22 @@ class OpNode : public ExecNode
     std::vector<std::unique_ptr<ExecNode>> args;
     const ArgManifest &manifest;
     std::vector<ArgMatch> match;
+    value_trace_t trace(ExecCtx ctx) const override;
 
 public:
     OpNode(std::unique_ptr<Operation> op,
         std::vector<std::unique_ptr<ExecNode>> args,
         std::vector<std::string> keys);
     Ptr<Value> yield(ExecCtx ctx) const override;
-    value_trace_t trace(ExecCtx ctx) const override;
-    bool trivial() const override
-    {
-        return op->tracing_mode() == Operation::Tracing::FROM_RETVAL;
-    }
-    void trigger_sideeffects(ExecCtx ctx) const override
-    {
-        for (const auto &arg : args)
-            arg->trigger_sideeffects(ctx);
-    }
-    void set_depth(int newdepth = 0) override
-    {
-        depth = newdepth;
-        for (auto &arg : args)
-            if (arg)
-                arg->set_depth(newdepth + 1);
-    }
-    void assignment_cache_check(std::set<std::string> &refs) override
-    {
-        for (auto &arg : args)
-            if (arg)
-                arg->assignment_cache_check(refs);
-    }
+    bool trivial(ExecCtx ctx) const override;
+    void trigger_sideeffects(ExecCtx ctx) const override;
 };
 
 class InlineAssignmentNode : public ExecNode
 {
     std::unique_ptr<ExecNode> arg;
     std::vector<std::string> idents;
+    value_trace_t trace(ExecCtx ctx) const override;
 
 public:
     InlineAssignmentNode(std::unique_ptr<ExecNode> arg, std::vector<std::string> idents) :
@@ -153,25 +117,7 @@ public:
     }
 
     Ptr<Value> yield(ExecCtx ctx) const override;
-    value_trace_t trace(ExecCtx ctx) const override { return arg->trace(ctx); }
-    void trigger_sideeffects(ExecCtx ctx) const override { yield(ctx); }
-    void set_depth(int newdepth = 0) override
-    {
-        depth = newdepth;
-        if (arg)
-            arg->set_depth(newdepth);
-    }
-    void assignment_cache_check(std::set<std::string> &refs) override
-    {
-        if (arg)
-            arg->assignment_cache_check(refs);
-        for (const auto &ident : idents)
-        {
-#ifndef NDEBUG
-            std::cout << "adding refname to ignore list: " << ident << std::endl;
-#endif
-            refs.insert(ident);
-        }
-    }
+    void trigger_sideeffects(ExecCtx ctx) const override;
+    bool trivial(ExecCtx ctx) const override { return arg->trivial(ctx); }
 };
 } // namespace aquila::interpreter

@@ -9,11 +9,32 @@
 
 namespace aquila::interpreter
 {
-void ExecNode::setup()
+
+struct dummy_value_t : public ValueBase<dummy_value_t>
 {
-    set_depth(0);
-    std::set<std::string> refs;
-    assignment_cache_check(refs);
+    /** Dummy value type, mostly used to hold only value trace */
+    TYPE_NAME("dummy");
+    dummy_value_t() {}
+    void write(std::ostream &os) const override {}
+};
+
+void ExecNode::setup(ExecCtx ctx)
+{
+    Namespace dummy_ns(&ctx.ns);
+    compute_trace({dummy_ns, nullptr});
+}
+
+value_trace_t RefNode::trace(ExecCtx ctx) const
+{
+    if (!ctx.ns.contains(refname))
+        throw std::runtime_error("variable name not found: " + refname);
+    return ctx.ns.get(refname).get_trace();
+}
+
+bool RefNode::trivial(ExecCtx ctx) const
+{
+    return ctx.ns.contains(refname)
+        && !value_cast<const dummy_value_t>(ctx.ns.get(refname).get());
 }
 
 OpNode::OpNode(std::unique_ptr<Operation> op,
@@ -135,13 +156,6 @@ static void pick_sequences(std::vector<ValuePtr> &args,
     }
 }
 
-struct dummy_value_t : public ValueBase<dummy_value_t>
-{
-    TYPE_NAME("dummy");
-    dummy_value_t() {}
-    void write(std::ostream &os) const override {}
-};
-
 static std::vector<value_trace_t> collect_traces(const std::vector<ValuePtr> &args)
 {
     std::vector<value_trace_t> traces;
@@ -158,7 +172,7 @@ static std::vector<value_trace_t> collect_traces(const std::vector<ValuePtr> &ar
     return traces;
 }
 
-static std::vector<value_trace_t> collect_traces(
+static std::vector<value_trace_t> compute_traces(
     const std::vector<std::unique_ptr<ExecNode>> &args, ExecCtx ctx)
 {
     std::vector<value_trace_t> traces;
@@ -170,7 +184,7 @@ static std::vector<value_trace_t> collect_traces(
             traces.push_back({});
             continue;
         }
-        traces.push_back(arg->trace(ctx));
+        traces.push_back(arg->compute_trace(ctx));
     }
     return traces;
 }
@@ -337,13 +351,12 @@ static ValuePtr op_call_with_sequencing(const Operation &op,
 
 Ptr<Value> OpNode::yield(ExecCtx ctx) const
 {
-    if (ctx.cache && op->cacheable())
+    if (ctx.cache && op->cacheable() && !get_trace().is_corrupt())
     {
-        auto lookup_trace = trace(ctx);
 #ifndef NDEBUG
-        std::cout << "lookup trace: " << lookup_trace << std::endl;
+        std::cout << "lookup trace: " << get_trace() << std::endl;
 #endif
-        auto maybe_cached = ctx.cache->get_and_score(lookup_trace, 1);
+        auto maybe_cached = ctx.cache->get_and_score(get_trace(), 1);
         if (maybe_cached)
         {
 #ifndef NDEBUG
@@ -392,12 +405,13 @@ Ptr<Value> OpNode::yield(ExecCtx ctx) const
 value_trace_t OpNode::trace(ExecCtx ctx) const
 {
 
+    auto traces = compute_traces(args, ctx);
+
     if (op->tracing_mode() == Operation::Tracing::UNTRACEABLE)
         return value_trace_t::corrupt();
 
     if (op->tracing_mode() == Operation::Tracing::DEFAULT)
     {
-        auto traces = collect_traces(args, ctx);
         for (const auto &trace : traces)
         {
             if (trace.is_corrupt())
@@ -414,7 +428,7 @@ value_trace_t OpNode::trace(ExecCtx ctx) const
 
     for (const auto &arg : args)
     {
-        if (!arg->trivial())
+        if (!arg->trivial(ctx))
         {
 #ifndef NDEBUG
             std::cout << "op: " << op->name() << " : " << "child arg is non-trivial"
@@ -442,12 +456,79 @@ value_trace_t OpNode::trace(ExecCtx ctx) const
     return result.get_trace();
 }
 
+bool OpNode::trivial(ExecCtx ctx) const
+{
+    if (op->tracing_mode() != Operation::Tracing::FROM_RETVAL)
+        return false;
+    for (const auto &arg : args)
+        if (!arg->trivial(ctx))
+            return false;
+    return true;
+}
+
+void OpNode::trigger_sideeffects(ExecCtx ctx) const
+{
+    for (const auto &arg : args)
+        arg->trigger_sideeffects(ctx);
+}
+
 Ptr<Value> AssignmentNode::yield(ExecCtx ctx) const
 {
     Ptr<Value> rhs_yield = rhs->yield(ctx);
     if (!rhs_yield)
         return {};
     return ctx.ns.push(lhs, rhs_yield);
+}
+
+value_trace_t InlineAssignmentNode::trace(ExecCtx ctx) const
+{
+    /**
+        Inline assignments are tricky to track, since they change the traces of a symbol
+        mid-execution. This is why we need to inject traces of values assigned inline
+        into a dummy namespace in trace evaluation pass so that they resolve correctly.
+
+        Example how to break the system:
+
+            a = 1
+            2 | add 1
+            2 | as a | add a
+
+        (right result = 4, wrong result = 3)
+    */
+
+    auto arg_trace = arg->compute_trace(ctx);
+    if (trivial(ctx))
+    {
+        yield(ctx);
+        return arg_trace;
+    }
+    if (idents.size() == 1)
+    {
+        ctx.ns.push(idents[0], Ptr<dummy_value_t>::make().with_trace(arg_trace));
+#ifndef NDEBUG
+        std::cout << " as " << idents[0] << " trace ::: " << arg_trace << std::endl;
+#endif
+    }
+    else
+    {
+        int idx = 0;
+        for (const auto &ident : idents)
+        {
+            auto item_trace =
+                "item{" + arg_trace.flatten() + "; " + std::to_string(idx + 1) + "}";
+#ifndef NDEBUG
+            std::cout << " as " << ident << " trace ::: " << item_trace << std::endl;
+#endif
+            ctx.ns.push(ident, Ptr<dummy_value_t>::make().with_trace(item_trace));
+            idx++;
+        }
+    }
+    return arg_trace;
+}
+
+void InlineAssignmentNode::trigger_sideeffects(ExecCtx ctx) const
+{
+    yield(ctx);
 }
 
 Ptr<Value> InlineAssignmentNode::yield(ExecCtx ctx) const

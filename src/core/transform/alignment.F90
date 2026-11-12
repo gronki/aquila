@@ -25,6 +25,7 @@ contains
 
 function default_align_params() bind(C)
    type(align_params_t) :: default_align_params
+   default_align_params = align_params_t()
 end function
 
  !------------------------------------------------------------------------------------!

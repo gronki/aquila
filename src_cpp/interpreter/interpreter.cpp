@@ -25,16 +25,15 @@ Ptr<Value> AquilaInterpreter::exec(const std::string &command)
     exectree = build_exectree_from_str(command, global_op_db());
     if (!exectree)
         return nullptr;
-    exectree->setup();
+    exectree->setup({ns, &cache});
 #ifndef NDEBUG
-    std::cout << "::: " << exectree->trace({ns, &cache}) << std::endl;
+    std::cout << "::: " << exectree->get_trace() << std::endl;
 #endif
     auto result = exectree->yield({ns, &cache});
     ns.merge(std::move(sub_ns));
     cache.prune();
     char cache_size[32];
-    std::snprintf(
-        cache_size, sizeof(cache_size), "%.1f", cache.total_mem_size() / 1e6);
+    std::snprintf(cache_size, sizeof(cache_size), "%.1f", cache.total_mem_size() / 1e6);
     std::cout << "Cache: " << cache_size << "M" << std::endl;
     return result;
 }

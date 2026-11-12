@@ -23,7 +23,7 @@ TEST(example)
     auto exec = build_exectree_from_str(
         std::string(" add(1, 2) ") + std::string(1, CHAIN_CALL_DELIM) + " mul(3)",
         global_op_db());
-    exec->setup();
+    exec->setup({ns, nullptr});
     auto result = exec->yield({ns, nullptr});
     std::cout << (bool(result) ? result->str() : std::string("(null)")) << std::endl;
 }

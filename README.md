@@ -2,6 +2,8 @@
 
 ![Aquila](snap/gui/aquila.png)
 
+<a href="https://github.com/sebastian-mutz/powered_by_fortran_logo"><img src="https://raw.githubusercontent.com/sebastian-mutz/powered_by_fortran_logo/main/badge/powered_by_Fortran_badge_LC_512x64.png" alt="Powered by Fortran" width="180"></a>
+
 **aquila** is a command-line toolkit for astrophotography data reduction and compositing on Linux.
 While graphical tools exist for this workflow, they rarely integrate well with the terminal — the natural environment for batch-processing hundreds of FITS files, writing reproducible pipelines, and automating nightly runs.
 Aquila is designed to fit into that world: fast, scriptable, and unobtrusive.
@@ -60,7 +62,7 @@ Then run ``aquila stack ...``, ``aquila lrgb ...`` or ``aquila cli`` from the di
 
 ### Build from source
 
-To build the program on Ubuntu, first install the dependencies (`libx11-dev` and `libxext-dev` are for the image window; skip them if you build with `-DAQUILA_WINDOW=Off`):
+To build the program on Ubuntu (although build without issues on all major distros), first install the dependencies (`libx11-dev` and `libxext-dev` are for the image window; skip them if you build with `-DAQUILA_WINDOW=Off`):
 
 ```sh
 sudo apt-get update && sudo apt-get install -y --no-install-recommends cmake make gcc g++ gfortran libreadline-dev pkg-config zlib1g-dev libx11-dev libxext-dev
@@ -101,35 +103,39 @@ STRATEGY can be: bias, dark, flat, process, align, final
                  -average  stack by average value
                   -median  stack by median
                  -sigclip  stack by 3-sigma clipped average
+                           turns on -normalize, except for bias, dark, flat
           -align [METHOD]  align frames. METHOD can be:
                            polygon: quadrangle matching -- only rot&transl
                            xyr: rotation and translation
                            affine {def.} use poly, then gravity to find affine (linear stretch)
-   -[no-]prealign-polygon  prealignment step using polygon matching.
-                           Use when frames are strongly rotated (meridian flip.) {def: off}
+           -prealign-flip  try rotations by 0, 90, 180, 270 deg {def.}
+        -prealign-polygon  polygon matching, for arbitrarily rotated frames
+           -prealign-none  no prealignment
             -ref FILENAME  align to this frame rather than first frame
      -resample [FACTOR=2]  resample before stacking (only with -align)
                            FACTOR is scale to be applied
           -[no-]normalize  normalize to average before stacking
         -suffix/-S SUFFIX  suffix that will be added to file names
-                           when using -nostack {def.: _pp}
+                           when using process or align {def.: _pp}
    -temp/-T TEMP [DT=0.5]  stack only frames with given CCD temperature
                            DT gives allowed deviation in temperature
                            in Celsius
            -bias FILENAME  subtract this master bias
            -flat FILENAME  remove this master flat
            -dark FILENAME  remove this master dark
-    [-no]-hot [SIGMA=5.0]  find hot pixels on dark and correct them
+    -[no-]hot [SIGMA=5.0]  find hot pixels on dark and correct them
                            in the image frames (if dark is given) {def.: ON}
-           [-no]-hot-only  do not remove dark, just correct hot pixels
+-[no-]hot-light [SIGMA=3]  find hot pixels in each image (process, align, final)
+                           after the dark-based correction, if any {def.: OFF}
+           -[no-]hot-only  do not remove dark, just correct hot pixels
                            {def.: OFF}
-[-no]-darkopt [SIGMA=5.0]  optimize dark to minimize correlation
+-[no-]darkopt [SIGMA=5.0]  optimize dark to minimize correlation
                            if sigma is nonzero, only background will be used.
-                           SIGMA=0 forces to use all pixels {def.: OFF}
+                           SIGMA=0 forces to use all pixels. requires -bias {def.: OFF}
          -[no-]dark-scale  scale dark proportional to the exposure time
-                           {def.: OFF}
-         [-no]-dirty-dark  notify that the darkframe had not been bias-corrected
-                           {def.: ON}
+                           requires -bias {def.: OFF}
+      -[no-]dark-debiased  dark was stacked with -bias {def.: OFF}
+                           requires -bias
                  -verbose  verbose output
 
 Typical CMOS workflow (with flatdarks)
@@ -145,13 +151,13 @@ You may use -ref option to align RGB channels
      aqstack final Light/G/*.fits -ref Light/L/001.fits -o stack_G.fits
 ```
 
-CCD workflow with a master bias (``final`` aligns, normalizes and stacks with sigma clipping by default):
+CCD workflow with a master bias (``final`` aligns, normalizes and stacks with sigma clipping by default). The master dark is stacked with ``-bias``, so ``-dark-debiased`` tells ``final`` not to subtract the bias from it again:
 
 ```sh
 aqstack bias Bias/*.fits -o bias.fits
 aqstack dark -bias bias.fits Dark/*.fits -o dark.fits
 aqstack flat -bias bias.fits Flat/L/*.fits -o flat_L.fits
-aqstack final -bias bias.fits -dark dark.fits -flat flat_L.fits Light/L/*.fits -o stack_L.fits
+aqstack final -bias bias.fits -dark dark.fits -dark-debiased -flat flat_L.fits Light/L/*.fits -o stack_L.fits
 ```
 
 Combining several nights, each with its own calibration frames: ``process`` calibrates the frames without stacking and writes each one next to its original with the ``_pp`` suffix, then ``final`` aligns and stacks all of them together:
@@ -310,9 +316,25 @@ lrgb mix(1, R, 1, G, 1, B), R, G, B | as RR, GG, BB
 png_rgb RR, GG, BB, "sho.png"
 ```
 
+### Actual example pipelines I have used for processing my astrophotography
+
+LRGBHa composition of Andromeda galaxy -- previously stacked with `aqstack` using alignment with `-ref` option.
+
+```
+# pre-load data and subtract background
+# mul and asinh at the end are only for preview - they are not stored
+load "test_{L,R,G,B,H}.fits" | div 65555 | as L,R,G,B,H | as all | sub bg(all, offset:0.95) | add [0,2e-4,2e-4,2e-4,0] | as LL,RR,GG,BB,HH | mul 100 | asinh factor:1000
+
+# LRGB mix
+lrgb asinh(mix(LL,8,HH,8) | div (mix(conv(LL,kernel(150)),30,1,1)), factor: 300) ,conv(mix(RR,1,HH,0.5),kernel(5.0)), conv(GG, kernel(5.0)), conv(BB, kernel(5.0)) | sub 110e-4 | mul [1,1.20,1.34] |  asinh factor: 12 | add 5e-2 | mul 1.3 | contrast strength:1 | contrast strength: 0.2 | as or, og, ob
+
+# Writing to PNG
+png_rgb(or, og, ob, "andromeda.png")
+```
+
 ## AI Usage
 
-This project was started in 2016 and its core functionality was developed by 2021. The core ideas as well as imaging processing techniques are the idea and developed by the author. AI aided in developing building and deployment scripts, as well as tutoring Modern C++ features. This repository is mostly the byproduct of the author learning and experimenting how various things work by building them from ground up.
+This project was started in 2016 and its core functionality was developed by 2021. The core ideas as well as imaging processing techniques are developed (coded) by the author. AI aided in developing building and deployment scripts, tutoring Modern C++ features, bug fixes and code review as well as minor coding and refactoring tasks. The author estimates the contribution of AI to be about 20%. This repository is mostly the byproduct of the author learning and experimenting how various things work by building them so the development is expected to be quite slow.
 
 ## Changelog
 

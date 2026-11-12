@@ -28,9 +28,10 @@ program aqstack
    logical :: cfg_process_only = .false.
    logical :: cfg_normalize = .false.
    logical :: cfg_correct_hot = .true., cfg_correct_hot_only = .false.
+   logical :: cfg_hot_light = .false.
    logical :: cfg_dark_optimize = .false.
    logical :: cfg_dark_scaling = .false.
-   logical :: cfg_dark_is_dirty = .true.
+   logical :: cfg_dark_debiased = .false.
    logical :: cfg_resampling = .false.
    logical :: cfg_temperature_filter = .false.
    integer(c_int) :: cfg_prealign = prealign_flip
@@ -38,6 +39,7 @@ program aqstack
    real(r64_k) :: resample_factor = 2
    real(buf_k) :: cfg_temperature_point = 0, cfg_temperature_tolerance = 0.5
    real(buf_k) :: hotpixel_threshold_sigma = 5.0, darkopt_sigma = 0.0
+   real(buf_k) :: hot_light_sigma = 3.0
    integer :: margin = 10
    real(real64) :: t1, t2
    character(len=*), parameter :: warning_fmt = "('Warning: ', a, (:,/,9x, a))"
@@ -61,6 +63,17 @@ program aqstack
 
    cfg_resampling = cfg_resampling .and. cfg_align_frames
    if (cfg_resampling) print '(a12,": ",f6.2)', 'resampling', resample_factor
+
+   ! lights always contain bias; without -bias it only cancels against a dark that contains bias
+   if (dark_fn /= "" .and. bias_fn == "" .and. .not. cfg_correct_hot_only) then
+      if (cfg_dark_debiased) error stop "-dark-debiased requires -bias"
+      if (cfg_dark_scaling .or. cfg_dark_optimize) error stop "-dark-scale and -darkopt require -bias"
+   end if
+
+   if (dark_fn == "" .and. strategy /= "bias" .and. strategy /= "dark") then
+      if (cfg_dark_scaling .or. cfg_dark_optimize) &
+         write (*, fmtwarn) "Darkframe not provided, but darkframe-related options were selected."
+   end if
 
    !----------------------------------------------------------------------------!
 
@@ -88,10 +101,10 @@ program aqstack
             call frame_dark % read_fits(dark_fn)
             print '(a12,": ",a)', 'dark', trim(dark_fn)
 
-            if (cfg_dark_is_dirty .and. allocated(frame_bias % data)) then
+            if (.not. cfg_dark_debiased .and. allocated(frame_bias % data)) then
                frame_dark%data = frame_dark%data - frame_bias%data
-               cfg_dark_is_dirty = .false.
-               print '(a)', 'dark was dirty but now is clean'
+               cfg_dark_debiased = .true.
+               print '(a)', 'bias subtracted from dark'
             end if
 
             if (cfg_correct_hot .or. cfg_dark_optimize) then
@@ -194,7 +207,7 @@ program aqstack
                   error stop "image and dark frame have different dimensions"
 
                ! perform dark scaling for only clean dark (without bias)
-               if (.not. cfg_dark_is_dirty) then
+               if (cfg_dark_debiased) then
                   dark_scaling: block
 
                      real(buf_k) :: a, av, sd, amax
@@ -236,14 +249,8 @@ program aqstack
                      cur_frame % data(:,:) = cur_frame % data(:,:) - a * frame_dark%data(:,:)
                   end block dark_scaling
                else
-                  ! dark is dirty = no bias was given. subtract without scaling
+                  ! dark contains bias = no bias was given. subtract without scaling
                   cur_frame % data(:,:) = cur_frame % data(:,:) - frame_dark%data(:,:)
-               end if
-            else ! allocated frame(dark)
-               if (strategy /= "bias" .and. strategy /= "dark") then
-                  if (cfg_dark_scaling .or. cfg_dark_optimize .or. cfg_correct_hot) then
-                     write (*, fmtwarn) "Darkframe not provided, but darkframe-related options were selected."
-                  end if
                end if
             end if
 
@@ -258,6 +265,16 @@ program aqstack
             ! fix hot pixels second time (post-flatfield)
             if (allocated(fix_mask)) then
                call fix_hot(cur_frame % data, fix_mask)
+            end if
+
+            if (cfg_hot_light .and. (strategy == "process" .or. strategy == "final")) then
+               ! find hot pixels from the image itself (also the ones the dark missed)
+               block
+                  real(buf_k), allocatable, target :: fixed(:,:)
+                  allocate(fixed, mold=cur_frame % data)
+                  call fix_hot_light(to_descriptor(cur_frame % data), hot_light_sigma, to_descriptor(fixed))
+                  call move_alloc(fixed, cur_frame % data)
+               end block
             end if
 
             ! print some frame statistics for quick check
@@ -646,6 +663,15 @@ contains
          case ("-no-hot-only")
             cfg_correct_hot_only = .false.
 
+         case ("-hot-light")
+            cfg_hot_light = .true.
+
+            call get_command_argument(i + 1, buf)
+            read (buf, *, iostat = errno) hot_light_sigma
+            if (errno == 0) skip = 1
+         case ("-no-hot-light")
+            cfg_hot_light = .false.
+
          case("-darkopt", "-dark-optimize")
             cfg_dark_optimize = .true.
             call get_command_argument(i + 1, buf)
@@ -660,10 +686,10 @@ contains
          case ("-no-dark-scale")
             cfg_dark_scaling = .false.
 
-         case ("-dirty-dark")
-            cfg_dark_is_dirty = .true.
-         case ("-no-dirty-dark")
-            cfg_dark_is_dirty = .false.
+         case ("-dark-debiased")
+            cfg_dark_debiased = .true.
+         case ("-no-dark-debiased")
+            cfg_dark_debiased = .false.
 
          case("-cfa")
             cfg_is_cfa = .true.
@@ -710,34 +736,38 @@ contains
       print fmthlp,  '-o/-output FILENAME', 'specifies the output filename'
       print fmthlp,  '-average', 'stack by average value'
       print fmthlp,  '-median', 'stack by median'
-      print fmthlp,  '-sigclip', 'stack by 3-sigma clipped average'
+      print fmthlp,  '-sigclip', 'stack by 3-sigma clipped average', &
+      &     'turns on -normalize, except for bias, dark, flat'
       print fmthlp,  '-align [METHOD]', 'align frames. METHOD can be:', &
       &     'polygon: quadrangle matching -- only rot&transl', &
       &     'xyr: rotation and translation', &
       &     'affine {def.} use poly, then gravity to find affine (linear stretch)'
-      print fmthlp,  '-[no-]prealign-polygon', 'prealignment step using polygon matching.', &
-      &     'Use when frames are strongly rotated (meridian flip.) {def: off}'
+      print fmthlp,  '-prealign-flip', 'try rotations by 0, 90, 180, 270 deg {def.}'
+      print fmthlp,  '-prealign-polygon', 'polygon matching, for arbitrarily rotated frames'
+      print fmthlp,  '-prealign-none', 'no prealignment'
       print fmthlp,  '-ref FILENAME', 'align to this frame rather than first frame'
       print fmthlp,  '-resample [FACTOR=2]', 'resample before stacking (only with -align)', &
       &     'FACTOR is scale to be applied'
       print fmthlp,  '-[no-]normalize', 'normalize to average before stacking'
       print fmthlp,  '-suffix/-S SUFFIX', 'suffix that will be added to file names', &
-      &     'when using -nostack {def.: _pp}'
+      &     'when using process or align {def.: _pp}'
       print fmthlp,  '-temp/-T TEMP [DT=0.5]', 'stack only frames with given CCD temperature', &
       &     'DT gives allowed deviation in temperature', 'in Celsius'
       print fmthlp,  '-bias FILENAME', 'subtract this master bias'
       print fmthlp,  '-flat FILENAME', 'remove this master flat'
       print fmthlp,  '-dark FILENAME', 'remove this master dark'
-      print fmthlp,  '[-no]-hot [SIGMA=5.0]', 'find hot pixels on dark and correct them', &
+      print fmthlp,  '-[no-]hot [SIGMA=5.0]', 'find hot pixels on dark and correct them', &
       &     'in the image frames (if dark is given) {def.: ON}'
-      print fmthlp,  '[-no]-hot-only', 'do not remove dark, just correct hot pixels', '{def.: OFF}'
-      print fmthlp,  '[-no]-darkopt [SIGMA=5.0]', 'optimize dark to minimize correlation', &
+      print fmthlp,  '-[no-]hot-light [SIGMA=3]', 'find hot pixels in each image (process, align, final)', &
+      &     'after the dark-based correction, if any {def.: OFF}'
+      print fmthlp,  '-[no-]hot-only', 'do not remove dark, just correct hot pixels', '{def.: OFF}'
+      print fmthlp,  '-[no-]darkopt [SIGMA=5.0]', 'optimize dark to minimize correlation', &
       &     'if sigma is nonzero, only background will be used.', &
-      &     'SIGMA=0 forces to use all pixels {def.: OFF}'
+      &     'SIGMA=0 forces to use all pixels. requires -bias {def.: OFF}'
       print fmthlp,  '-[no-]dark-scale', 'scale dark proportional to the exposure time', &
-      &     '{def.: OFF}'
-      print fmthlp,  '[-no]-dirty-dark', 'notify that the darkframe had not been bias-corrected', &
-      &     '{def.: ON}'
+      &     'requires -bias {def.: OFF}'
+      print fmthlp,  '-[no-]dark-debiased', 'dark was stacked with -bias {def.: OFF}', &
+      &     'requires -bias'
       print fmthlp,  '-verbose', 'verbose output'
 
       print fmtexampl, 'Typical CMOS workflow (with flatdarks)', &

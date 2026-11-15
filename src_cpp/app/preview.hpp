@@ -2,6 +2,7 @@
 
 #include <SDL2/SDL.h>
 #include <atomic>
+#include <mutex>
 #include <thread>
 #include <value.hpp>
 #include <values/frame.hpp>

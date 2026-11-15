@@ -235,7 +235,8 @@ Everything is an expression:
 - ``|`` passes the result on its left as the **first argument** of the operation
   on its right, so ``load "a.fits" | bin 2`` means ``bin(load("a.fits"), 2)``.
   Inside a chain the parentheses are optional: ``asinh factor: 30`` is
-  ``asinh(factor: 30)``.
+  ``asinh(factor: 30)``. A bare name is a call with no further arguments:
+  ``a | sqrt`` is ``sqrt(a)``.
 - Arguments that have a default are **keyword-only** and written with a colon:
   ``stack method: "sigclip"``, not ``stack("sigclip")``.
 - ``as`` names a result, and splits a sequence into several names at once.
@@ -326,7 +327,7 @@ LRGBHa composition of Andromeda galaxy -- previously stacked with `aqstack` usin
 load "test_{L,R,G,B,H}.fits" | div 65555 | as L,R,G,B,H | as all | sub bg(all, offset:0.95) | add [0,2e-4,2e-4,2e-4,0] | as LL,RR,GG,BB,HH | mul 100 | asinh factor:1000
 
 # LRGB mix
-lrgb asinh(mix(LL,8,HH,8) | div (mix(conv(LL,kernel(150)),30,1,1)), factor: 300) ,conv(mix(RR,1,HH,0.5),kernel(5.0)), conv(GG, kernel(5.0)), conv(BB, kernel(5.0)) | sub 110e-4 | mul [1,1.20,1.34] |  asinh factor: 12 | add 5e-2 | mul 1.3 | contrast strength:1 | contrast strength: 0.2 | as or, og, ob
+lrgb asinh(mix(LL,8,HH,8) | div (mix(conv(LL,kernel(150)),30,1,1)), factor: 300) ,conv(mix(RR,1,HH,0.5),kernel(5.0)), conv(GG, kernel(5.0)), conv(BB, kernel(5.0)) | sub 110e-4 | mul [1,1.20,1.34] |  asinh factor: 12 | add 5e-2 | mul 1.3 | contrast factor:1 | contrast factor: 0.2 | as or, og, ob
 
 # Writing to PNG
 png_rgb(or, og, ob, "andromeda.png")

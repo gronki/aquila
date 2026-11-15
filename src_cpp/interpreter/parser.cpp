@@ -1,5 +1,5 @@
-#include "parser.hpp"
 #include "characters.hpp"
+#include "parser.hpp"
 #include <stdexcept>
 
 namespace aquila::interpreter
@@ -213,7 +213,8 @@ static void parse_function_argument_list(LazyTokenArray &tokens,
 
 /**
  * Parse the expression but take care of chaining. Calls like f(a,b).g(c,d)
- * will be reformed to g(f(a, b), c, d).
+ * will be reformed to g(f(a, b), c, d). A bare name after the delimiter, as in
+ * a | g, is a call with an empty argument list: g(a).
  */
 static void parse_expression(
     LazyTokenArray &tokens, std::unique_ptr<AstNode> &node, parse_flags_t flags)
@@ -236,7 +237,13 @@ static void parse_expression(
         std::unique_ptr<AstNode> parent_node;
         parse_basic_expression(tokens, parent_node, flags);
 
-        if (auto *parent_call_node = dynamic_cast<AstOpNode *>(parent_node.get()))
+        // a bare name after the chain delimiter is a call with no arguments: X | f -> f(X)
+        if (auto *ref_node = dynamic_cast<AstRefNode *>(parent_node.get()))
+        {
+            parent_node = std::make_unique<AstOpNode>(
+                ref_node->refname, std::vector<AstOpNode::OpArg>{}, ref_node->loc);
+        }
+        else if (auto *parent_call_node = dynamic_cast<AstOpNode *>(parent_node.get()))
         {
             // stadard chaining: X % f(Y) -> F(X, Y)
             AstOpNode::OpArg first_arg;

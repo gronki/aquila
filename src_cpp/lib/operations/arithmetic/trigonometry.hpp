@@ -37,13 +37,15 @@ struct CosOp : public Operation
 struct AsinhOp : public Operation
 {
     BIND_ARGS_NEW(&AsinhOp::run);
-    ValuePtr run(const Value &, const Real &) const;
+    ValuePtr run(const Value &, const Real &, const Real &, const Real &) const;
 
     const ArgManifest &arg_manifest() const override
     {
         static const ArgManifest manifest{
             ArgSpec{.name = "x"},
             ArgSpec{.name = "factor", .default_real = 1, .help = "Compression factor"},
+            ArgSpec{.name = "mix", .default_real = 1, .help = "Fraction of asinh in the result: 0 is linear, 1 is pure asinh"},
+            ArgSpec{.name = "black", .default_real = 0, .help = "Level mapped to 0 in the asinh part (not the linear part)"},
         };
         return manifest;
     }

@@ -221,6 +221,31 @@ TEST(call_chain_keys_no_paren)
     REQUIRE_EQ(*arg_node_2->constant, StrValue("a"));
 }
 
+TEST(call_chain_bare_name)
+{
+    Tokenizer tokenizer(" ff (3.0)" + CHAIN + " gg" + CHAIN + " hh");
+    // equivalent to: hh(gg(ff(3.0)))
+
+    LazyTokenArray token_array(std::move(tokenizer));
+    std::unique_ptr<AstNode> root;
+    parse(token_array, root);
+    std::cout << *root << std::endl;
+
+    auto *outer = dynamic_cast<AstOpNode *>(root.get());
+    REQUIRE_NNUL(outer);
+    REQUIRE_EQ(outer->opname, "hh");
+    REQUIRE_EQ(outer->args.size(), 1);
+
+    auto *middle = dynamic_cast<AstOpNode *>(outer->args[0].arg_val.get());
+    REQUIRE_NNUL(middle);
+    REQUIRE_EQ(middle->opname, "gg");
+    REQUIRE_EQ(middle->args.size(), 1);
+
+    auto *inner = dynamic_cast<AstOpNode *>(middle->args[0].arg_val.get());
+    REQUIRE_NNUL(inner);
+    REQUIRE_EQ(inner->opname, "ff");
+}
+
 TEST(call_chain_keys_2)
 {
     Tokenizer tokenizer(" t( ff (3.0) " + CHAIN + "gg(key" + KWARG + " \"a\"  ) )");

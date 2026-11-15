@@ -140,14 +140,36 @@ struct SqrtOp : public Operation
 struct ContrastOp : public Operation
 {
     BIND_ARGS_NEW(&ContrastOp::run);
-    ValuePtr run(const Value &x, const Real &strength) const;
+    ValuePtr run(
+        const Value &x, const Real &factor, const Real &pivot, const Real &mix) const;
 
     const ArgManifest &arg_manifest() const override;
     std::string name() const override { return "contrast"; }
     std::string description() const override
     {
-        return "Contrast curve on [0,1]: (1-strength)*x + strength*(1-cos(pi*x))/2. "
-               "Values below 0 become 0, above 1 become 1.";
+        return "Contrast curve fixing 0, pivot and 1, with slope (pi/2)^factor at the pivot: "
+               "two power-law branches, x^g below the pivot and 1-(1-x)^g above it, "
+               "rescaled to meet there. Pivot 0 or 1 gives a gamma-like curve. "
+               "Monotonic and unclipped outside [0,1]. "
+               "The result is mixed with the input: mix*result + (1-mix)*x.";
+    }
+};
+
+struct SaturateOp : public Operation
+{
+    BIND_ARGS_NEW(&SaturateOp::run);
+    ValuePtr run(Ptr<SequenceValue> channels,
+        const Real &factor,
+        const Real &pivot,
+        const Real &mix) const;
+
+    const ArgManifest &arg_manifest() const override;
+    std::string name() const override { return "saturate"; }
+    std::string description() const override
+    {
+        return "Changes colour saturation of a sequence of channels, keeping their sum L. "
+               "Each channel goes through the contrast curve, then lrgb(L, curved channels) "
+               "restores the sum.";
     }
 };
 

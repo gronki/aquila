@@ -1,0 +1,22 @@
+#pragma once
+
+#include <bind_new.hpp>
+#include <operation.hpp>
+#include <value.hpp>
+#include <values/frame.hpp>
+
+namespace aquila::ops
+{
+
+struct TrimOp : public Operation
+{
+    BIND_ARGS_NEW(&TrimOp::run);
+    ValuePtr run(const values::BufferValue &in, const Real &pixels) const;
+
+    std::string name() const override { return "trim"; }
+
+    const ArgManifest &arg_manifest() const override;
+    std::string description() const override;
+};
+
+} // namespace aquila::ops

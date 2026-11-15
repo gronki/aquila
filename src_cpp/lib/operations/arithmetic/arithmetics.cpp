@@ -32,7 +32,8 @@ Ptr<Value> SubOp::run(Ptr<Value> first, Ellipsis<const Value *> args) const
     auto result = first;
     for (std::size_t iarg = 0; iarg < args.data.size(); iarg++)
     {
-        result = apply_binary(*result, *args.data[iarg], [](auto a, auto b) { return a - b; });
+        result = apply_binary(
+            *result, *args.data[iarg], [](auto a, auto b) { return a - b; });
     }
     return result;
 }
@@ -73,7 +74,8 @@ Ptr<Value> DivOp::run(Ptr<Value> first, Ellipsis<const Value *> args) const
     auto result = first;
     for (std::size_t iarg = 0; iarg < args.data.size(); iarg++)
     {
-        result = apply_binary(*result, *args.data[iarg], [](auto a, auto b) { return a / b; });
+        result = apply_binary(
+            *result, *args.data[iarg], [](auto a, auto b) { return a / b; });
     }
     return result;
 }
@@ -161,8 +163,7 @@ Ptr<Value> SoftmaxOp::run(
         sum = apply_binary(*sum, *term, [](auto p, auto q) { return p + q; });
     }
 
-    return apply_binary(
-        *peak, *sum, [a](auto m, auto s) { return m + std::log(s) / a; });
+    return apply_binary(*peak, *sum, [a](auto m, auto s) { return m + std::log(s) / a; });
 }
 
 const ArgManifest &SoftmaxOp::arg_manifest() const
@@ -209,8 +210,8 @@ Ptr<Value> LrgbOp::run(Ptr<Value> lum, Ellipsis<const Value *> args) const
     std::unique_ptr<Value> chroma_sum = std::make_unique<RealValue>(0);
     for (std::size_t iarg = 0; iarg < args.data.size(); iarg++)
     {
-        chroma_sum =
-            apply_binary(*chroma_sum, *args.data[iarg], [](auto a, auto b) { return a + b; });
+        chroma_sum = apply_binary(
+            *chroma_sum, *args.data[iarg], [](auto a, auto b) { return a + b; });
     }
     std::vector<ValuePtr> scaled_components;
     scaled_components.reserve(args.data.size() - 1);
@@ -260,18 +261,43 @@ const ArgManifest &SqrtOp::arg_manifest() const
     return manifest;
 }
 
-REGISTER(ContrastOp);
-ValuePtr ContrastOp::run(const Value &x, const Real &strength) const
+// |t|^exponent with the sign of t, which keeps contrast_curve monotonic outside [0,1].
+template <typename T>
+static T signed_power(T t, T exponent)
 {
-    const real_buf_t s = strength;
+    return std::copysign(std::pow(std::abs(t), exponent), t);
+}
+
+/**
+ * Contrast curve fixing 0, pivot and 1: two power-law branches meeting at the pivot,
+ * where the slope is `gain` on both sides. Pivot 0 or 1 leaves one branch, a
+ * gamma-like curve. Not clipped, monotonic outside [0,1].
+ *
+ * Args: x (input level), gain (slope at the pivot), pivot (in [0,1]).
+ * Returns: the curve value at x.
+ */
+template <typename T>
+static T contrast_curve(T x, T gain, T pivot)
+{
+    const bool use_lower_branch = (x < pivot && pivot > 0) || pivot >= 1;
+    if (use_lower_branch)
+        return pivot * signed_power(x / pivot, gain);
+    return 1 - (1 - pivot) * signed_power((1 - x) / (1 - pivot), gain);
+}
+
+REGISTER(ContrastOp);
+ValuePtr ContrastOp::run(
+    const Value &x, const Real &factor, const Real &pivot, const Real &mix) const
+{
+    const real_buf_t gain = std::pow(std::numbers::pi_v<real_buf_t> / 2, factor);
+    const real_buf_t p = pivot;
+    const real_buf_t m = mix;
+
     return apply_unitary(x,
-        [s](auto a) -> decltype(a)
+        [gain, p, m](auto input) -> decltype(input)
         {
-            if (a < 0)
-                return 0;
-            if (a > 1)
-                return 1;
-            return (1 - s) * a + s * (1 - std::cos(std::numbers::pi_v<decltype(a)> * a)) / 2;
+            const auto curved = contrast_curve<decltype(input)>(input, gain, p);
+            return m * curved + (1 - m) * input;
         });
 }
 
@@ -279,7 +305,46 @@ const ArgManifest &ContrastOp::arg_manifest() const
 {
     static const ArgManifest manifest{
         ArgSpec{.name = "x"},
-        ArgSpec{.name = "strength", .default_real = 1.0, .help = "0 is identity, 1 is full cosine curve"},
+        ArgSpec{.name = "factor",
+            .default_real = 0.5,
+            .help = "0 is identity; the slope at the pivot is (pi/2)^factor"},
+        ArgSpec{.name = "pivot", .default_real = 0.5, .help = "in [0,1]: the level left unchanged, where the curve is steepest; 0 and 1 give gamma-like curves"},
+        ArgSpec{.name = "mix", .default_real = 1.0, .help = "fraction of the curve in the result: 0 is the input, 1 is the full curve"},
+    };
+    return manifest;
+}
+
+REGISTER(SaturateOp);
+ValuePtr SaturateOp::run(
+    Ptr<SequenceValue> channels, const Real &factor, const Real &pivot, const Real &mix) const
+{
+    if (channels->items.empty())
+        throw std::runtime_error("saturate: empty sequence");
+
+    ValuePtr luminance = std::make_unique<RealValue>(0);
+    std::vector<ValuePtr> curved_channels;
+    Ellipsis<const Value *> curved_pointers;
+
+    for (const auto &channel : channels->items)
+    {
+        luminance =
+            apply_binary(*luminance, *channel, [](auto a, auto b) { return a + b; });
+        curved_channels.push_back(ContrastOp().run(*channel, factor, pivot, mix));
+        curved_pointers.data.push_back(curved_channels.back().get());
+    }
+
+    return LrgbOp().run(luminance, curved_pointers);
+}
+
+const ArgManifest &SaturateOp::arg_manifest() const
+{
+    static const ArgManifest manifest{
+        ArgSpec{.name = "channels", .sequence = true},
+        ArgSpec{.name = "factor", .default_real = 0.5, .help = "contrast factor, see contrast"},
+        ArgSpec{.name = "pivot", .default_real = 0.5, .help = "contrast pivot, see contrast"},
+        ArgSpec{.name = "mix",
+            .default_real = 1.0,
+            .help = "0 leaves the colours as they are, 1 is full effect"},
     };
     return manifest;
 }
